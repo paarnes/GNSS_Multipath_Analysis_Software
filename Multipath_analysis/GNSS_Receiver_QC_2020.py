@@ -1,21 +1,23 @@
 import os, sys,numpy as np
-sys.path.append(r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS\Read_RINEX_OBS')
+sys.path.append('..\Read_RINEX_OBS/')
 from rinexFindNEpochs304 import rinexFindNEpochs304
 from rinexReadObsFileHeader304 import rinexReadObsFileHeader304
-from tqdm import tqdm
 from rinexReadObsBlock304 import rinexReadObsBlock304
-from kepler2ecef import date2gpstime
 from rinexReadObsBlockHead304 import rinexReadObsBlockHead304
 from readRinexObs304 import readRinexObs304
-from computeSatElevations import computeSatElevations
-from computeSatElevAimut_fromNav import computeSatElevAimut_fromNav
-from readFrequencyOverview import readFrequencyOverview
-from signalAnalysis import signalAnalysis
-from plotResults import plotResults
-from detectClockJumps import detectClockJumps
+sys.path.append('..\Kepler2ECEF/')
+from Kepler2ECEF.kepler2ecef import date2gpstime
+
+sys.path.append('..\Multipath_analysis/')
+from Multipath_analysis.computeSatElevations import computeSatElevations
+from Multipath_analysis.computeSatElevAimut_fromNav import computeSatElevAimut_fromNav
+from Multipath_analysis.readFrequencyOverview import readFrequencyOverview
+from Multipath_analysis.signalAnalysis import signalAnalysis
+from Multipath_analysis.plotResults import plotResults
+from Multipath_analysis.detectClockJumps import detectClockJumps
 from tqdm import tqdm, trange
-from writeOutputFile import writeOutputFile
-from make_polarplot import make_polarplot
+from Multipath_analysis.writeOutputFile import writeOutputFile
+from Multipath_analysis.make_polarplot import make_polarplot
 
 def GNSS_Receiver_QC_2020(rinObsFilename,
                           broadcastNav1=None,

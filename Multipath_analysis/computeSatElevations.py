@@ -1,3 +1,12 @@
+import sys
+sys.path.append('..\Read_SP3')
+from Read_SP3.read_SP3Nav import readSP3Nav
+from Read_SP3.combineSP3Nav import combineSP3Nav
+from get_elevation_angle import get_elevation_angle
+from gpstime2date import gpstime2date
+from tqdm import tqdm
+import numpy as np
+
 def computeSatElevations(GNSS_SVs, GNSSsystems, approxPosition,\
     nepochs, time_epochs, max_sat, sp3_nav_filename_1, sp3_nav_filename_2, sp3_nav_filename_3):
     """
@@ -45,14 +54,7 @@ def computeSatElevations(GNSS_SVs, GNSSsystems, approxPosition,\
     #--------------------------------------------------------------------------------------------------------------------------
     """
     
-    # import sys
-    # sys.path.append(r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS\Read SP3')
-    from read_SP3Nav import readSP3Nav
-    from combineSP3Nav import combineSP3Nav
-    from get_elevation_angle import get_elevation_angle
-    from gpstime2date import gpstime2date
-    from tqdm import tqdm
-    import numpy as np
+
     
     nGNSSsystems = len(GNSSsystems);
     # sat_elevation_angles = cell(nGNSSsystems,1);
