@@ -1,9 +1,5 @@
 import os, sys,numpy as np
 sys.path.append('..\Read_RINEX_OBS/')
-from rinexFindNEpochs304 import rinexFindNEpochs304
-from rinexReadObsFileHeader304 import rinexReadObsFileHeader304
-from rinexReadObsBlock304 import rinexReadObsBlock304
-from rinexReadObsBlockHead304 import rinexReadObsBlockHead304
 from readRinexObs304 import readRinexObs304
 sys.path.append('..\Kepler2ECEF/')
 from Kepler2ECEF.kepler2ecef import date2gpstime

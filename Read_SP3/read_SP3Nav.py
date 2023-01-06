@@ -1,9 +1,9 @@
 def readSP3Nav(filename, desiredGNSSsystems=None):
-        
+       
    import numpy as np
    import copy
-
-    #Function that reads the GNSS satellite position data from a SP3 position
+   """
+    Function that reads the GNSS satellite position data from a SP3 position
     #file. The function has been tested with sp3c and sp3d. NOTE: It is
     #advised that any use of this function is made through the parent function
     #"read_multiple_SP3Nav.m", as it has more functionality. 
@@ -82,7 +82,7 @@ def readSP3Nav(filename, desiredGNSSsystems=None):
 
    #success:          boolean, 1 if no error occurs, 0 otherwise
    #--------------------------------------------------------------------------------------------------------------------------
-
+   """
 
 
    #
@@ -132,7 +132,7 @@ def readSP3Nav(filename, desiredGNSSsystems=None):
               print('ERROR(readSP3Nav): SP3 Navigation file is version %s, must be version c or d!' % (sp3Version))
               # [sat_positions, epoch_dates, navGNSSsystems, nEpochs, epochInterval] = deal(NaN)
               success = 0
-              # return
+              return success
         
           
           # Control that sp3 file is a position file and not a velocity file
@@ -142,7 +142,7 @@ def readSP3Nav(filename, desiredGNSSsystems=None):
               print('ERROR(readSP3Nav): SP3 Navigation file is has velocity flag, should have position flag!')
               # [sat_positions, epoch_dates, navGNSSsystems, nEpochs, epochInterval] = deal(NaN);
               success = 0
-              # return
+              return success
           
           #Store coordinate system and amount of epochs
           CoordSys = line[46:51]
@@ -216,7 +216,7 @@ def readSP3Nav(filename, desiredGNSSsystems=None):
 
    # Initialize matrix for epoch dates
    epoch_dates = []
-   
+   test = []
    sys_dict = {}
    PRN_dict = {}
 
@@ -229,8 +229,12 @@ def readSP3Nav(filename, desiredGNSSsystems=None):
    ini_sys = list(GNSSsystem_map.keys())[0]
    for k in range(0,nEpochs):
        #Store date of current epoch
-       epochs = line[3:31].split(" ")
+       epochs = line[3:31].split(" ")       
        epochs = [x for x in epochs if x != "" ] # removing ''
+       ## -- Make a check if theres a new line. (if hearder not giving correct nepochs)
+       if epochs == []:
+           print("The number of epochs given in the headers is not correct! \nInstead of %s epochs, the files contains %s epochs.\nSP3-file \"%s\" has been read successfully" %(str(nEpochs),str(k+1),filename))
+           return sat_pos, epoch_dates, navGNSSsystems, nEpochs, epochInterval,success
        epoch_dates.append(epochs)
        
        # Store positions of all satellites for current epoch
@@ -255,34 +259,51 @@ def readSP3Nav(filename, desiredGNSSsystems=None):
                sys_inx = sys_values.index(GNSSsystemIndex)
                sys = sys_keys[sys_inx]
                obs = line[5:46].split(" ")
-               obs = [x for x in obs if x != "" ]
-
-                   
+               obs = [float(x)*1000 for x in obs if x != "" ] # multipliing with 1000 to get meters
+              
+               
                if sys != ini_sys:
                    ini_sys = sys
 
-               obs_dict[str(PRN)]  = obs[:]  
-               PRN_dict[int(k)] = obs_dict
+               # obs_dict[str(PRN)]  = obs[:]
+               
+               # obs_dict[str(PRN)]  = np.array([obs]) 
+               # PRN_dict[int(k)] = obs_dict
+               
                
                if sys == 'G':
                    obs_G = [x for x in obs if x != "" ]
-                   obs_dict_GPS[PRN]  = obs_G.copy()
-                   PRN_dict_GPS[k] = obs_dict.copy()
+                   # obs_dict_GPS[PRN]  = obs_G.copy()
+                   # PRN_dict_GPS[k] = obs_dict.copy()
+
+                   # test.append(obs_G[:])
+                   # obs_dict_GPS[PRN]  = test[:][:]
+                   
+                   # obs_dict_GPS[PRN]  = np.array([obs_G])
+                   # PRN_dict_GPS[k] = obs_dict_GPS
+                   
+                   obs_dict_GPS[PRN]  = np.array([obs_G])
+                   PRN_dict_GPS[k] = obs_dict_GPS
                elif sys =='R':
                    obs_R = [x for x in obs if x != "" ]
-                   obs_dict_Glonass[PRN]  = obs_R.copy()
-                   PRN_dict_Glonass[k] = obs_dict_Glonass.copy()
+                   # obs_dict_Glonass[PRN]  = obs_R.copy()
+                   # PRN_dict_Glonass[k] = obs_dict_Glonass.copy()
+                   obs_dict_Glonass[PRN]  = np.array([obs_R])
+                   PRN_dict_Glonass[k] = obs_dict_Glonass
                elif sys =='E':
                    obs_E = [x for x in obs if x != "" ]
-                   obs_dict_Galileo[PRN]  = obs_E.copy()
-                   PRN_dict_Galileo[k] = obs_dict_Galileo.copy()
+                   # obs_dict_Galileo[PRN]  = obs_E.copy()
+                   # PRN_dict_Galileo[k] = obs_dict_Galileo.copy()
+                   obs_dict_Galileo[PRN]  = np.array([obs_E])
+                   PRN_dict_Galileo[k] = obs_dict_Galileo
                elif sys =='C':
                    obs_C = [x for x in obs if x != "" ]
-                   obs_dict_BeiDou[PRN]  = obs_C.copy()
-                   PRN_dict_BeiDou[k] = obs_dict_BeiDou.copy()
+                   # obs_dict_BeiDou[PRN]  = obs_C.copy()
+                   # PRN_dict_BeiDou[k] = obs_dict_BeiDou.copy()
+                   obs_dict_BeiDou[PRN]  = np.array([obs_C])
+                   PRN_dict_BeiDou[k] = obs_dict_BeiDou
                    
-                   
-                   
+           # sys_dict['G'] = obs_dict_GPS       
            sys_dict['G'] = PRN_dict_GPS
            sys_dict['R'] = PRN_dict_Glonass
            sys_dict['E'] = PRN_dict_Galileo
@@ -298,16 +319,18 @@ def readSP3Nav(filename, desiredGNSSsystems=None):
    except:
        print('ERROR(readSP3Nav): End of file was not reached when expected!!')
        success = 0
+       return success
         
    #remove NaN values
    GNSSsystemIndexOrder = [x for x in GNSSsystemIndexOrder if x != 'nan']
    PRNOrder = [x for x in GNSSsystemIndexOrder if x != 'nan']
+   epoch_dates = np.array(epoch_dates) # Added this 27.11.2022 (to make it possible to use only one file i Multipath analysis!)
 
    print('SP3 Navigation file "%s" has been read successfully.' %(filename))
    ## Remove GNSS systems not present in navigation file
    # sat_pos['GNSS_systems']  = sat_pos['GNSS_systems'][np.unique(GNSSsystemIndexOrder)]
    # navGNSSsystems = navGNSSsystems(np.unique(GNSSsystemIndexOrder))
-   return sat_pos, epoch_dates, navGNSSsystems, nEpochs, epochInterval
+   return sat_pos, epoch_dates, navGNSSsystems, nEpochs, epochInterval,success
 
 
-# sat_pos, epoch_dates, navGNSSsystems, nEpochs, epochInterval =readSP3Nav('testfile4.SP3')
+# sat_pos, epoch_dates, navGNSSsystems, nEpochs, epochInterval,success =readSP3Nav('test3.SP3')
