@@ -1,5 +1,5 @@
-from read_rinex2_nav import read_rinex2_nav
-from compute_azimut_elev import compute_azimut_elev
+# from read_rinex2_nav import read_rinex2_nav
+# from compute_azimut_elev import compute_azimut_elev
 
 def date2gpstime(year,month,day,hour,minute,seconds):
     """
@@ -19,8 +19,6 @@ def date2gpstime(year,month,day,hour,minute,seconds):
     return week, tow
 
 # week, tow = date2gpstime(2022,11,5,9,45,00)
-
-# week_t, tow_t = date2gpstime(2021,12,31,23,59,59.9999998821295)
 
 def extract_nav_message(data,PRN,tidspunkt):
     """
@@ -43,16 +41,25 @@ def gathering_sat_by_PRN(data,PRN):
     Sat_data  = np.zeros((1,36))
     for k in range(0,m):
         PRN_ = np.array([])
-        if int(data[k,0]) == PRN:
+        
+        if len(data[k,0]) == 3: # RINEX v3 navfiles have letters in addition. EX: G01.
+            sat = data[k,0][1::]
+        else:
+            sat = data[k,0]
+        
+        if int(sat) == PRN:
             # Sat_data[j,:] = data[k,:]
             PRN_ =np.append(PRN_,data[k,:])
             PRN_ = PRN_.reshape(1,len(PRN_))
         if np.size(PRN_) != 0:
             Sat_data  = np.concatenate([Sat_data , PRN_], axis=0)
             
-    check = str(Sat_data[0,:] == 0)
-    if 'False' not in check:
+    # check = str(Sat_data[0,:] == 0)
+    # if 'False' not in check:
+    #     Sat_data  = np.delete(Sat_data , (0), axis=0)
+    if all(Sat_data[0,:].astype(float)) == 0:
         Sat_data  = np.delete(Sat_data , (0), axis=0)
+
 
     return Sat_data
 
@@ -87,7 +94,6 @@ def Satkoord2(efemerider,t,xm,ym,zm):
     from numpy import sqrt,pi, fmod,cos, sin, tan
     from math import atan
     
-    print("Satellite coordinates are being computed based on broadcasted ephemerides... Please wait.")
     
     GM         = 3.986005e14      # Produktet av jordas masse og gravitasjonskonstanten
     omega_e    = 7.2921151467e-5  # [rad/sek]
@@ -204,6 +210,64 @@ def Satkoord2(efemerider,t,xm,ym,zm):
         Z = y*sin(i_k);
         
     return X,Y,Z,dT_rel
+
+
+
+def gpstime2date(week, tow):
+    """
+    Calculates date from GPS-week number and "time-of-week" to Gregorian calendar.
+    
+    
+    Example:
+    week = 2236
+    tow = 35898
+    date = gpstime2date(week,tow) --> 2022-11-13 09:58:00  (13 november 2022)
+        
+    Parameters
+    ----------
+    week : GPS-week  
+    tow : "Time of week" 
+    
+    Returns
+    -------
+    date : The date given in the Gregorian calender ([year, month, day, hour, min, sec]) 
+    
+    """
+    
+    
+    import numpy as np
+    from datetime import datetime, timedelta
+
+    hour = np.floor(tow/3600)
+    res = tow/3600 - hour
+    min_ = np.floor(res*60)
+    res = res*60-min_
+    sec = res*60
+    
+    # if hours is more than 24, extract days built up from hours
+    days_from_hours = np.floor(hour/24)
+    # hours left over
+    hour = hour - days_from_hours*24
+    
+    ## -- Computing number of days
+    days_to_start_of_week = week*7
+    
+    # Origo of GPS-time: 06/01/1980 
+    # t0 = date.toordinal(date(1980,1,6))+366
+    t0 = datetime(1980,1,6)
+    # t0 = t0.strftime("%Y %m %d")
+    # t1 = t0 + days(days_to_start_of_week + days_from_hours); 
+    t1 = t0 + timedelta(days=(days_to_start_of_week + days_from_hours))
+    
+    
+    ## --  Formating the date to "year-month- day"
+    t1 = t1.strftime("%Y %m %d")
+    t1_ = [int(i) for i in t1.split(" ")]
+    
+    [year, month, day] = t1_
+    
+    date_ = [year, month, day, hour, min_, sec]
+    return date_
 
 # data, header, n_eph = read_rinex2_nav('testfile.20n')
 # tow_mot = 556559.999999882
