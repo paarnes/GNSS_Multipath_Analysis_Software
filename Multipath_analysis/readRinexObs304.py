@@ -1,240 +1,237 @@
+import numpy as np
+from datetime import date
+from numpy import fix
+import math, os 
+
+
 def readRinexObs304(filename, readSS, readLLI, includeAllGNSSsystems,includeAllObsCodes, \
                     desiredGNSSsystems, desiredObsCodes, desiredObsBands):
     """
-    #Program/function to read GNSS observations in RINEX 3.04 observation files
-    #The main core of the program is 4 functions:
-    #                              rinexReadObsFileHeader304
-    #                              rinexReadObsBlockHead304
-    #                              rinexReadObsBlock304
-    #                              rinexFindNEpochs304
-    #
-    #The first three of these functions are based on three functions
-    #written by António Pestana:
-    #                              rinexReadsObsFileHeader211
-    #                              rinexReadsObsBlockHead211
-    #                              rinexReadsObsBlock211
-    #%
-    #The structure of the data storage is also based on simular work by 
-    #Ola Øvstedal
-    #%--------------------------------------------------------------------------------------------------------------------------
-    #INPUTS 
+    Program/function to read GNSS observations in RINEX 3.04 observation files
+    The main core of the program is 4 functions:
+                                  rinexReadObsFileHeader304
+                                  rinexReadObsBlockHead304
+                                  rinexReadObsBlock304
+                                  rinexFindNEpochs304
     
-    #filename:                 path and name of RINEX 3.04 observation file,
-    #                          string
+    --------------------------------------------------------------------------------------------------------------------------
+    INPUTS 
     
-    #readSS:                   Boolean, 0 or 1. 
-    #                          1 = read "Signal Strength" Indicators
-    #                          0 = do not read "Signal Strength" Indicators
+    filename:                 path and name of RINEX 3.04 observation file,
+                              string
     
-    #readLLI:                  Boolean, 0 or 1. 
-    #                          1 = read "Loss-Of-Lock Indicators"
-    #                          0 = do not read "Loss-Of-Lock Indicators"
+    readSS:                   Boolean, 0 or 1. 
+                              1 = read "Signal Strength" Indicators
+                              0 = do not read "Signal Strength" Indicators
     
-    #includeAllGNSSsystems:    Boolean, 0 or 1. 
-    #                          1 = include alle GNSS systems(GPS, GLONASS, Galieo, BeiDou)
-    #                          0 = include only GNSSsystems specified in desiredGNSSsystems
+    readLLI:                  Boolean, 0 or 1. 
+                              1 = read "Loss-Of-Lock Indicators"
+                              0 = do not read "Loss-Of-Lock Indicators"
     
-    #includeAllObsTypes:       Boolean, 0 or 1. 
-    #                          1 = include all valid ObsTypes
-    #                          0 = include only ObsTypes specified in desiredObsTypes
+    includeAllGNSSsystems:    Boolean, 0 or 1. 
+                              1 = include alle GNSS systems(GPS, GLONASS, Galieo, BeiDou)
+                              0 = include only GNSSsystems specified in desiredGNSSsystems
     
-    #desiredGNSSsystems:       array og strings containing  codes of desired 
-    #                          GNSSsystems to be included, 
-    #                          ex. ["G", "E"]
-    #                          OBS: Must be string array, NOT char vector
+    includeAllObsTypes:       Boolean, 0 or 1. 
+                              1 = include all valid ObsTypes
+                              0 = include only ObsTypes specified in desiredObsTypes
     
-    #desiredObsTypes:          array of strings containing desired ObsTypes to be
-    #                          included, ex. ["C", "L", "S", "D"]
-    #                          OBS: Must be string array, NOT char vector
+    desiredGNSSsystems:       array og strings containing  codes of desired 
+                              GNSSsystems to be included, 
+                              ex. ["G", "E"]
+                              OBS: Must be string array, NOT char vector
     
-    #desiredObsBands:          array of desired obs Bands to be included,
-    #                          ex [1, 5]
-    #%--------------------------------------------------------------------------------------------------------------------------
-    #OUTPUTS
+    desiredObsTypes:          array of strings containing desired ObsTypes to be
+                              included, ex. ["C", "L", "S", "D"]
+                              OBS: Must be string array, NOT char vector
     
-    #GNSS_obs:                 cell containing a matrix for each GNSS system.
-    #                          Each matrix is a 3D matrix containing all 
-    #                          observation of current GNSS system for all epochs. 
-    #                          Order of obsType index is same order as in 
-    #                          obsCodes cell
+    desiredObsBands:          array of desired obs Bands to be included,
+                              ex [1, 5]
+    --------------------------------------------------------------------------------------------------------------------------
+    OUTPUTS
     
-    #                          GNSS_obs{GNSSsystemIndex}(PRN, obsType, epoch)
-    #                                          GNSSsystemIndex: double,
-    #                                          1,2,...,numGNSSsystems
-    #                                          PRN: double
-    #                                          ObsType: double: 1,2,...,numObsTypes
-    #                                          epoch: double
+    GNSS_obs:                 cell containing a matrix for each GNSS system.
+                              Each matrix is a 3D matrix containing all 
+                              observation of current GNSS system for all epochs. 
+                              Order of obsType index is same order as in 
+                              obsCodes cell
     
-    #GNSS_LLI:                 cell containing a matrix for each GNSS system
-    #                          Each matrix stores loss of lock indicators for
-    #                          each epoch for that GNSS system
+                              GNSS_obs{GNSSsystemIndex}(PRN, obsType, epoch)
+                                              GNSSsystemIndex: double,
+                                              1,2,...,numGNSSsystems
+                                              PRN: double
+                                              ObsType: double: 1,2,...,numObsTypes
+                                              epoch: double
     
-    #GNSS_SS:                  cell containing a matrix for each GNSS system
-    #                          Each matrix stores signal strength indicators 
-    #                          for each epoch for that GNSS system
+    GNSS_LLI:                 cell containing a matrix for each GNSS system
+                              Each matrix stores loss of lock indicators for
+                              each epoch for that GNSS system
     
-    #GNSS_SVs:                 cell containing a matrix for each GNSS system.
-    #                          Each matrix contains number of satellites with 
-    #                          obsevations for each epoch, and PRN for those 
-    #                          satellites
+    GNSS_SS:                  cell containing a matrix for each GNSS system
+                              Each matrix stores signal strength indicators 
+                              for each epoch for that GNSS system
     
-    #                          GNSS_SVs{GNSSsystemIndex}(epoch, j)  
-    #                                          j=1: number of observed satellites
-    #                                          j>1: PRN of observed satellites
+    GNSS_SVs:                 cell containing a matrix for each GNSS system.
+                              Each matrix contains number of satellites with 
+                              obsevations for each epoch, and PRN for those 
+                              satellites
     
-    #time_epochs:              matrix conatining gps-week and "time of week" 
-    #                          for each epoch
-    #                          time_epochs(epoch,i),   i=1: week
-    #                                                  i=2: time-of-week in seconds (tow)
+                              GNSS_SVs{GNSSsystemIndex}(epoch, j)  
+                                              j=1: number of observed satellites
+                                              j>1: PRN of observed satellites
     
-    #nepochs:                  number of epochs with observations in rinex observation file.
+    time_epochs:              matrix conatining gps-week and "time of week" 
+                              for each epoch
+                              time_epochs(epoch,i),   i=1: week
+                                                      i=2: time-of-week in seconds (tow)
     
-    #GNSSsystems:              cell array containing codes of GNSS systems included 
-    #                          in RINEX observationfile. Elements are strings.
-    #                          ex. "G" or "E"
+    nepochs:                  number of epochs with observations in rinex observation file.
+    
+    GNSSsystems:              cell array containing codes of GNSS systems included 
+                              in RINEX observationfile. Elements are strings.
+                              ex. "G" or "E"
         
-    #obsCodes:                 Cell that defines the observation
-    #                          codes available for all GNSS system. Each cell
-    #                          element is another cell containing the codes for
-    #                          that GNSS system. Each element in this cell is a
-    #                          string with three-characters. The first 
-    #                          character (a capital letter) is an observation code 
-    #                          ex. "L" or "C". The second character (a digit)
-    #                          is a frequency code. The third character(a Capital letter)  
-    #                          is the attribute, ex. "P" or "X"
+    obsCodes:                 Cell that defines the observation
+                              codes available for all GNSS system. Each cell
+                              element is another cell containing the codes for
+                              that GNSS system. Each element in this cell is a
+                              string with three-characters. The first 
+                              character (a capital letter) is an observation code 
+                              ex. "L" or "C". The second character (a digit)
+                              is a frequency code. The third character(a Capital letter)  
+                              is the attribute, ex. "P" or "X"
     
-    #approxPosition:           array containing approximate position from rinex
-    #                          observation file header. [X, Y, Z]
+    approxPosition:           array containing approximate position from rinex
+                              observation file header. [X, Y, Z]
     
-    #max_sat:                  array conataining max PRN number for each GNSS
-    #                          system. Follows same order as GNSSsystems
+    max_sat:                  array conataining max PRN number for each GNSS
+                              system. Follows same order as GNSSsystems
     
-    #tInterval:                observations interval; seconds. 
+    tInterval:                observations interval; seconds. 
     
-    #markerName:               name of the antenna marker; '' if not specified
+    markerName:               name of the antenna marker; '' if not specified
     
-    #rinexVersion:             string. rinex observation file version                  
+    rinexVersion:             string. rinex observation file version                  
     
-    #recType:                  receiver type, char vector
+    recType:                  receiver type, char vector
     
-    #timeSystem:               three-character code string of the time system 
-    #                          used for expressing tfirstObs; 
-    #                          can be GPS, GLO or GAL; 
+    timeSystem:               three-character code string of the time system 
+                              used for expressing tfirstObs; 
+                              can be GPS, GLO or GAL; 
     
-    #leapSec:                  number of leap seconds since 6-Jan-1980. 
-    #                          UTC=GPST-leapSec. NaN by default. 
-    #                          THIS IS RINEX 3.04 OPTIONAL DATA
+    leapSec:                  number of leap seconds since 6-Jan-1980. 
+                              UTC=GPST-leapSec. NaN by default. 
+                              THIS IS RINEX 3.04 OPTIONAL DATA
     
-    #                          rinexHeader: cell column-vector containing the 
-    #                          following data:
-    #                          rinexVersion:   RINEX version number; string. 
-    #                                          '' if not specified
-    #                          rinexType:      RINEX file type; char
+                              rinexHeader: cell column-vector containing the 
+                              following data:
+                              rinexVersion:   RINEX version number; string. 
+                                              '' if not specified
+                              rinexType:      RINEX file type; char
     
-    #gnssType:                 GNSS system of the satellites observed; can be 
-    #                          'G', 'R', 'E', 'C' or 'M' that stand for 
-    #                          GPS, GLONASS, GALILEO, BeiDou or Mixed ; char
+    gnssType:                 GNSS system of the satellites observed; can be 
+                              'G', 'R', 'E', 'C' or 'M' that stand for 
+                              GPS, GLONASS, GALILEO, BeiDou or Mixed ; char
     
-    #rinexProgr:               name of the software used to produce de RINEX 
-    #                          GPS obs file; '' if not specified
-    #
-    
-    #rinexDate:                date/time of the RINEX file creation; '' if not
-    #                          specified; char
+    rinexProgr:               name of the software used to produce de RINEX 
+                              GPS obs file; '' if not specified
     
     
-    #antDelta:                 column vector ot the three components of the 
-    #                          distance from the marker to the antenna, 
-    #                          in the following order - up, east and north;
-    #                          null vector by default
+    rinexDate:                date/time of the RINEX file creation; '' if not
+                              specified; char
     
-    #tFirstObs:                time stamp of the first observation record in the RINEX
-    #                          observations file; column vector
-    #                          [YYYY; MM; DD; hh; mm; ss.sssssss];
-    #                          THIS IS CRITICAL DATA
     
-    #tLastObs:                 time stamp of the last observation record in the RINEX
-    #                          observations file; column vector 
-    #                          [YYYY; MM; DD; hh; mm;ss.sssssss]. NaN by default. 
-    #                          THIS IS RINEX 3.04 OPTIONAL DATA
+    antDelta:                 column vector ot the three components of the 
+                              distance from the marker to the antenna, 
+                              in the following order - up, east and north;
+                              null vector by default
     
-    #clockOffsetsON:           receiver clock offsets flag. O if no realtime-derived
-    #                          receiver clock offset was applied to epoch, 
-    #                          code and phase data (in other words, if the 
-    #                          file only has raw data), 1 otherwise. 0 by default. 
-    #                          THIS IS RINEX 3.04 OPTIONAL DATA
+    tFirstObs:                time stamp of the first observation record in the RINEX
+                              observations file; column vector
+                              [YYYY; MM; DD; hh; mm; ss.sssssss];
+                              THIS IS CRITICAL DATA
     
-    #GLO_Slot2ChannelMap:      map container that maps GLONASS slot numbers to 
-    #                          their respective channel number.
-    #                          GLO_Slot2ChannelMap(slotnumber)      
+    tLastObs:                 time stamp of the last observation record in the RINEX
+                              observations file; column vector 
+                              [YYYY; MM; DD; hh; mm;ss.sssssss]. NaN by default. 
+                              THIS IS RINEX 3.04 OPTIONAL DATA
     
-    #success:                  Boolean. 1 if the reading of the RINEX 
-    #                          observations file seems to be successful, 
-    #                          0 otherwise
-    #%--------------------------------------------------------------------------------------------------------------------------
+    clockOffsetsON:           receiver clock offsets flag. O if no realtime-derived
+                              receiver clock offset was applied to epoch, 
+                              code and phase data (in other words, if the 
+                              file only has raw data), 1 otherwise. 0 by default. 
+                              THIS IS RINEX 3.04 OPTIONAL DATA
     
-    #ADVICE: The function rinexFindNEpochs() calculates the amount of observation epochs in
-    #advance. This calculation will be incredibly more effective if TIME OF
-    #LAST OBS is included in the header of the observation file. It is
-    #strongly advized to manually add this information to the header if it is 
-    #not included by default.  
-    #%--------------------------------------------------------------------------------------------------------------------------
-    #%
-    #  According to RINEX 3.04 the observation type codes are:
-    #%
-    #  Observation code
-    #  C: Pseudorange 
-    #     GPS: C/A, L2C
-    #     Glonass: C/A
-    #     Galileo: All
-    #  L: Carrier phase
-    #  D: Doppler frequency
-    #  S: Raw signal strengths or SNR values as given by the receiver for the
-    #     respective phase observations 
-    #  I: Ionosphere phase delay
-    #  X: Receiver channel numbers
-    #%
-    #  Frequency code
-    #  GPS Glonass Galileo SBAS
-    #  1: L1 G1 E1 B1    (GPS,QZSS,SBAS,BDS)
-    #  2: L2 G2 B1-2     (GLONASS)
-    #  4: G1a            (Galileo)
-    #  5: L5 E5a B2/B2a  (GPS, QZSS, SBAS, IRNSS) 
-    #  6: L6 E6 B3 G2a   (Galileo, QZSS, BDS, GLONASS)
-    #  7: E5b B2/B2b     (Galileo)
-    #  8: E5a+b E5a+b    (Galileo, BDS)
-    #  9: S              (IRNSS)
-    #  0: for type X     (all)
-    #%
-    #  Attribute:
-    #  A = A channel     (Galileo,IRNSS,GLONASS)
-    #  B = B channel     (Galileo,IRNSS,GLONASS)
-    #  C = C channel     (Galiloe, IRNSS)
-    #      C code-based  (SBAS, GPS, GLONASS, QZSS)
-    #  D = Semi-codelss  (GPS)
-    #  
-    #  I = I channel     (GPS, Galileo, QZSS, BDS)  
-    #  L = L channel     (L2C GPS, QZSS)
-    #      P channel     (GPS. QZSS)
-    #  M = M code-based  (GPS)
-    #  N = Codeless      (GPS) 
-    #  P = P code-based  (GPS, GLONASS)
-    #      Pilot channel (BDS)
-    #  
-    #  Q = Q channel     (GPS, Galileo, QZSS, BDS)
-    #  S = D channel     (GPS, Galileo, QZSS, BDS)
-    #      M channel     (L2C GPS, QZSS)
-    #  
-    #  W = Based on Z-tracking (GPS)
-    #  X = B+C channels  (Galileo, IRNSS)
-    #      I+Q channels  (GPS, IRNSS)
-    #      M+L channels  (GPS, QZSS)
-    #      D+P channels  (GPS, QZSS, BDS)
-    #%
-    #  Y = Y code based  (GPS)
-    #  Z = A+B+C channels(Galileo)
-    #      D+P channels  (BDS)
-    #%--------------------------------------------------------------------------------------------------------------------------
+    GLO_Slot2ChannelMap:      map container that maps GLONASS slot numbers to 
+                              their respective channel number.
+                              GLO_Slot2ChannelMap(slotnumber)      
+    
+    success:                  Boolean. 1 if the reading of the RINEX 
+                              observations file seems to be successful, 
+                              0 otherwise
+    --------------------------------------------------------------------------------------------------------------------------
+    
+    ADVICE: The function rinexFindNEpochs() calculates the amount of observation epochs in
+    advance. This calculation will be incredibly more effective if TIME OF
+    LAST OBS is included in the header of the observation file. It is
+    strongly advized to manually add this information to the header if it is 
+    not included by default.  
+    --------------------------------------------------------------------------------------------------------------------------
+    
+    According to RINEX 3.04 the observation type codes are:
+    Observation code
+            C: Pseudorange 
+    GPS: C/A, L2C
+    Glonass: C/A
+    Galileo: All
+    L: Carrier phase
+    D: Doppler frequency
+    S: Raw signal strengths or SNR values as given by the receiver for the
+    respective phase observations 
+    I: Ionosphere phase delay
+    X: Receiver channel numbers
+    
+    Frequency code
+    GPS Glonass Galileo SBAS
+    1: L1 G1 E1 B1    (GPS,QZSS,SBAS,BDS)
+    2: L2 G2 B1-2     (GLONASS)
+    4: G1a            (Galileo)
+    5: L5 E5a B2/B2a  (GPS, QZSS, SBAS, IRNSS) 
+    6: L6 E6 B3 G2a   (Galileo, QZSS, BDS, GLONASS)
+    7: E5b B2/B2b     (Galileo)
+    8: E5a+b E5a+b    (Galileo, BDS)
+    9: S              (IRNSS)
+    0: for type X     (all)
+    
+    Attribute:
+    A = A channel     (Galileo,IRNSS,GLONASS)
+    B = B channel     (Galileo,IRNSS,GLONASS)
+    C = C channel     (Galiloe, IRNSS)
+    C code-based  (SBAS, GPS, GLONASS, QZSS)
+    D = Semi-codelss  (GPS)
+    
+    I = I channel     (GPS, Galileo, QZSS, BDS)  
+    L = L channel     (L2C GPS, QZSS)
+    P channel     (GPS. QZSS)
+    M = M code-based  (GPS)
+    N = Codeless      (GPS) 
+    P = P code-based  (GPS, GLONASS)
+    Pilot channel (BDS)
+      
+    Q = Q channel     (GPS, Galileo, QZSS, BDS)
+    S = D channel     (GPS, Galileo, QZSS, BDS)
+    M channel     (L2C GPS, QZSS)
+    
+    W = Based on Z-tracking (GPS)
+    X = B+C channels  (Galileo, IRNSS)
+    I+Q channels  (GPS, IRNSS)
+    M+L channels  (GPS, QZSS)
+    D+P channels  (GPS, QZSS, BDS)
+    
+    Y = Y code based  (GPS)
+    Z = A+B+C channels(Galileo)
+    D+P channels  (BDS)
+    --------------------------------------------------------------------------------------------------------------------------
     """
     import numpy as np
     from rinexFindNEpochs304 import rinexFindNEpochs304
@@ -250,7 +247,7 @@ def readRinexObs304(filename, readSS, readLLI, includeAllGNSSsystems,includeAllO
     t = time.process_time()
     
     
-    ##Initialize variables in case of input error
+    ## - Initialize variables in case of input error
     
     GNSS_obs       = np.nan;
     GNSS_LLI       = np.nan;
@@ -278,18 +275,6 @@ def readRinexObs304(filename, readSS, readLLI, includeAllGNSSsystems,includeAllO
     GLO_Slot2ChannelMap = np.nan;
     
     ### --- Temporary defining input variables
-    # readLLI = 0
-    # readSS = 0
-    # includeAllGNSSsystems = 1
-    # includeAllObsTypes = 1
-    # includeAllObsCodes = 1
-    # desiredGNSSsystems = ["G","R","E","C"]
-    # desiredObsCodes = []
-    # desiredObsBands = [1,2, 5]
-    # desiredObsTypes = ["C", "L", "S", "D"]
-    #                          OBS: Must be string array, NOT char vector
-    
-    test = []
     GNSS_obs = {}
     GPS = {} # dict for storing GPS obs
     GLONASS = {}
@@ -304,25 +289,19 @@ def readRinexObs304(filename, readSS, readLLI, includeAllGNSSsystems,includeAllO
     GLONASS_SS = {}
     Galileo_SS = {}
     BeiDou_SS = {}
-    
-    # E = {}
-    # T = {}
-    ### ----------------
-    # filename = 'opec0020_3.04_kort.10o'
-    
-    
-    ## Test if readSS is boolean
+     
+    ## -- Test if readSS is boolean
     if readSS!=1 and readSS!=0:
         print('INPUT ERROR(readRinexObs304): The input argument readSS must be either 1 or 0')
         success = 0
-        # return
+        return
     
     
     #Test if readLLI is boolean
     if readLLI!=1 and readLLI!=0:
         print('INPUT ERROR(readRinexObs304): The input argument readLLI must be either 1 or 0')
         success = 0
-        # return
+        return
     
     max_GPS_PRN     = 36 #Max number of GPS PRN in constellation
     max_GLONASS_PRN = 36 #Max number of GLONASS PRN in constellation
@@ -339,46 +318,30 @@ def readRinexObs304(filename, readSS, readLLI, includeAllGNSSsystems,includeAllO
         pass 
        # return
     
-    #Compute number of epochs with observations
+    ## -- Compute number of epochs with observations
     nepochs, tLastObs, tInterval, success =\
         rinexFindNEpochs304(filename, tFirstObs, tLastObs, tInterval) #computes number of epochs in observation file
     
     if success==0:
         pass
-       # return     # HUSK Å FJERN KOMMENTERINGEN ETTER DU HAR LAGET FUNKSJON AV SKRIPTET!!!!!!!!
+        return    
     
     ## --Number of GNSS systems
     nGNSSsystems = len(GNSSsystems)
     
     ## Declare data cells, arrays and matrices
-    # GNSS_obs = np.zeros([nGNSSsystems,1])
-    
-    
-    # GNSS_obs = {}   ###### CONNETA UT DETTE 11.11
-    
-    # GNSS_SVs =  np.zeros([nGNSSsystems,1])
     GNSS_SVs = {}
     max_sat  =  np.zeros([nGNSSsystems,1])
-    # time_epochs =  np.zeros([nGNSSsystems,2])
     t_week = []
     t_tow = []
     
-    # time_epochs =  np.array([])
-    # GNSSsystems_full_names =  np.zeros([nGNSSsystems,1])
     GNSSsystems_full_names =  [""]*nGNSSsystems
-    # GNSS_obs = cell(nGNSSsystems,1);
-    # GNSS_SVs = cell(nGNSSsystems,1);
-    # max_sat = zeros(nGNSSsystems,1);
-    # time_epochs = zeros(nepochs, 2);
-    # GNSSsystems_full_names = cell(nGNSSsystems,1);
-    
     ##  -- Making dict for storin LLI and SS
     GNSS_LLI = {}
     GNSS_SS = {}
-    
+
 
     ## -- Create array for max_sat. Initialize cell elements in cell arrays
-    # for k = 1:nGNSSsystems
     for k in range(0,nGNSSsystems):
        if GNSSsystems[k+1] == 'G':
            max_sat[k] = max_GPS_PRN
@@ -400,10 +363,9 @@ def readRinexObs304(filename, readSS, readLLI, includeAllGNSSsystems,includeAllO
            GNSSsystems_full_names[k] = "BeiDou"
        else:
            print('ERROR(readRinexObs304): Only following GNSS systems are compatible with this program: GPS, GLONASS, Galileo, Beidou. %s is not valid' % GNSSsystems[k])
-           # return
+           return
            
        
-       # GNSS_obs[k] = np.zeros([max_sat[k], numOfObsCodes[k], nepochs])
        curr_sys = GNSSsystems[k+1]
        GNSS_obs[curr_sys] = np.zeros([int(max_sat[k]), numOfObsCodes[k], nepochs])
        
@@ -421,18 +383,11 @@ def readRinexObs304(filename, readSS, readLLI, includeAllGNSSsystems,includeAllO
            GNSS_SS[curr_sys] = np.nan;
     
            
-    
-    
-    # GNSS_names = containers.Map({'G', 'R', 'E', 'C'}, {'GPS', 'GLONASS', 'Galileo', 'Beidou'});
     GNSS_names = dict(zip(['G', 'R', 'E', 'C'],['GPS','GLONASS','Galileo','Beidou']))
-    
-    
     current_epoch      = 0
     
-    #Initialize progress bar
+    ## -- Initialize progress bar
     n_update_break = int(np.floor(nepochs/10)) #number of epoch before updating progressbar
-    # wbar = waitbar(0, 'INFO(readRinexObs304): Rinex observations are being read. Please wait');
-    # waitbar = tqdm(0, 'INFO(readRinexObs304): Rinex observations are being read. Please wait')
     
     with tqdm(total=100,desc ="Rinex observations are being read" , position=0, leave=True) as pbar:
         while 1:
@@ -453,15 +408,8 @@ def readRinexObs304(filename, readSS, readLLI, includeAllGNSSsystems,includeAllO
         
            ## -- Update progress bar every n_update_break epochs
            if np.mod(current_epoch, n_update_break) == 0:
-               # msg = print('INFO(readRinexObs304): Rinex observations are being read. Please wait\n %2.0f %%' % (current_epoch/nepochs*100))
-               # waitbar(current_epoch/nepochs, wbar, msg);
-               # waitbar.update((current_epoch/nepochs))
-               
-               # waitbar.update((current_epoch/nepochs)*10)
-               
                 pbar.update(10)
-               # pbar.update((current_epoch/nepochs))
-               # waitbar.close()
+
                 
         
            ## Convert date to GPS-week and "time-of-week"
@@ -522,32 +470,18 @@ def readRinexObs304(filename, readSS, readLLI, includeAllGNSSsystems,includeAllO
                   GNSS_SS_dum[GNSSsystemIndex][SV][0:nObsTypes_current_sat] = SS[sat, 0:nObsTypes_current_sat] # fjernet "-1" 13.11.2022
               
         
-               #Store PRN number of current sat to PRNs of this epoch
+               ## -- Store PRN number of current sat to PRNs of this epoch
                # GNSS_SVs{GNSSsystemIndex}(current_epoch, nGNSS_sat_current_epoch(GNSSsystemIndex) +1) = SV; 
                # GNSS_SVs[curr_sys][current_epoch, int(nGNSS_sat_current_epoch[GNSSsystemIndex-1]) +1] = SV 
                GNSS_SVs[curr_sys][current_epoch-1, int(nGNSS_sat_current_epoch[GNSSsystemIndex-1])] = SV 
         
-           
-           # E = {}
-           # T = {}
+    
         
            for k in range(0,nGNSSsystems):
                curr_sys = GNSSsystems[k+1]
                #Set number of satellites with obs for each GNSS system this epoch
-               # GNSS_SVs{k}(current_epoch, 1)  = nGNSS_sat_current_epoch(k) ;
-               # GNSS_SVs[curr_sys][current_epoch, 1]  = nGNSS_sat_current_epoch[k]
                GNSS_SVs[curr_sys][current_epoch-1, 0]  = nGNSS_sat_current_epoch[k]
-               #store dummy matrices of this epoch
-               # GNSS_obs{k}(:,:,current_epoch) = GNSS_obs_dum{k}  
-               # GNSS_obs[curr_sys][:,:,current_epoch] = GNSS_obs_dum[k+1]  
-                     
-               # GNSS_obs[curr_sys][current_epoch][:,:] = GNSS_obs_dum[k+1]   
-               
-               # OBS = {curr_sys: {current_epoch-1 : int(current_epoch)}}
-               # test = {curr_sys: {current_epoch-1 : GNSS_obs_dum[k+1]}}
-               
-               # E =  GNSS_obs_dum[k+1]
-               # test.append(GNSS_obs_dum[k+1])
+
                if curr_sys == 'G':
                    GPS[current_epoch] = GNSS_obs_dum[k+1]
                elif curr_sys == 'R':
@@ -561,7 +495,6 @@ def readRinexObs304(filename, readSS, readLLI, includeAllGNSSsystems,includeAllO
                    
                
                if readLLI and curr_sys == 'G':
-                   # GNSS_LLI{k}(:,:,current_epoch) = GNSS_LLI_dum{k}  
                    GPS_LLI[current_epoch]  =GNSS_LLI_dum[k+1]
                elif readLLI and curr_sys == 'R':
                    GLONASS_LLI[current_epoch] = GNSS_LLI_dum[k+1]
@@ -578,7 +511,7 @@ def readRinexObs304(filename, readSS, readLLI, includeAllGNSSsystems,includeAllO
                    Galileo_SS[current_epoch] = GNSS_SS_dum[k+1]
                elif readSS and curr_sys =='C':
                    BeiDou_SS[current_epoch]  = GNSS_SS_dum[k+1]                      
-               # if readSS:
+
          
     
         ## -- Storing observation in dictionary       
@@ -605,12 +538,7 @@ def readRinexObs304(filename, readSS, readLLI, includeAllGNSSsystems,includeAllO
         if current_epoch!= nepochs and success == 1:
             print('ERROR(readRinexObs304): The amount of epochs calculated in advance(nepochs = %d) does not equal number og epochs prossesed(current_epoch = %d).\nCheck that header information concerning TIME OF FIRST OBS and TIME OF LAST OBS is correct.\n' %(nepochs, current_epoch))
              
-        
-        
-        # close(wbar)
-        # waitbar.close()
-        # pbar.close()
-        
+    
     
         ms = {}
         messages = {}
@@ -683,59 +611,59 @@ def readRinexObs304(filename, readSS, readLLI, includeAllGNSSsystems,includeAllO
         rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, success
         
         
-import numpy as np
-from datetime import date
-from numpy import fix
-def rinexFindNEpochs304(filename, tFirstObs, tLastObs, tInterval):
 
-    #  Function that computes number of epochs in Rinex 3.xx observation file.
-    # --------------------------------------------------------------------------------------------------------------------------
-    #  INPUTS
+def rinexFindNEpochs304(filename, tFirstObs, tLastObs, tInterval):
+    """
+      Function that computes number of epochs in Rinex 3.xx observation file.
+     --------------------------------------------------------------------------------------------------------------------------
+      INPUTS
     
-    #  filename:         RINEX observation filename
+      filename:         RINEX observation filename
     
-    #  tFirstObs:        time stamp of the first observation record in the RINEX
-    #                    observations file; column vector 
-    #                    [YYYY; MM; DD; hh; mm; ss.sssssss]; 
+      tFirstObs:        time stamp of the first observation record in the RINEX
+                        observations file; column vector 
+                        [YYYY; MM; DD; hh; mm; ss.sssssss]; 
     
-    #  tLastObs:         time stamp of the last observation record in the RINEX
-    #                    observations file; column vector
-    #                    [YYYY; MM; DD; hh; mm; ss.sssssss]. If this information
-    #                    was not available in rinex observation header the
-    #                    default value is Nan. In this case the variable is
-    #                    determined in this function
+      tLastObs:         time stamp of the last observation record in the RINEX
+                        observations file; column vector
+                        [YYYY; MM; DD; hh; mm; ss.sssssss]. If this information
+                        was not available in rinex observation header the
+                        default value is Nan. In this case the variable is
+                        determined in this function
     
-    #  tInterval:        observations interval; seconds. If this information
-    #                    was not available in rinex observation header the
-    #                    default value is Nan. In this case the variable is
-    #                    determined in this function.
-    # --------------------------------------------------------------------------------------------------------------------------
-    #  OUTPUTS
+      tInterval:        observations interval; seconds. If this information
+                        was not available in rinex observation header the
+                        default value is Nan. In this case the variable is
+                        determined in this function.
+     --------------------------------------------------------------------------------------------------------------------------
+      OUTPUTS
     
-    #  nepochs:          number of epochs in Rinex observation file with
-    #                    observations
+      nepochs:          number of epochs in Rinex observation file with
+                        observations
     
-    #  tLastObs:         time stamp of the last observation record in the RINEX
-    #                    observations file; column vector
-    #                    [YYYY; MM; DD; hh; mm; ss.sssssss]. If this information
-    #                    was not available in rinex observation header the
-    #                    default value is Nan. In this case the variable is
-    #                    determined in this function
+      tLastObs:         time stamp of the last observation record in the RINEX
+                        observations file; column vector
+                        [YYYY; MM; DD; hh; mm; ss.sssssss]. If this information
+                        was not available in rinex observation header the
+                        default value is Nan. In this case the variable is
+                        determined in this function
     
-    #  tInterval:        observations interval; seconds. If this information
-    #                    was not available in rinex observation header the
-    #                    default value is Nan.
+      tInterval:        observations interval; seconds. If this information
+                        was not available in rinex observation header the
+                        default value is Nan.
     
-    #  success:                  Boolean. 1 if the function seems to be successful, 
-    #                            0 otherwise
-    # --------------------------------------------------------------------------------------------------------------------------
+      success:                  Boolean. 1 if the function seems to be successful, 
+                                0 otherwise
+     --------------------------------------------------------------------------------------------------------------------------
     
-    #  ADVICE: The function rinexFindNEpochs() calculates the amount of observation epochs in
-    #  advance. This calculation will be incredibly more effective if TIME OF
-    #  LAST OBS is included in the header of the observation file. It is
-    #  strongly advized to manually add this information to the header if it is 
-    #  not included by default. 
-    # --------------------------------------------------------------------------------------------------------------------------
+      ADVICE: The function rinexFindNEpochs() calculates the amount of observation epochs in
+      advance. This calculation will be incredibly more effective if TIME OF
+      LAST OBS is included in the header of the observation file. It is
+      strongly advized to manually add this information to the header if it is 
+      not included by default. 
+     --------------------------------------------------------------------------------------------------------------------------
+    
+    """
     # #  Testing input arguments
     success = 1
     nepochs = 0
@@ -872,453 +800,631 @@ def date2gpstime(year,month,day,hour,minute,seconds):
     return week, tow
 
 def rinexReadObsFileHeader304(filename, includeAllGNSSsystems, includeAllObsCodes,desiredGNSSsystems,desiredObsCodes, desiredObsBands):
-    
-   import math, os 
-   import numpy as np
+    """
+     Extracts relevant data from the header of a RINEX 3.xx GNSS observations 
+     file. Excludes undesired GNSS systems, obsevation codes and/or frequency
+     bands.
 
+     --------------------------------------------------------------------------------------------------------------------------
+         INPUTS
 
-   eof         = 0                     
-   success     = 1                     
-   warnings    = 0                     
-   # antDelta    = [0; 0; 0]  
-   antDelta    = []             
-   timeSystem  = ''                    
-   # tFirstObs   = [0; 0; 0; 0; 0; 0]  
-   tFirstObs   = []    
-   tLastObs    = np.nan                   
-   tInterval   = np.nan                   
-   rinexProgr  = np.nan                   
-   rinexDate   = np.nan                   
-   obsCodes    = {}                    
-   GNSSsystems = {}                    
-   gnssType    = ""                    
-   markerName  = ""                    
-   numHeaderLines  = 0                 
-   clockOffsetsON  = 0                 
-   numGNSSsystems  = 0                 
-   leapSec         = np.nan               
-   numOfObsCodes   = []                
-   rinexHeader     = {}                
-   approxPosition  = [0, 0, 0]         
-   obsCodeIndex = {}                   
-   rinexVersion = np.nan                  
-   recType = np.nan                       
-   GLO_Slot2ChannelMap = np.nan       
+     filename:                     RINEX observation filename and path
 
+     includeAllGNSSsystems:        Boolean, 0 or 1. 
+                                       1 = include alle GNSS systems
+                                           (GPS, GLONASS, Galieo, BeiDou)
+                                       0 = include only GNSSsystems
+                                             specified in desiredGNSSsystems
     
-    ## -------Testing input arguments
+     includeAllobsCodes:           Boolean, 0 or 1. 
+                                       1 = include all valid obsCodes
+                                       0 = include only obsCodes
+                                             specified in desiredobsCodes
     
-    # Test if filename is valid format
-   if type(filename) != str:
-       typ = type(filename)
-       print('INPUT ERROR(rinexReadsObsHeader304): The input argument filename is of type %s.\n Must be of type string or char' %(typ))
-       success = 0
-       fid     = 0
-       return success
-        
+     desiredGNSSsystems:           string array containing desired GNSSsystems 
+                                   to be included, ex. ["G", "E", "C"]
     
-    
-    # # Test if includeAllGNSSsystems is boolean
-    # if includeAllGNSSsystems~=1 && includeAllGNSSsystems~=0
-    #     sprintf(['INPUT ERROR(rinexReadsObsHeader304): The input argument includeAllGNSSsystems',...
-    #         'must be either 1 or 0'])
-    #     success = 0;
-    #     fid     = 0;
-    #     return
-    # end
-    
-    # # Test if desiredGNSSsystems is valid type, given that includeAllGNSSsystems is 0 
-    # if ~isa(desiredGNSSsystems, 'string') && includeAllGNSSsystems == 0
-    #     sprintf(['INPUT ERROR(rinexReadsObsHeader304): The input argument desiredGNSSsystems',...
-    #         ' must be of type string(string array) as long as \nincludeAllGNSSsystems is 1. Variable is of type #s.'],...
-    #     class(desiredGNSSsystems))
-    #     success = 0;
-    #     fid     = 0;
-    #     return 
-    # end
-    
-    # # Test if desiredGNSSsystems is empty, given that includeAllGNSSsystems is 0
-    # if isempty(desiredGNSSsystems) && includeAllGNSSsystems == 0
-    #     sprintf(['INPUT ERROR(rinexReadsObsHeader304): The input argument desiredGNSSsystems',...
-    #         ' can not be empty as long as includeAllGNSSsystems is 0'])
-    #     success = 0;
-    #     fid     = 0;
-    #     return
-    # end 
-    
-    # # Test if includeAllobsCodes is boolean
-    # if includeAllObsCodes~=1 && includeAllObsCodes~=0
-    #     sprintf(['INPUT ERROR(rinexReadsObsHeader304): The input argument includeAllobsCodes',...
-    #         'must be either 1 or 0'])
-    #     success = 0;
-    #     fid     = 0;
-    #     return
-    # end
-    
-    # # Test if desiredobsCodes is valid type, given that includeAllobsCodes is 0
-    # if ~isa(desiredObsCodes, 'string') && includeAllObsCodes == 0
-    #     sprintf(['INPUT ERROR(rinexReadsObsHeader304): The input argument desiredobsCodes',...
-    #         ' must be of type string(string array) as long as \nincludeAllObsTpes is 1. Variable is of type #s'],...
-    #         class(desiredObsCodes))
-    #     success = 0;
-    #     fid     = 0;
-    #     return 
-    # end
-    
-    # # Test if desiredGNSSsystems is empty, given that includeAllGNSSsystems is 0
-    # if isempty(desiredObsCodes) && includeAllObsCodes == 0
-    #     sprintf(['INPUT ERROR(rinexReadsObsHeader304): The input argument desiredobsCodes',...
-    #         ' can not have length 0 as long as includeAllobsCodes is 0'])
-    #     success = 0;
-    #     fid     = 0;
-    #     return
-    # end
-    
-    
-    
-    ##
-    
-    # Open rinex observation file
-   fid = open(filename,'r') 
-    
-   if os.stat(filename).st_size == 0:
-       raise ValueError('ERROR: This file seems to be empty')
-        
-    
-    # if fid == -1 # 
-    #     success = 0;
-    #     eof = 0;
-    #     disp('ERROR(rinexReadObsFileHeader304): RINEX observation file not found!')
-    #     return
-    # end
-    
-   while 1: # Gobbling the header
-       numHeaderLines = numHeaderLines + 1;
-         # line = fgetl(fid); # returns -1 if only reads EOF
-       line = fid.readline().rstrip()
-         
-         # if line == -1 # eof reached
-         #   success = 0;
-         #   eof = 1;
-         #   disp('ERROR(rinexReadObsFileHeader304): End of file reached unexpectedly. No observations were read.')
-         #   break
-         
-         
-         ##
-       if 'END OF HEADER' in line:
-           break
-           return
-         
-         ##
-       if numHeaderLines == 1: # if first line of header
-           # store rinex version
-           # rinexVersion = strtrim(line(1:9));
-           rinexVersion = line[0:9]
-           # store rinex type, ex. "N" or "O"
-           # rinexType = line(21);
-           rinexType = line[20]        
-           # if rinex file is not an observation file
-           if rinexType != 'O':  # Rinex file is oservation file
-               print('ERROR(rinexReadObsFileHeader304): the file is not a RINEX observations data file!')
-               success = 0;
-               fid.close()
-               return
-           
-           ## -- Check gnss type  ## Changend indent here 09.12.2022 (was apart of the if test above earlier, and thats wrong)
-           gnssType = line[40] # reads the GNSS system type
-           if gnssType not in [' ', 'G', 'R', 'C', 'E', 'M' ]:
-               if gnssType in ['J', 'I', 'S']:
-                   print('ERROR(rinexReadObsFileHeader304): This software is meant for reading GNSS data only.\
-                          %s is an invalid satellite system type.' %(gnssType)) 
-               else:
-                   print('ERROR(rinexReadObsFileHeader304): %s is an unrecognized satellite system type.' %(gnssType))
-               
-               success = 0
-               fid.close()      
-           ## -- If no system type, set G
-           if gnssType == ' ':
-               gnssType = 'G'
-               
-         
-          ##
-        # answer = strfind(line,'PGM / RUN BY / DATE');
-       if 'PGM / RUN BY / DATE' in line:
-           rinexProgr = line[0:20] # rinex program
-           rinexDate = line[40:60] # rinex date
-    
-        
-    
-        # answer = strfind(line,'MARKER NAME');
-       if 'MARKER NAME' in line:
-           # markerName = strtok(line); # markername
-           markerName = line.strip() # markername
-         
-          # if no marker name, "MARKER" is read, so set to blank
-       if 'Marker' in markerName:
-           markerName = ''
-    
-    
-         
-          
-        # answer = strfind(line,'ANTENNA: DELTA H/E/N');
-       if 'ANTENNA: DELTA H/E/N' in line:
-           for k in range(0,3):
-               line_ = [el for el in line.split(" ") if el != ""]
-               antDelta = [line_[0],line_[1],line_[2]]
-    
-    
-    
-          # Section describing what GNSS systems are present, and their obs types
-          # answer = strfind(line,'SYS / # / OBS TYPES');
-         
-       if 'SYS / # / OBS TYPES' in line:
-           # line = strtrim(line(1:60));     # deletes 'SYS / # / OBS TYPES'
-           line = line[0:60]     # deletes 'SYS / # / OBS TYPES'
-           line_ = [el for el in line.split(" ") if el != ""]
-           Sys = line_.pop(0) # assingning system to variable and removing it from the list
-           nObs = int(line_.pop(0))
-            
-            # [Sys, line] = strtok(line);      # reads GNSS system of this line
-            # [nObs, line]    = strtok(line)      ; # Num ObsCodes of this GNSS system
-            # nObs = str2double(nObs);
-               
-            # # array for storing indeces of undesired ObsCodes for this GNSS
-            # # system
-           undesiredobsCodeIndex = []
-           desiredObsCodeIndex = []
-               
-                # is Sys amoung desired GNSS systems
-           if (includeAllGNSSsystems and Sys in ["G", "R", "E", "C"] or Sys in desiredGNSSsystems):
-               numGNSSsystems  = numGNSSsystems + 1; # increment number of GNSS systems
-               GNSSsystems[numGNSSsystems] = str(Sys) # Store current GNSS system
-                # GNSSsystems{numGNSSsystems} = string(Sys); # Store current GNSS system
-            
-               GNSSSystemObsCodes = {}; # Reset cell of obsCodes for this GNSS system
-               obsCode_list = []
-               for k in range(0,nObs):
-                   obsCode = line_.pop(0)
-                   # Checking if obsCode is valid
-                   if len(obsCode) != 3 or obsCode[0] not in ['C', 'L', 'D','S', 'I', 'X'] or  \
-                             obsCode[1] not in ['0', '1', '2', '4', '5', '6', '7', '8', '9'] or \
-                              obsCode[2] not in ['A', 'B', 'C', 'D', 'I', 'L', 'M', 'N', 'P', 'Q', 'S', 'W', 'X', 'Y', 'Z']:
-                       print('ERROR (rinexReadsObsHeader304):  obsCode %s is a not a standard RINEX 3.04 observation type!' %(obsCode))     
-                       success = 0
-                       fid.close()
-                       return success
-                         
-           
-                       # is obsCode amoung desired obscodes and frequency bands
-                   if includeAllObsCodes or obsCode[0] in desiredObsCodes and int(obsCode[1]) in desiredObsBands:
-                        ## store obsCode if amoung desire obsCodes
-                       obsCode_list.append(obsCode) ## TEST
-                       GNSSSystemObsCodes[Sys] =  obsCode_list ## TEST obsCode
-                       desiredObsCodeIndex.append(k)
-                   else:
-                       # store index of discareded obsCode
-                       undesiredobsCodeIndex.append(k)
-           
-                   # Every 13 obsCodes is at end of line. In this case read next line and continue
-                   if np.mod(k+1, 13) == 0 and nObs != 13:
-                       numHeaderLines = numHeaderLines + 1;
-                       line = fid.readline().rstrip()
-                       line = line[0:60]     # deletes 'SYS / # / OBS TYPES'
-                       line_ = [el for el in line.split(" ") if el != ""]
-                       
-                       
-               # numOfObsCodes.append(len(GNSSSystemObsCodes))
-               numOfObsCodes.append(len(GNSSSystemObsCodes[Sys]))
-               obsCodes[numGNSSsystems] = GNSSSystemObsCodes
-               obsCodeIndex[numGNSSsystems] = desiredObsCodeIndex # Store indices of desired obsCodes
+     desiredobsCodes:              string array containing desired obsCodes to 
+                                   be included, ex. ["C", "L", "S", "D"]
 
-           # else:
-           #     ## --If GNSS system is not desired, skip to last line connected or it  ## commented out this 09.12.2022
-           #     lines2Skip = math.floor(nObs/13)
-           #     for i in range(0,lines2Skip):
-           #       # for i = 1:lines2Skip
-           #         # numHeaderLines = numHeaderLines + 1;
-           #         numHeaderLines = numHeaderLines # removed +1 09.12.2022 because it jumped over glonass in the 2018 (1Hz) rinex file(OPEC)
-           #         # line = fid.readline().rstrip() # commeted out this
-           #         # line = fgetl(fid); # returns -1 if only reads EOF
-     
-        
-          
-        
-       if 'TIME OF FIRST OBS' in line:
-           line = line[0:60]     #  deletes 'TIME OF FIRST OBS'
-           line_ = [el for el in line.split(" ") if el != ""]
-             
-           for k in range(0,6):
-               tok = line_.pop(0)  # finds the substrings containing the components of the time of the first observation
-                                     #(YYYY; MM; DD; hh; mm; ss.sssssss) and specifies
-                                     # the Time System used in the
-                                     # observations file (GPST, GLOT or
-                                     # GALT)
-               if k ==0:
-                   yyyy = int(tok)
-               elif k ==1:
-                   mm = int(tok)
-               elif k ==2:
-                   dd = int(tok)
-               elif k ==3:
-                   hh = int(tok)
-               elif k ==4:
-                   mnt = int(tok)
-               elif k ==5:
-                   ss = float(tok)
+     desiredObsBands:              array of desired obs Bands to be included, 
+                                   ex [1, 5]
+
+     NOTE: If both includeAllGNSSsystems and includeAllobsCodes Boolean are 1
+           then the last three input arguments are optional to include and may
+           be left blank without en error.
+    --------------------------------------------------------------------------------------------------------------------------
+     OUTPUTS
     
-         
-           #tFirstObs = [yyyy; mm; dd; hh; mnt; ss];
-           tFirstObs = np.array([[yyyy],[mm],[dd],[hh],[mnt],[ss]])
-         
-           # Get Time system
-           aux = line_.pop(0)
-           # aux = strtok(line);
-           if aux == 'GPS':
-               timeSystem = 'GPS'
-           elif aux == 'GLO':
-               timeSystem = 'GLO'
-           elif aux == 'GAL':
-               timeSystem = 'GAL'            
-           elif aux == 'BDT':
-               timeSystem = 'BDT'
-            
-           else:
-               if gnssType == 'G':
-                   timeSystem = 'GPST'
-               elif gnssType == 'R':
-                   timeSystem = 'GLOT'
-               elif gnssType == 'E':
-                   timeSystem = 'GALT'
-               elif gnssType == 'C':
-                   timeSystem = 'BDT'
-               else:
-                   print('CRITICAL ERROR (rinexReadsObsHeader304):\n' \
-                                      'The Time System of the RINEX observations file '\
-                                      'isn''t correctly specified!\n')
-                   success = 0
-                   fid.close()
+     success:                      1 if the reading of the RINEX observations 
+                                   file seems to be successful, 0 otherwise
     
+     rinexVersion:                 string. rinex observation file version                  
+
+     gnssType:                     GNSS system of the satellites observed; can 
+                                   be 'G', 'R', 'E', 'C' or 'M' that stand for 
+                                   GPS, GLONASS, GALILEO, BeiDou or Mixed; char
+
+     markerName:                   name of the antenna marker; '' if not 
+                                   specified
+
+     recType:                      Receiver type, char vector
+
+     antDelta:                     column vector ot the three components of 
+                                   the distance from the marker to the antenna, 
+                                   in the following order - up, east and north;
+                                   null vector by default
+
+     GNSSsystems:                  cell array containing codes of GNSS systems 
+                                   included in RINEX observationfile. Elements 
+                                   are strings. ex. "G" or "E"
+
+     numOfObsCodes:                column vector containing number of observation
+                                   types for each GNSS system. Order is the same 
+                                   as GNSSsystems
+
+     obsCodes:                     Cell that defines the observation
+                                   codes available for all GNSS system. Each 
+                                   cell element is another cell containing the 
+                                   codes for that GNSS system. Each element in 
+                                   this cell is a string with three-characters. 
+                                   The first character (a capital letter) is 
+                                   an observation code ex. "L" or "C". The 
+                                   second character (a digit) is a frequency 
+                                   code. The third character(a Capital letter)  
+                                   is the attribute, ex. "P" or "X"
+
+     obsCodeIndex:                 cell with one cell element for each GNSS 
+                                   system. Order is the same as GNSSsystems. 
+                                   Each cell element contains an array of 
+                                   indices. These indices indicate the 
+                                   observation types that should be read 
+                                   for each GNSS system. ex. If one index for
+                                   GPS is 1 then the first observation type 
+                                   for GPS should  be read.
+
+     tFirstObs:                    time stamp of the first observation record 
+                                   in the RINEX observations file; column vector
+                                   [YYYY; MM; DD; hh; mm; ss.sssssss];
+                                   THIS IS CRITICAL DATA
+
+     tLastObs:                     time stamp of the last observation record 
+                                   in the RINEX observations file; column vector 
+                                   [YYYY; MM; DD; hh; mm;ss.sssssss]. 
+                                   NaN by default. 
+                                   THIS IS RINEX 3.04 OPTIONAL DATA
+
+     tInterval:                    observations interval; seconds. 
     
-       if 'TIME OF LAST OBS' in line:  
-           line = line[0:60]     #  deletes 'TIME OF LAST OBS'
-           line_ = [el for el in line.split(" ") if el != ""]
-           for k in range(0,6):
-               tok = line_.pop(0)     
-               if k ==0:
-                   yyyy = int(tok)
-               elif k ==1:
-                   mm = int(tok)
-               elif k ==2:
-                   dd = int(tok)
-               elif k ==3:
-                   hh = int(tok)
-               elif k ==4:
-                   mnt = int(tok)
-               elif k ==5:
-                   ss = float(tok)
+     timeSystem:                   three-character code string of the time 
+                                   system used for expressing tfirstObs; 
+                                   can be GPS, GLO or GAL; 
+
+     numHeaderLines:               number of lines in header
     
-           tLastObs = np.array([[yyyy],[mm],[dd],[hh],[mnt],[ss]])
+     rinexProgr:                   name of the software used to produce de 
+                                   RINEX GPS obs file; '' if not specified      
+
+     rinexDate:                	date/time of the RINEX file creation; '' 
+                                   if not specified; char
+
+     leapSec:                      number of leap seconds since 6-Jan-1980. 
+                                   UTC=GPST-leapSec. NaN by default. 
+                                   THIS IS RINEX 3.04 OPTIONAL DATA
+
+     approxPosition:               array containing approximate position from 
+                                   rinex observation file header. [X, Y, Z]
+
+     GLO_Slot2ChannelMap:          map container that maps GLONASS slot
+                                   numbers to their respective channel number.
+                                   GLO_Slot2ChannelMap(slotnumber)
+
+     eof:                          end-of-file flag; 1 if end-of-file was reached, 
+                                   0 otherwise
+
+     fid:                          Matlab file identifier of a Rinex 
+                                   observations text file
+    --------------------------------------------------------------------------------------------------------------------------
     
+       According to RINEX 3.04 these codes are:
     
-         
-          ##
-          # answer = strfind(line,'INTERVAL'); # This is an optional record
-       if 'INTERVAL' in line:
-           line = line[0:60]     #  deletes 'TIME OF LAST OBS'
-           line_ = [el for el in line.split(" ") if el != ""]
-           tInterval = float(line_.pop(0));
-          
-         
+       Observation code
+       C: Pseudorange 
+          GPS: C/A, L2C
+          Glonass: C/A
+          Galileo: All
+       L: Carrier phase
+       D: Doppler frequency
+       S: Raw signal strengths or SNR values as given by the receiver for the
+          respective phase observations 
+       I: Ionosphere phase delay
+       X: Receiver channel numbers
     
-         ## -- This is an optional record!
-         # if 'RCV CLOCK OFFS APPL' in line:
-         #     if (strtok(line)=='0'): 
-         #         clockOffsetsON = 0;
-         #     elif (strtok(line)=='1'): 
-         #         clockOffsetsON = 1;
-         #     else:
-         #         success = 0;
-         #         print('ERROR (rinexReadsObsHeader304): unrecognized receiver clock offsets flag!')
-         #         fid.close()
-              
+       Frequency code
+       GPS Glonass Galileo SBAS
+       1: L1 G1 E1 B1    (GPS,QZSS,SBAS,BDS)
+       2: L2 G2 B1-2     (GLONASS)
+       4: G1a            (Galileo)
+       5: L5 E5a B2/B2a  (GPS, QZSS, SBAS, IRNSS) 
+       6: L6 E6 B3 G2a   (Galileo, QZSS, BDS, GLONASS)
+       7: E5b B2/B2b     (Galileo)
+       8: E5a+b E5a+b    (Galileo, BDS)
+       9: S              (IRNSS)
+       0: for type X     (all)
     
-          ## This is an optional record
-       if 'LEAP SECONDS' in line:
-           line = line[0:60]     #  deletes 'TIME OF LAST OBS'
-           line_ = [el for el in line.split(" ") if el != ""]
-           leapSec = int(line_.pop(0))
-         
-     
-         
-          ## -- store approximate receiver position
-       if 'APPROX POSITION XYZ' in line:
-           line = line[0:60]     #  deletes 'TIME OF LAST OBS'
-           line_ = [el for el in line.split(" ") if el != ""]
-           approxPosition = np.array([[float(line_[0])],[float(line_[1])],[float(line_[2])]])
-    
-      
-        ## GLOANSS SLOTS
-       if 'GLONASS SLOT / FRQ #' in line:
-           line = line[0:60]     #  deletes 'TIME OF LAST OBS'
-           line_ = [el for el in line.split(" ") if el != ""]
-           nGLOSat = int(line_.pop(0))
-           slotNumbers = np.array([])
-           channels = np.array([])
-           for k in range(0,nGLOSat):
-               # slotNumber = int(line_.pop(0)[1::])
-               slotNumber = line_.pop(0)[1::]
-               channel = int(line_.pop(0))
-               slotNumbers = np.append(slotNumbers,slotNumber)
-               channels = np.append(channels,channel)
-    
-               if np.mod(k+1, 8) == 0:
-                   # line = fgetl(fid); # end of line is reached so read next line
-                   line = fid.readline().rstrip()
-                   numHeaderLines = numHeaderLines + 1
-                   line = line[0:60]     #  deletes 'TIME OF LAST OBS'
-                   line_ = [el for el in line.split(" ") if el != ""]
-    
+       Attribute:
+       A = A channel     (Galileo,IRNSS,GLONASS)
+       B = B channel     (Galileo,IRNSS,GLONASS)
+       C = C channel     (Galiloe, IRNSS)
+           C code-based  (SBAS, GPS, GLONASS, QZSS)
+       D = Semi-codelss  (GPS)
        
+       I = I channel     (GPS, Galileo, QZSS, BDS)  
+       L = L channel     (L2C GPS, QZSS)
+           P channel     (GPS. QZSS)
+       M = M code-based  (GPS)
+       N = Codeless      (GPS) 
+       P = P code-based  (GPS, GLONASS)
+           Pilot channel (BDS)
+       
+       Q = Q channel     (GPS, Galileo, QZSS, BDS)
+       S = D channel     (GPS, Galileo, QZSS, BDS)
+           M channel     (L2C GPS, QZSS)
+       
+       W = Based on Z-tracking (GPS)
+       X = B+C channels  (Galileo, IRNSS)
+           I+Q channels  (GPS, IRNSS)
+           M+L channels  (GPS, QZSS)
+           D+P channels  (GPS, QZSS, BDS)
     
-           # GLO_Slot2ChannelMap = containers.Map(slotNumbers, channels);
-           GLO_Slot2ChannelMap = dict(zip(slotNumbers.astype(int),channels.astype(int)))
-           
-        
+       Y = Y code based  (GPS)
+       Z = A+B+C channels(Galileo)
+           D+P channels  (BDS)
+    -------------------------------------------------------------------------------------------------------------------------
+     
+    """
+    eof         = 0                     
+    success     = 1                     
+    warnings    = 0                     
+    # antDelta    = [0; 0; 0]  
+    antDelta    = []             
+    timeSystem  = ''                    
+    # tFirstObs   = [0; 0; 0; 0; 0; 0]  
+    tFirstObs   = []    
+    tLastObs    = np.nan                   
+    tInterval   = np.nan                   
+    rinexProgr  = np.nan                   
+    rinexDate   = np.nan                   
+    obsCodes    = {}                    
+    GNSSsystems = {}                    
+    gnssType    = ""                    
+    markerName  = ""                    
+    numHeaderLines  = 0                 
+    clockOffsetsON  = 0                 
+    numGNSSsystems  = 0                 
+    leapSec         = np.nan               
+    numOfObsCodes   = []                
+    rinexHeader     = {}                
+    approxPosition  = [0, 0, 0]         
+    obsCodeIndex = {}                   
+    rinexVersion = np.nan                  
+    recType = np.nan                       
+    GLO_Slot2ChannelMap = np.nan       
+     
+     
+     ## -------Testing input arguments
+     
+     # Test if filename is valid format
+    if type(filename) != str:
+        typ = type(filename)
+        print('INPUT ERROR(rinexReadsObsHeader304): The input argument filename is of type %s.\n Must be of type string or char' %(typ))
+        success = 0
+        fid     = 0
+        return success
+         
+     
+     
+     # # Test if includeAllGNSSsystems is boolean
+     # if includeAllGNSSsystems~=1 && includeAllGNSSsystems~=0
+     #     sprintf(['INPUT ERROR(rinexReadsObsHeader304): The input argument includeAllGNSSsystems',...
+     #         'must be either 1 or 0'])
+     #     success = 0;
+     #     fid     = 0;
+     #     return
+     # end
+     
+     # # Test if desiredGNSSsystems is valid type, given that includeAllGNSSsystems is 0 
+     # if ~isa(desiredGNSSsystems, 'string') && includeAllGNSSsystems == 0
+     #     sprintf(['INPUT ERROR(rinexReadsObsHeader304): The input argument desiredGNSSsystems',...
+     #         ' must be of type string(string array) as long as \nincludeAllGNSSsystems is 1. Variable is of type #s.'],...
+     #     class(desiredGNSSsystems))
+     #     success = 0;
+     #     fid     = 0;
+     #     return 
+     # end
+     
+     # # Test if desiredGNSSsystems is empty, given that includeAllGNSSsystems is 0
+     # if isempty(desiredGNSSsystems) && includeAllGNSSsystems == 0
+     #     sprintf(['INPUT ERROR(rinexReadsObsHeader304): The input argument desiredGNSSsystems',...
+     #         ' can not be empty as long as includeAllGNSSsystems is 0'])
+     #     success = 0;
+     #     fid     = 0;
+     #     return
+     # end 
+     
+     # # Test if includeAllobsCodes is boolean
+     # if includeAllObsCodes~=1 && includeAllObsCodes~=0
+     #     sprintf(['INPUT ERROR(rinexReadsObsHeader304): The input argument includeAllobsCodes',...
+     #         'must be either 1 or 0'])
+     #     success = 0;
+     #     fid     = 0;
+     #     return
+     # end
+     
+     # # Test if desiredobsCodes is valid type, given that includeAllobsCodes is 0
+     # if ~isa(desiredObsCodes, 'string') && includeAllObsCodes == 0
+     #     sprintf(['INPUT ERROR(rinexReadsObsHeader304): The input argument desiredobsCodes',...
+     #         ' must be of type string(string array) as long as \nincludeAllObsTpes is 1. Variable is of type #s'],...
+     #         class(desiredObsCodes))
+     #     success = 0;
+     #     fid     = 0;
+     #     return 
+     # end
+     
+     # # Test if desiredGNSSsystems is empty, given that includeAllGNSSsystems is 0
+     # if isempty(desiredObsCodes) && includeAllObsCodes == 0
+     #     sprintf(['INPUT ERROR(rinexReadsObsHeader304): The input argument desiredobsCodes',...
+     #         ' can not have length 0 as long as includeAllobsCodes is 0'])
+     #     success = 0;
+     #     fid     = 0;
+     #     return
+     # end
+     
+     
+     
+     ##
+     
+     # Open rinex observation file
+    fid = open(filename,'r') 
+     
+    if os.stat(filename).st_size == 0:
+        raise ValueError('ERROR: This file seems to be empty')
+         
+     
+     # if fid == -1 # 
+     #     success = 0;
+     #     eof = 0;
+     #     disp('ERROR(rinexReadObsFileHeader304): RINEX observation file not found!')
+     #     return
+     # end
+     
+    while 1: # Gobbling the header
+        numHeaderLines = numHeaderLines + 1;
+          # line = fgetl(fid); # returns -1 if only reads EOF
+        line = fid.readline().rstrip()
           
-       if 'REC # / TYPE / VERS' in line: 
-           recType = line[20:40]
-    
+          # if line == -1 # eof reached
+          #   success = 0;
+          #   eof = 1;
+          #   disp('ERROR(rinexReadObsFileHeader304): End of file reached unexpectedly. No observations were read.')
+          #   break
+          
+          
+          ##
+        if 'END OF HEADER' in line:
+            break
+            return
+          
+          ##
+        if numHeaderLines == 1: # if first line of header
+            # store rinex version
+            # rinexVersion = strtrim(line(1:9));
+            rinexVersion = line[0:9]
+            # store rinex type, ex. "N" or "O"
+            # rinexType = line(21);
+            rinexType = line[20]        
+            # if rinex file is not an observation file
+            if rinexType != 'O':  # Rinex file is oservation file
+                print('ERROR(rinexReadObsFileHeader304): the file is not a RINEX observations data file!')
+                success = 0;
+                fid.close()
+                return
+            
+            ## -- Check gnss type  ## Changend indent here 09.12.2022 (was apart of the if test above earlier, and thats wrong)
+            gnssType = line[40] # reads the GNSS system type
+            if gnssType not in [' ', 'G', 'R', 'C', 'E', 'M' ]:
+                if gnssType in ['J', 'I', 'S']:
+                    print('ERROR(rinexReadObsFileHeader304): This software is meant for reading GNSS data only.\
+                           %s is an invalid satellite system type.' %(gnssType)) 
+                else:
+                    print('ERROR(rinexReadObsFileHeader304): %s is an unrecognized satellite system type.' %(gnssType))
+                
+                success = 0
+                fid.close()      
+            ## -- If no system type, set G
+            if gnssType == ' ':
+                gnssType = 'G'
+                
+          
+           ##
+         # answer = strfind(line,'PGM / RUN BY / DATE');
+        if 'PGM / RUN BY / DATE' in line:
+            rinexProgr = line[0:20] # rinex program
+            rinexDate = line[40:60] # rinex date
+     
+         
+     
+         # answer = strfind(line,'MARKER NAME');
+        if 'MARKER NAME' in line:
+            # markerName = strtok(line); # markername
+            markerName = line.strip() # markername
+          
+           # if no marker name, "MARKER" is read, so set to blank
+        if 'Marker' in markerName:
+            markerName = ''
+     
+     
+          
+           
+         # answer = strfind(line,'ANTENNA: DELTA H/E/N');
+        if 'ANTENNA: DELTA H/E/N' in line:
+            for k in range(0,3):
+                line_ = [el for el in line.split(" ") if el != ""]
+                antDelta = [line_[0],line_[1],line_[2]]
+     
+     
+     
+           # Section describing what GNSS systems are present, and their obs types
+           # answer = strfind(line,'SYS / # / OBS TYPES');
+          
+        if 'SYS / # / OBS TYPES' in line:
+            # line = strtrim(line(1:60));     # deletes 'SYS / # / OBS TYPES'
+            line = line[0:60]     # deletes 'SYS / # / OBS TYPES'
+            line_ = [el for el in line.split(" ") if el != ""]
+            Sys = line_.pop(0) # assingning system to variable and removing it from the list
+            nObs = int(line_.pop(0))
+             
+             # [Sys, line] = strtok(line);      # reads GNSS system of this line
+             # [nObs, line]    = strtok(line)      ; # Num ObsCodes of this GNSS system
+             # nObs = str2double(nObs);
+                
+             # # array for storing indeces of undesired ObsCodes for this GNSS
+             # # system
+            undesiredobsCodeIndex = []
+            desiredObsCodeIndex = []
+                
+                 # is Sys amoung desired GNSS systems
+            if (includeAllGNSSsystems and Sys in ["G", "R", "E", "C"] or Sys in desiredGNSSsystems):
+                numGNSSsystems  = numGNSSsystems + 1; # increment number of GNSS systems
+                GNSSsystems[numGNSSsystems] = str(Sys) # Store current GNSS system
+                 # GNSSsystems{numGNSSsystems} = string(Sys); # Store current GNSS system
+             
+                GNSSSystemObsCodes = {}; # Reset cell of obsCodes for this GNSS system
+                obsCode_list = []
+                for k in range(0,nObs):
+                    obsCode = line_.pop(0)
+                    # Checking if obsCode is valid
+                    if len(obsCode) != 3 or obsCode[0] not in ['C', 'L', 'D','S', 'I', 'X'] or  \
+                              obsCode[1] not in ['0', '1', '2', '4', '5', '6', '7', '8', '9'] or \
+                               obsCode[2] not in ['A', 'B', 'C', 'D', 'I', 'L', 'M', 'N', 'P', 'Q', 'S', 'W', 'X', 'Y', 'Z']:
+                        print('ERROR (rinexReadsObsHeader304):  obsCode %s is a not a standard RINEX 3.04 observation type!' %(obsCode))     
+                        success = 0
+                        fid.close()
+                        return success
+                          
+            
+                        # is obsCode amoung desired obscodes and frequency bands
+                    if includeAllObsCodes or obsCode[0] in desiredObsCodes and int(obsCode[1]) in desiredObsBands:
+                         ## store obsCode if amoung desire obsCodes
+                        obsCode_list.append(obsCode) ## TEST
+                        GNSSSystemObsCodes[Sys] =  obsCode_list ## TEST obsCode
+                        desiredObsCodeIndex.append(k)
+                    else:
+                        # store index of discareded obsCode
+                        undesiredobsCodeIndex.append(k)
+            
+                    # Every 13 obsCodes is at end of line. In this case read next line and continue
+                    if np.mod(k+1, 13) == 0 and nObs != 13:
+                        numHeaderLines = numHeaderLines + 1;
+                        line = fid.readline().rstrip()
+                        line = line[0:60]     # deletes 'SYS / # / OBS TYPES'
+                        line_ = [el for el in line.split(" ") if el != ""]
+                        
+                        
+                # numOfObsCodes.append(len(GNSSSystemObsCodes))
+                numOfObsCodes.append(len(GNSSSystemObsCodes[Sys]))
+                obsCodes[numGNSSsystems] = GNSSSystemObsCodes
+                obsCodeIndex[numGNSSsystems] = desiredObsCodeIndex # Store indices of desired obsCodes
+     
+            # else:
+            #     ## --If GNSS system is not desired, skip to last line connected or it  ## commented out this 09.12.2022
+            #     lines2Skip = math.floor(nObs/13)
+            #     for i in range(0,lines2Skip):
+            #       # for i = 1:lines2Skip
+            #         # numHeaderLines = numHeaderLines + 1;
+            #         numHeaderLines = numHeaderLines # removed +1 09.12.2022 because it jumped over glonass in the 2018 (1Hz) rinex file(OPEC)
+            #         # line = fid.readline().rstrip() # commeted out this
+            #         # line = fgetl(fid); # returns -1 if only reads EOF
+      
+         
+           
+         
+        if 'TIME OF FIRST OBS' in line:
+            line = line[0:60]     #  deletes 'TIME OF FIRST OBS'
+            line_ = [el for el in line.split(" ") if el != ""]
+              
+            for k in range(0,6):
+                tok = line_.pop(0)  # finds the substrings containing the components of the time of the first observation
+                                      #(YYYY; MM; DD; hh; mm; ss.sssssss) and specifies
+                                      # the Time System used in the
+                                      # observations file (GPST, GLOT or
+                                      # GALT)
+                if k ==0:
+                    yyyy = int(tok)
+                elif k ==1:
+                    mm = int(tok)
+                elif k ==2:
+                    dd = int(tok)
+                elif k ==3:
+                    hh = int(tok)
+                elif k ==4:
+                    mnt = int(tok)
+                elif k ==5:
+                    ss = float(tok)
+     
+          
+            #tFirstObs = [yyyy; mm; dd; hh; mnt; ss];
+            tFirstObs = np.array([[yyyy],[mm],[dd],[hh],[mnt],[ss]])
+          
+            # Get Time system
+            aux = line_.pop(0)
+            # aux = strtok(line);
+            if aux == 'GPS':
+                timeSystem = 'GPS'
+            elif aux == 'GLO':
+                timeSystem = 'GLO'
+            elif aux == 'GAL':
+                timeSystem = 'GAL'            
+            elif aux == 'BDT':
+                timeSystem = 'BDT'
+             
+            else:
+                if gnssType == 'G':
+                    timeSystem = 'GPST'
+                elif gnssType == 'R':
+                    timeSystem = 'GLOT'
+                elif gnssType == 'E':
+                    timeSystem = 'GALT'
+                elif gnssType == 'C':
+                    timeSystem = 'BDT'
+                else:
+                    print('CRITICAL ERROR (rinexReadsObsHeader304):\n' \
+                                       'The Time System of the RINEX observations file '\
+                                       'isn''t correctly specified!\n')
+                    success = 0
+                    fid.close()
+     
+     
+        if 'TIME OF LAST OBS' in line:  
+            line = line[0:60]     #  deletes 'TIME OF LAST OBS'
+            line_ = [el for el in line.split(" ") if el != ""]
+            for k in range(0,6):
+                tok = line_.pop(0)     
+                if k ==0:
+                    yyyy = int(tok)
+                elif k ==1:
+                    mm = int(tok)
+                elif k ==2:
+                    dd = int(tok)
+                elif k ==3:
+                    hh = int(tok)
+                elif k ==4:
+                    mnt = int(tok)
+                elif k ==5:
+                    ss = float(tok)
+     
+            tLastObs = np.array([[yyyy],[mm],[dd],[hh],[mnt],[ss]])
+     
+     
+          
+           ##
+           # answer = strfind(line,'INTERVAL'); # This is an optional record
+        if 'INTERVAL' in line:
+            line = line[0:60]     #  deletes 'TIME OF LAST OBS'
+            line_ = [el for el in line.split(" ") if el != ""]
+            tInterval = float(line_.pop(0));
+           
+          
+     
+          ## -- This is an optional record!
+          # if 'RCV CLOCK OFFS APPL' in line:
+          #     if (strtok(line)=='0'): 
+          #         clockOffsetsON = 0;
+          #     elif (strtok(line)=='1'): 
+          #         clockOffsetsON = 1;
+          #     else:
+          #         success = 0;
+          #         print('ERROR (rinexReadsObsHeader304): unrecognized receiver clock offsets flag!')
+          #         fid.close()
+               
+     
+           ## This is an optional record
+        if 'LEAP SECONDS' in line:
+            line = line[0:60]     #  deletes 'TIME OF LAST OBS'
+            line_ = [el for el in line.split(" ") if el != ""]
+            leapSec = int(line_.pop(0))
           
       
-    # End of Gobbling Header Loop
+          
+           ## -- store approximate receiver position
+        if 'APPROX POSITION XYZ' in line:
+            line = line[0:60]     #  deletes 'TIME OF LAST OBS'
+            line_ = [el for el in line.split(" ") if el != ""]
+            approxPosition = np.array([[float(line_[0])],[float(line_[1])],[float(line_[2])]])
+     
+       
+         ## GLOANSS SLOTS
+        if 'GLONASS SLOT / FRQ #' in line:
+            line = line[0:60]     #  deletes 'TIME OF LAST OBS'
+            line_ = [el for el in line.split(" ") if el != ""]
+            nGLOSat = int(line_.pop(0))
+            slotNumbers = np.array([])
+            channels = np.array([])
+            for k in range(0,nGLOSat):
+                # slotNumber = int(line_.pop(0)[1::])
+                slotNumber = line_.pop(0)[1::]
+                channel = int(line_.pop(0))
+                slotNumbers = np.append(slotNumbers,slotNumber)
+                channels = np.append(channels,channel)
+     
+                if np.mod(k+1, 8) == 0:
+                    # line = fgetl(fid); # end of line is reached so read next line
+                    line = fid.readline().rstrip()
+                    numHeaderLines = numHeaderLines + 1
+                    line = line[0:60]     #  deletes 'TIME OF LAST OBS'
+                    line_ = [el for el in line.split(" ") if el != ""]
+     
+        
+     
+            # GLO_Slot2ChannelMap = containers.Map(slotNumbers, channels);
+            GLO_Slot2ChannelMap = dict(zip(slotNumbers.astype(int),channels.astype(int)))
+            
+         
+           
+        if 'REC # / TYPE / VERS' in line: 
+            recType = line[20:40]
+     
+           
+       
+     # End of Gobbling Header Loop
+     
+    for k in range(0,numGNSSsystems):    
+        # Give info if any of GNSS systems had zero of desired obscodes.
+        if numOfObsCodes[k] == 0 or sum(tFirstObs) == 0:
+            if GNSSsystems[k] == 'G':
+                print('INFO: (rinexReadsObsHeader304)\nNone of the GPS satellites had any of the desired obsCodes\n\n')
+            elif GNSSsystems[k] == 'R':
+                print('INFO: (rinexReadsObsHeader304)\nNone of the GLONASS satellites had any of the desired obsCodes\n\n')
+            elif GNSSsystems[k] == 'E':
+                print('INFO: (rinexReadsObsHeader304)\nNone of the Galileo satellites had any of the desired obsCodes\n\n')            
+            elif GNSSsystems[k] == 'C':
+                print('INFO: (rinexReadsObsHeader304)\nNone of the BeiDou satellites had any of the desired obsCodes\n\n')            
+                 
+     
+     
+     
+     # store rinex header info
+     # rinexHeader = {rinexVersion; rinexType; gnssType; rinexProgr; rinexDate};
+    rinexHeader['rinexVersion'] =rinexVersion 
+    rinexHeader['rinexType'] = rinexType 
+    rinexHeader['gnssType'] =gnssType 
+    rinexHeader['rinexProgr'] =rinexProgr 
+    rinexHeader['rinexDate'] =rinexDate 
+     
+     
+    print('INFO(rinexReadObsFileHeader304): Rinex header has been read')
     
-   for k in range(0,numGNSSsystems):    
-       # Give info if any of GNSS systems had zero of desired obscodes.
-       if numOfObsCodes[k] == 0 or sum(tFirstObs) == 0:
-           if GNSSsystems[k] == 'G':
-               print('INFO: (rinexReadsObsHeader304)\nNone of the GPS satellites had any of the desired obsCodes\n\n')
-           elif GNSSsystems[k] == 'R':
-               print('INFO: (rinexReadsObsHeader304)\nNone of the GLONASS satellites had any of the desired obsCodes\n\n')
-           elif GNSSsystems[k] == 'E':
-               print('INFO: (rinexReadsObsHeader304)\nNone of the Galileo satellites had any of the desired obsCodes\n\n')            
-           elif GNSSsystems[k] == 'C':
-               print('INFO: (rinexReadsObsHeader304)\nNone of the BeiDou satellites had any of the desired obsCodes\n\n')            
-                
-    
-    
-    
-    # store rinex header info
-    # rinexHeader = {rinexVersion; rinexType; gnssType; rinexProgr; rinexDate};
-   rinexHeader['rinexVersion'] =rinexVersion 
-   rinexHeader['rinexType'] = rinexType 
-   rinexHeader['gnssType'] =gnssType 
-   rinexHeader['rinexProgr'] =rinexProgr 
-   rinexHeader['rinexDate'] =rinexDate 
-    
-    
-   print('INFO(rinexReadObsFileHeader304): Rinex header has been read')
-    
-   return success, rinexVersion, gnssType, markerName, recType, antDelta,GNSSsystems,numOfObsCodes, \
+    return success, rinexVersion, gnssType, markerName, recType, antDelta,GNSSsystems,numOfObsCodes, \
     obsCodes, obsCodeIndex,tFirstObs, tLastObs, tInterval,timeSystem, numHeaderLines, clockOffsetsON, \
     rinexProgr, rinexDate,leapSec, approxPosition, GLO_Slot2ChannelMap, eof, fid
     
@@ -1326,93 +1432,92 @@ def rinexReadObsFileHeader304(filename, includeAllGNSSsystems, includeAllObsCode
 
 def rinexReadObsBlock304(fid, numSV, nObsCodes, GNSSsystems, obsCodeIndex, readSS, readLLI):
     """
-    #Reads all the observations from a RINEX observation block.
+    Reads all the observations from a RINEX observation block.
     
-    #Positioned at the beginning of the line immediately after the header of the
-    #observations block, reads all the observations in this block of a RINEX
-    #observations file. This function is meant to be used after using function
-    #rinexReadObsFileHeader304
+    Positioned at the beginning of the line immediately after the header of the
+    observations block, reads all the observations in this block of a RINEX
+    observations file. This function is meant to be used after using function
+    rinexReadObsFileHeader304
     
-    #Based in the work of Antonio Pestana, rinexReadObsBlock211, March 2015
-    #--------------------------------------------------------------------------------------------------------------------------
-    #INPUTS
+    Based in the work of Antonio Pestana, rinexReadObsBlock211, March 2015
+    --------------------------------------------------------------------------------------------------------------------------
+    INPUTS
     
-    #fid:                  Matlab file identifier of a Rinex observations text file
+    fid:                  Matlab file identifier of a Rinex observations text file
     
-    #numSV:                total number of satellites with observations in
-    #                      current observation block, integer
+    numSV:                total number of satellites with observations in
+                          current observation block, integer
     
-    #numOfObsCodes:        column vector containing number of observation
-    #                      types for each GNSS system. Order is the same as
-    #                      GNSSsystems
+    numOfObsCodes:        column vector containing number of observation
+                          types for each GNSS system. Order is the same as
+                          GNSSsystems
     
-    #GNSSsystems:          cell array containing codes of GNSS systems included 
-    #                      in RINEX observationfile. Elements are strings.
-    #                      ex. "G" or "E"
+    GNSSsystems:          cell array containing codes of GNSS systems included 
+                          in RINEX observationfile. Elements are strings.
+                          ex. "G" or "E"
     
-    #obsCodeIndex:         cell with one cell element for each GNSS system.
-    #                      Order is the same as GNSSsystems. Each cell element
-    #                      contains an array of indices. These indices
-    #                      indicate the observation types that should be
-    #                      read for each GNSS system. ex. If one index for
-    #                      GPS is 1 then the first observation type for GPS
-    #                      should be read.
+    obsCodeIndex:         cell with one cell element for each GNSS system.
+                          Order is the same as GNSSsystems. Each cell element
+                          contains an array of indices. These indices
+                          indicate the observation types that should be
+                          read for each GNSS system. ex. If one index for
+                          GPS is 1 then the first observation type for GPS
+                          should be read.
     
-    #readSS:                   Boolean, 0 or 1. 
-    #                          1 = read "Signal Strength" Indicators
-    #                          0 = do not read "Signal Strength" Indicators
+    readSS:                   Boolean, 0 or 1. 
+                              1 = read "Signal Strength" Indicators
+                              0 = do not read "Signal Strength" Indicators
     
-    #readLLI:                  Boolean, 0 or 1. 
-    #                          1 = read "Loss-Of-Lock Indicators"
-    #                          0 = do not read "Loss-Of-Lock Indicators"
-    #--------------------------------------------------------------------------------------------------------------------------
-    #OUTPUTS
+    readLLI:                  Boolean, 0 or 1. 
+                              1 = read "Loss-Of-Lock Indicators"
+                              0 = do not read "Loss-Of-Lock Indicators"
+    --------------------------------------------------------------------------------------------------------------------------
+    OUTPUTS
     
-    #success:               Boolean. 1 if the function seems to be successful, 
-    #                      0 otherwise
+    success:               Boolean. 1 if the function seems to be successful, 
+                          0 otherwise
     
-    #Obs:                  matrix [numSV x max_nObs] that stores all 
-    #                      observations of this observation block. max_nObs 
-    #                      is the highest number of observation codes that 
-    #                      any of the GNSS systems have. Which observation
-    #                      types that are associated with what collumn will
-    #                      vary between GNSS systems. SVlist will give
-    #                      overview of what GNSS system each row is connected
-    #                      to
+    Obs:                  matrix [numSV x max_nObs] that stores all 
+                          observations of this observation block. max_nObs 
+                          is the highest number of observation codes that 
+                          any of the GNSS systems have. Which observation
+                          types that are associated with what collumn will
+                          vary between GNSS systems. SVlist will give
+                          overview of what GNSS system each row is connected
+                          to
     
-    #SVlist:               column cell [numSV x 1] that conatins the 
-    #                      identification code of each line of observation 
-    #                      block. ex. "G21". numSV is total number of 
-    #                      satellites minus amount of satellites removed.
+    SVlist:               column cell [numSV x 1] that conatins the 
+                          identification code of each line of observation 
+                          block. ex. "G21". numSV is total number of 
+                          satellites minus amount of satellites removed.
     
-    #numSV:                numSV, unlike the input of same name, is the total 
-    #                      number of satellites minus amount of satellites 
-    #                      removed.
+    numSV:                numSV, unlike the input of same name, is the total 
+                          number of satellites minus amount of satellites 
+                          removed.
     
-    #LLI:                  matrix [numSV x max_nObs] that stores all 
-    #                      "loss-of-lock" indicators of this observation block. 
-    #                      max_nObs is the highest number of observation codes 
-    #                      that any of the GNSS systems have. Which observation
-    #                      types that are associated with what collumn will
-    #                      vary between GNSS systems. SVlist will give
-    #                      overview of what GNSS system each row is connected
-    #                      to
+    LLI:                  matrix [numSV x max_nObs] that stores all 
+                          "loss-of-lock" indicators of this observation block. 
+                          max_nObs is the highest number of observation codes 
+                          that any of the GNSS systems have. Which observation
+                          types that are associated with what collumn will
+                          vary between GNSS systems. SVlist will give
+                          overview of what GNSS system each row is connected
+                          to
     
-    #SS:                   matrix [numSV x max_nObs] that stores all 
-    #                      "signal strength" indicators of this observation block. 
-    #                      max_nObs is the highest number of observation codes 
-    #                      that any of the GNSS systems have. Which observation
-    #                      types that are associated with what collumn will
-    #                      vary between GNSS systems. SVlist will give
-    #                      overview of what GNSS system each row is connected
-    #                      to
+    SS:                   matrix [numSV x max_nObs] that stores all 
+                          "signal strength" indicators of this observation block. 
+                          max_nObs is the highest number of observation codes 
+                          that any of the GNSS systems have. Which observation
+                          types that are associated with what collumn will
+                          vary between GNSS systems. SVlist will give
+                          overview of what GNSS system each row is connected
+                          to
     
-    #eof:                  end-of-file flag; 1 if end-of-file was reached, 
-    #                      0 otherwise
-    #--------------------------------------------------------------------------------------------------------------------------
+    eof:                  end-of-file flag; 1 if end-of-file was reached, 
+                          0 otherwise
+    --------------------------------------------------------------------------------------------------------------------------
     """
-    import numpy as np
-    import os
+
     
     
     ## Initialize variables in case of input error
@@ -1604,72 +1709,67 @@ def date2gpstime(year,month,day,hour,minute,seconds):
 
 def rinexReadObsBlockHead304(fid):
     """
+    Reads the metadata in the head of a RINEX 3.xx observations block, NOT 
+    the header of the file.
     
-     # Reads the metadata in the head of a RINEX 3.xx observations block, NOT 
-     # the header of the file.
-     #
-     # ATTENTION: Ignores all data in blocks with event flags with numbers
-     # greater than 1!!!
-     #
-     # Positioned in a RINEX 3.04 GNSS observations text file at the beginning
-     # of an observation block. In rinex 3.xx the line starts with '> '
+    ATTENTION: Ignores all data in blocks with event flags with numbers
+    greater than 1!!!
+    
+    Positioned in a RINEX 3.04 GNSS observations text file at the beginning
+    of an observation block. In rinex 3.xx the line starts with '> '
+    
+    --------------------------------------------------------------------------------------------------------------------------
+     INPUTS
+    
+     fid:              Matlab identifier of an open RINEX 3.04 GNSS 
+                       observations text file positioned at the beginning
+                       of an observation block.
+    --------------------------------------------------------------------------------------------------------------------------
+     OUTPUTS
+    
+     success:          1 if function performs successfully, 0 otherwise
      
-     # Based on the work of Ant�nio Pestana, rinexReadObsBlockHead211.m,
-     #--------------------------------------------------------------------------------------------------------------------------
-     # INPUTS
-     
-     # fid:              Matlab identifier of an open RINEX 3.04 GNSS 
-     #                   observations text file positioned at the beginning
-     #                   of an observation block.
-     #--------------------------------------------------------------------------------------------------------------------------
-     # OUTPUTS
-     
-     # success:          1 if function performs successfully, 0 otherwise
-     # 
-     # epochflag:        Rinex observations epoch flag, as follows:
-     #                       0: OK
-     #                       1: power failure between previous and current epoch
-     #                   From now on the "event flags":
-     #                       2: start moving antenna
-     #                       3: new site occupation
-     #                       4: header information follows
-     #                       5: external event (epoch is significant)
-     
-     # clockOffset:          value of the receiver clock offset. If not present 
-     #                       in the metadata of the observations block 
-     #                       (it's optional RINEX 3.04 data)it is assumed to be 
-     #                       zero. If not zero implies that epoch, code, and 
-     #                       phase data have been corrected by applying 
-     #                       realtime-derived receiver clock offset
-     
-     # date:                 time stamp of the observations block. Six-elements column-vector
-     #                       as follows:
-     #                           year: four-digits year (eg: 1959)
-     #                           month: integers 1..12
-     #                           day: integers 1..31
-     #                           hour: integers 0..24
-     #                           minute: integers 0..60
-     #                           second: reals 0..60
-     
-     # numSV:                number of satellites with observations in with
-     #                       observations. This will include all satellite
-     #                       systems.
-     #--------------------------------------------------------------------------------------------------------------------------
+     epochflag:        Rinex observations epoch flag, as follows:
+                           0: OK
+                           1: power failure between previous and current epoch
+                       From now on the "event flags":
+                           2: start moving antenna
+                           3: new site occupation
+                           4: header information follows
+                           5: external event (epoch is significant)
+    
+     clockOffset:          value of the receiver clock offset. If not present 
+                           in the metadata of the observations block 
+                           (it's optional RINEX 3.04 data)it is assumed to be 
+                           zero. If not zero implies that epoch, code, and 
+                           phase data have been corrected by applying 
+                           realtime-derived receiver clock offset
+    
+     date:                 time stamp of the observations block. Six-elements column-vector
+                           as follows:
+                               year: four-digits year (eg: 1959)
+                               month: integers 1..12
+                               day: integers 1..31
+                               hour: integers 0..24
+                               minute: integers 0..60
+                               second: reals 0..60
+    
+     numSV:                number of satellites with observations in with
+                           observations. This will include all satellite
+                           systems.
+    --------------------------------------------------------------------------------------------------------------------------
     
     """  
      
      
-     # Initialize variables
-    success = 1     ;
-    eof     = 0     ;
-    # date    = []    ;
-    date    = [0,0,0,0,0,0]    ;
-    numSV   = 0     ;
-    # epochflag   = [];
+    ## - Initialize variables
+    success = 1     
+    eof     = 0     
+    date    = [0,0,0,0,0,0]    
+    numSV   = 0     
     epochflag = 0
-    # clockOffset = [];
     clockOffset = 0
-    noFlag = 1;
+    noFlag = 1
      
      
      
@@ -1728,7 +1828,5 @@ def rinexReadObsBlockHead304(fid):
         msg2 = msg + '\nEpoch date = %.4d %.2d %.2d %.2d:%.2d:%6.4f' % (date[0],date[1],date[2],date[3],date[4],date[5])
         print(msg2)
       
-
-
 
     return success, epochflag, clockOffset, date, numSV, eof
