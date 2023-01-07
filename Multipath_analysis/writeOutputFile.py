@@ -43,8 +43,12 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
     
     # meanClockJumpInterval   = seconds(meanClockJumpInterval) # vet ikke hva som bør brukes her
     # meanClockJumpInterval.Format = 'hh:mm:ss';
-    
+    ## Extract systems in current analysis
     GNSSsystems = analysisResults['GNSSsystems']
+    GNSS_Name2Code =  dict(zip(['GPS', 'GLONASS', 'Galileo', 'BeiDou'], ['G', 'R', 'E', 'C']))
+    # GNSS_Name2Code = {key:val for key, val in GNSS_Name2Code.items() if val in [i for i in GNSSsystems.values()]} # only the systems for current analysis
+    GNSS_Name2Code = {key:val for key, val in GNSS_Name2Code.items() if val in GNSSsystems} # only the systems for current analysis
+    ## Replace letter with whole system name 
     if 'G' in GNSSsystems:
         GNSSsystems[GNSSsystems.index('G')] = 'GPS'
     if 'R' in GNSSsystems:
@@ -56,12 +60,9 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
         
         
     nGNSSsystems = len(GNSSsystems)
-    
     YesNoMap = {1 : 'Yes',
                 0 : 'No'}
     
-    
-    GNSS_Name2Code =  dict(zip(['GPS', 'GLONASS', 'Galileo', 'BeiDou'], ['G', 'R', 'E', 'C']))
     
     GPSBandNameMap      = dict(zip([1, 2, 5], ['L1', 'L2', 'L5']))
     GLONASSBandNameMap  = dict(zip([1, 2, 3, 4, 6], ['G1', 'G2', 'G3', 'G1a', 'G2a']))
@@ -104,7 +105,7 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
     fid = open(outputFilename, 'w+')
     # fid = open('test.txt', 'w+')
      
-    fid.write('GNSS Receiver Quality Check 2020\n')
+    fid.write('GNSS_MultipathAnalysis\n')
     fid.write('Software version: 1.00\n');
     fid.write('Last software version release: 01/12/2022\n\n');
     fid.write('Software developed by Per Helge Aarnes. Based on the Matlab-software made by Bjørn-Eirik Roald (NMBU) \n\n');

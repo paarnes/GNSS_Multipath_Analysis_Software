@@ -57,7 +57,7 @@ def computeSatElevAimut_fromNav(navigationFile,approxPosition,GNSS_SVs,GNSS_obs,
         elevation = np.zeros([len(t),61]) # Satellites elevation 
         for PRN in aktuelle_sat_list:
             counter = counter + 1
-            print("\rCurrently computing coordinates for the %s system. Progress: %.1f%%" %(GNSS_FullName[curr_sys],counter/len(aktuelle_sat_list)*100), end='\r',flush=True)  # \r makes the line get overwritten
+            print("\rCurrently computing coordinates for the %s system. Progress: %.1f%%" %(GNSS_FullName[sys],counter/len(aktuelle_sat_list)*100), end='\r',flush=True)  # \r makes the line get overwritten
             try:
                 ephemerides = extract_nav_message(curr_data,PRN,t[epoch-1]) # passing curr_data instead to get correct system
                 ephemerides[0] = ephemerides[0][1::] # Removing system letter from number. Ex G10 -> 10

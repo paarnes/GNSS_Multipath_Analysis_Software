@@ -28,7 +28,7 @@ def make_polarplot(multipath,sat_elevation,sat_azimut,GNSSsystemName,range1_code
     vmax     = 2*np.nanmean(np.abs(multipath)) # Multipath max color by 2 times the means value
     cmap     = 'cividis'  # Fargeskalen
     # cmap = 'jet'
-    dpi_fig  = 150        # Oppløsningen på figurene
+    dpi_fig  = 300        # Oppløsningen på figurene
     # dpi_fig  = 300        # Oppløsningen på figurene
     fig, ax = plt.subplots(subplot_kw={'projection': 'polar'},figsize=(16,12),dpi=170)
     fig.subplots_adjust(left=None, bottom=0.1, right=None, top=None, wspace=None, hspace=None)
@@ -62,7 +62,7 @@ def make_polarplot(multipath,sat_elevation,sat_azimut,GNSSsystemName,range1_code
             c = cm.jet((c-np.min(c))/(np.max(c)-np.min(c)))
             ax.scatter(np.radians(sat_az), sat_el, c = abs(mp_est), cmap = cmap ,marker = 'o', s = 100, edgecolor='none',vmin = vmin, vmax = vmax)
         
-    plt.show()
+    # plt.show()
     # plt.ioff()
     filename = 'MP_GPS_L1' + "_" + GNSSsystemName + "_" + range1_code + '.png'
     fig.savefig(graph_dir + "/" + filename, dpi=dpi_fig, orientation='landscape')

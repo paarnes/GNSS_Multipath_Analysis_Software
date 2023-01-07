@@ -1,21 +1,19 @@
-import os, sys,numpy as np
-sys.path.append('..\Read_RINEX_OBS/')
+import os, sys,numpy as np,pickle
+
 from readRinexObs304 import readRinexObs304
-sys.path.append('..\Kepler2ECEF/')
-from Kepler2ECEF.kepler2ecef import date2gpstime
+from Geodetic_functions import *
 
-sys.path.append('..\Multipath_analysis/')
-from Multipath_analysis.computeSatElevations import computeSatElevations
-from Multipath_analysis.computeSatElevAimut_fromNav import computeSatElevAimut_fromNav
-from Multipath_analysis.readFrequencyOverview import readFrequencyOverview
-from Multipath_analysis.signalAnalysis import signalAnalysis
-from Multipath_analysis.plotResults import plotResults
-from Multipath_analysis.detectClockJumps import detectClockJumps
+from computeSatElevations import computeSatElevations
+from computeSatElevAimut_fromNav import computeSatElevAimut_fromNav
+from readFrequencyOverview import readFrequencyOverview
+from signalAnalysis import signalAnalysis
+from plotResults import plotResults
+from detectClockJumps import detectClockJumps
 from tqdm import tqdm, trange
-from Multipath_analysis.writeOutputFile import writeOutputFile
-from Multipath_analysis.make_polarplot import make_polarplot
+from writeOutputFile import writeOutputFile
+from make_polarplot import make_polarplot
 
-def GNSS_Receiver_QC_2020(rinObsFilename,
+def GNSS_MultipathAnalysis(rinObsFilename,
                           broadcastNav1=None,
                           sp3NavFilename_1=None,
                           sp3NavFilename_2=None, 
@@ -47,7 +45,7 @@ def GNSS_Receiver_QC_2020(rinObsFilename,
     
     This function calls on a range of functions. These in turn call on
     further more functions. The function called upon directly in 
-    GNSS_Receiver_QC_2020 are:
+    GNSS_MultipathAnalysis are:
     
       - readRinexObs304.m
       - computeSatElevations.m
@@ -168,8 +166,10 @@ def GNSS_Receiver_QC_2020(rinObsFilename,
         includeLLIOverview = 1
 
     if desiredGNSSsystems == None:
+        includeAllGNSSsystems   = 1
+        desiredGNSSsystems = ["G", "R", "E", "C"];  # All GNSS systems.
+    else:
         includeAllGNSSsystems   = 0
-        desiredGNSSsystems = ["G", "R", "E", "C"];  # All GNSS systems. 
     
     
     ## ---  Control of the user input arguments 
@@ -261,7 +261,20 @@ def GNSS_Receiver_QC_2020(rinObsFilename,
                 sat_elevation_angles[sys] = sat_pos_dummy[currentGNSSsystem]['Elevation'][:,0:37]
             else:
                 sat_elevation_angles[sys] = sat_pos_dummy[currentGNSSsystem]['Elevation']
-    
+            
+        ## - Check for missing systems in navigation file, and remove if found
+        missing_sys = []
+        dummy_GNSSsystems = GNSSsystems.copy()
+        for key,sys in dummy_GNSSsystems.items():
+            if len(sat_pos[sys]['Position']) == 0:
+                del sat_pos[sys]
+                del GNSSsystems[key]
+                missing_sys.append(sys)
+        if len(missing_sys) != 0:
+            print('\n\nSystems %s does not exist in navigation file! \nMultipath analysis for these systems is therefore not possible. \nConsider using another navigation file.\n\n' % (missing_sys))
+
+                
+                
 
         
     ## Define carrier frequencies for every GNSS system. Note: Carrier band numbers follow RINEX 3 convention
@@ -564,7 +577,7 @@ def GNSS_Receiver_QC_2020(rinObsFilename,
                                     
                                     ## If phase2 observation is not read from RINEX 3 observation file
                                   else:
-                                        print('INFO(GNSS_Receiver_QC_2020): %s code exists in RINEX observation file, but not %s\n'\
+                                        print('\nINFO(GNSS_MultipathAnalysis): %s code exists in RINEX observation file, but not %s\n'\
                                             'Linear combinations using this signal is not used.\n\n' % (range2_Code, phase2_Code))
                                         ## -- Remove range1 observation struct from other band struct, as it can not be used later
                                         # other_band_struct.Codes(ismember(other_band_struct.Codes, range2_Code)) = [];
@@ -658,7 +671,7 @@ def GNSS_Receiver_QC_2020(rinObsFilename,
                   
                     else:
                         ## If phase1 observation is not read from RINEX observation file
-                        print('INFO(GNSS_Receiver_QC_2020): %s code exists in RINEX observation file, but not %s\n',\
+                        print('\nINFO(GNSS_MultipathAnalysis): %s code exists in RINEX observation file, but not %s\n',\
                                         'Linear combination using this signal is not used.\n\n' % (range1_Code, phase1_Code))
                         # current_band_struct.Codes(ismember(current_band_struct.Codes, range1_Code)) = [];
                         # current_band_struct.nCodes = current_band_struct.nCodes - 1; 
@@ -760,6 +773,13 @@ def GNSS_Receiver_QC_2020(rinObsFilename,
     
     writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSummary, includeCompactSummary, includeObservationOverview, includeLLIOverview)
     print('INFO: The output file %s has been written.' % (outputFilename))
+    
+    ## -- Saving the workspace as a binary pickle file ---
+    f = open("analysisResults.pkl","wb")
+    ## -- write the python object (dict) to pickle file
+    pickle.dump(analysisResults,f)
+    f.close()
+
 
     return analysisResults
 

@@ -1,7 +1,6 @@
 import sys
-sys.path.append('..\Read_SP3')
-from Read_SP3.read_SP3Nav import readSP3Nav
-from Read_SP3.combineSP3Nav import combineSP3Nav
+from read_SP3Nav import *
+from readRinexNav import *
 from get_elevation_angle import get_elevation_angle
 from gpstime2date import gpstime2date
 from tqdm import tqdm
@@ -158,7 +157,7 @@ def computeSatElevations(GNSS_SVs, GNSSsystems, approxPosition,\
     # satMissingData = {};
     satMissingData = []
     # for k = 1:nGNSSsystems:
-    for k in tqdm(range(0,nGNSSsystems),desc='Looping thorugh the systems',position=0,leave=True):
+    for k in tqdm(range(0,nGNSSsystems),desc='Looping through the systems',position=0,leave=True):
        # Initialize data matrix for current GNSSsystem
        sat_elevation_angles[k] = np.zeros([int(nepochs), int(max_sat[k])+1]) # added +1 20.11.2022
        sat_azimut_angles[k]    = np.zeros([int(nepochs), int(max_sat[k])+1]) # added +1 20.11.2022
