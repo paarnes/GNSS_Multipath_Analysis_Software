@@ -29,11 +29,12 @@ broadcastNav2 =  full_path_testdata  + '/NavigationFiles/' + 'OPEC00NOR_S_202200
 broadcastNav3 =  full_path_testdata  + '/NavigationFiles/' + 'OPEC00NOR_S_20220010000_01D_EN.rnx'
 broadcastNav4 =  full_path_testdata  + '/NavigationFiles/' + 'OPEC00NOR_S_20220010000_01D_CN.rnx'
 
-# broadcastNav1 =  full_path_testdata  + '/NavigationFiles/' + 'BRDC00IGS_R_20220010000_01D_MN.rnx'
+broadcastNav1 =  full_path_testdata  + '/NavigationFiles/' + 'BRDC00IGS_R_20220010000_01D_MN.rnx'
 
 ## Broadcast ephemerides
 # broadcastNav1 =  full_path_testdata  + '/NavigationFiles/' + 'OPEC00NOR_S_20220010000_01D_GN.rnx'
 # broadcastNav2 =  full_path_testdata  + '/NavigationFiles/' + 'OPEC00NOR_S_20220010000_01D_RN.rnx'
+# broadcastNav3 =  full_path_testdata  + '/NavigationFiles/' + 'ENDRET_BCEmerge_30_10_2020.20p'
 # broadcastNav3 =  full_path_testdata  + '/NavigationFiles/' + 'BCEmerge_30_10_2020.20p'
 
 
@@ -45,8 +46,8 @@ broadcastNav4 =  full_path_testdata  + '/NavigationFiles/' + 'OPEC00NOR_S_202200
 
 
 analysisResults = GNSS_MultipathAnalysis(rinObsFilename, 
-                                          broadcastNav1=broadcastNav4,
-                                          desiredGNSSsystems = ['C']
+                                          broadcastNav1=broadcastNav3,
+                                          desiredGNSSsystems = ['E']
                                           )
 
 # analysisResults = GNSS_MultipathAnalysis(rinObsFilename, 

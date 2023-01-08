@@ -307,65 +307,65 @@ def Satkoord2(efemerider,t,xm,ym,zm):
         v = atan(tanv)
 
     
-    theta   = v + omega;
+    theta   = v + omega
     
     ## -- Korreksjon på baneparametere:
-    du_k    = C_uc*cos(2*theta) + C_us*sin(2*theta);
-    dr_k    = C_rc*cos(2*theta) + C_rs*sin(2*theta);
-    di_k    = C_ic*cos(2*theta) + C_is*sin(2*theta);
+    du_k    = C_uc*cos(2*theta) + C_us*sin(2*theta)
+    dr_k    = C_rc*cos(2*theta) + C_rs*sin(2*theta)
+    di_k    = C_ic*cos(2*theta) + C_is*sin(2*theta)
     
     ## -- Korrigerte baneparametere:
-    u_k     = theta + du_k;
-    r_k     = A*(1 - e*cos(E)) + dr_k;
-    i_k     = i0 + i_dot*t_k + di_k;
+    u_k     = theta + du_k
+    r_k     = A*(1 - e*cos(E)) + dr_k
+    i_k     = i0 + i_dot*t_k + di_k
     
     
     ## -- Korrigert lengdegrad for baneplanknuten:
-    OMEGA_k = OMEGA + (OMEGA_dot - omega_e)*t_k - omega_e*toe;
+    OMEGA_k = OMEGA + (OMEGA_dot - omega_e)*t_k - omega_e*toe
     
     
     ## -- Satelittens posisjon i banen:
-    x = r_k*cos(u_k);
-    y = r_k*sin(u_k); 
+    x = r_k*cos(u_k)
+    y = r_k*sin(u_k)
     
     ## --ECEF-koordinater for satellitten:
-    X = x*cos(OMEGA_k) - y*sin(OMEGA_k)*cos(i_k);
-    Y = x*sin(OMEGA_k) + y*cos(OMEGA_k)*cos(i_k);
-    Z = y*sin(i_k);
+    X = x*cos(OMEGA_k) - y*sin(OMEGA_k)*cos(i_k)
+    Y = x*sin(OMEGA_k) + y*cos(OMEGA_k)*cos(i_k)
+    Z = y*sin(i_k)
     
     ## Relativistisk klokkekorreksjon
-    dT_rel = (-2/c**2)*sqrt(A*GM)*e*sin(E);
+    dT_rel = (-2/c**2)*sqrt(A*GM)*e*sin(E)
     
     ## --Tester om korreksjonen skal utføres.
     if (abs(xm)) > 1.0 and (abs(ym)) > 1.0 and (abs(zm)) > 1.0:
-        TRANS  = 0;
-        TRANS0 = 0.075 ;
-        j = 0;
+        TRANS  = 0
+        TRANS0 = 0.075 
+        j = 0
         while(abs(TRANS0 - TRANS) > 1e-10):
-            j = j +1;
+            j = j +1
             if(j > 20):
                 print('Feil, Gangtids-rotasjonen konvergerer ikke!')
                 break
             
-            TRANS = TRANS0;
-            OMEGA_k = OMEGA + (OMEGA_dot - omega_e)*t_k - omega_e*(toe + TRANS);
-            X = x*cos(OMEGA_k) - y*sin(OMEGA_k)*cos(i_k);
-            Y = x*sin(OMEGA_k) + y*cos(OMEGA_k)*cos(i_k);
-            Z = y*sin(i_k);
+            TRANS = TRANS0
+            OMEGA_k = OMEGA + (OMEGA_dot - omega_e)*t_k - omega_e*(toe + TRANS)
+            X = x*cos(OMEGA_k) - y*sin(OMEGA_k)*cos(i_k)
+            Y = x*sin(OMEGA_k) + y*cos(OMEGA_k)*cos(i_k)
+            Z = y*sin(i_k)
             #Regner ut avstanden mottaker-satellitt
-            dX = (X - xm);
-            dY = (Y - ym);
-            dZ = (Z - zm);
-            DS = sqrt(dX**2 + dY**2 + dZ**2);
+            dX = (X - xm)
+            dY = (Y - ym)
+            dZ = (Z - zm)
+            DS = sqrt(dX**2 + dY**2 + dZ**2)
             #Regner ny verdi for signalets gangtid
-            TRANS0 = DS/c;
+            TRANS0 = DS/c
         
     else:
         #Jordrotasjonen skal ikke utføres
-        OMEGA_k = OMEGA + (OMEGA_dot - omega_e)*t_k - omega_e*toe;
-        X = x*cos(OMEGA_k) - y*sin(OMEGA_k)*cos(i_k);
-        Y = x*sin(OMEGA_k) + y*cos(OMEGA_k)*cos(i_k);
-        Z = y*sin(i_k);
+        OMEGA_k = OMEGA + (OMEGA_dot - omega_e)*t_k - omega_e*toe
+        X = x*cos(OMEGA_k) - y*sin(OMEGA_k)*cos(i_k)
+        Y = x*sin(OMEGA_k) + y*cos(OMEGA_k)*cos(i_k)
+        Z = y*sin(i_k)
         
     return X,Y,Z,dT_rel
 
@@ -447,6 +447,15 @@ def date2Galileotime(year,month,day,hour,minute,seconds):
     
     return week, tow
 
+# year = 2020
+# month = 10
+# day = 30
+# hour = 13
+# minute = 22
+# seconds = 14
+
+# weekG, towG = date2Galileotime(year,month,day,hour,minute,seconds)
+# week,tow = date2gpstime(year,month,day,hour,minute,seconds)
 
 def compute_GLO_coord_from_nav(ephemerides, time_epochs):
     """

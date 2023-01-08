@@ -161,7 +161,7 @@ def read_rinex3_nav(filename, dataframe = None):
         for idx, val in enumerate(line):
             if line[0:2] != ' ' and line[23] != ' ':
                 line = line[:23] + " " + line[23:]
-            if line[idx] == 'e' or line[idx] == 'E':
+            if line[idx] == 'e' or line[idx] == 'E' and idx !=0:
                 line = line[:idx+4] + " " + line[idx+4:]
         
         fl = [el for el in line.split(" ") if el != ""]
@@ -223,6 +223,9 @@ def read_rinex3_nav(filename, dataframe = None):
                     if i == 6 and line.lower().count('e') < 1 and 'E' in sys_PRN: #only one object in last line for Galileo
                         if line[10:20].strip() == '':
                             line = line[:10] +  'nan' + line[10:]
+                    
+                    if i == 6 and 'E' in sys_PRN: #only one object in last line for Galileo, but add nan to get 36 in total
+                        line = line + 'nan'
                         
                     
                     # if i == 6 and line.lower().count('e') == 1:
