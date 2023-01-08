@@ -534,4 +534,3 @@ def combineSP3Nav(three_sp3_files,sat_positions_1, epoch_dates_1, navGNSSsystems
 
     return sat_positions, epoch_dates, navGNSSsystems, nEpochs, epochInterval, success
 
-# sat_pos, epoch_dates, navGNSSsystems, nEpochs, epochInterval,success =readSP3Nav('test3.SP3')

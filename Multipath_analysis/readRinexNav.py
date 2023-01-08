@@ -144,6 +144,9 @@ def read_rinex3_nav(filename, dataframe = None):
         block_arr = np.array([])
         ## -- Read first line of navigation message
         line = filnr.readline().rstrip()
+        # ## --- Replace "E" with "e" i academic notation
+        # line.replace('E+', 'e+')
+        # line.replace('E-', 'e-')
         
         sys_PRN = line[0:3]            
         while 'S' in sys_PRN or 'I' in sys_PRN or 'J' in sys_PRN: ## trying to add GLONASS #PH
@@ -172,7 +175,7 @@ def read_rinex3_nav(filename, dataframe = None):
                 line = filnr.readline().rstrip()
                 ## -- Have to add space between datacolums where theres no whitespace
                 for idx, val in enumerate(line):
-                    if line[idx] == 'e':
+                    if line[idx] == 'e' or line[idx] == 'E':
                         line = line[:idx+4] + " " + line[idx+4:]
     
                 ## --Reads the line vector nl from the text string line and adds navigation 
@@ -187,32 +190,61 @@ def read_rinex3_nav(filename, dataframe = None):
             ## Looping throug the next 7-lines for current message (satellitte) (GPS,Galileo,BeiDou)
             for i in range(0,7):
                 line = filnr.readline().rstrip()
-                ## -- Have to add space between datacolums where theres no whitespace
-                for idx, val in enumerate(line):
-                    if line[idx] == 'e' or line[idx] == 'E':
-                        line = line[:idx+4] + " " + line[idx+4:]
-                
-                ## --Reads the line vector nl from the text string line and adds navigation 
-                # message for the relevant satellite n_sat. It becomes a long line vector 
-                # for the relevant message and satellite.
-                
-                if i == 6 and line.count('e') == 1:
-                    line = line + 'nan'
+                if line == '': #PH 07.01.2023
+                    continue
+                else:
+                    ## -- Have to add space between datacolums where theres no whitespace
+                    for idx, val in enumerate(line):
+                        if line[idx] == 'e' or line[idx] == 'E':
+                            line = line[:idx+4] + " " + line[idx+4:]
                     
-                if i == 4 and 'E' in sys_PRN and line.count('e') < 4:
-                    line = line + 'nan'
-        
-                nl = [el for el in line.split(" ") if el != ""]
-        
-                block_arr = np.append(block_arr,np.array([nl]))
-                block_arr = block_arr.reshape(1,len(block_arr))
+                    ## --Reads the line vector nl from the text string line and adds navigation 
+                    # message for the relevant satellite n_sat. It becomes a long line vector 
+                    # for the relevant message and satellite.
+                    
+                    ## Runs through line to see if each line contains 4 objects. If not, adds nan.
+                    if i < 6 and line.lower().count('e') < 4:
+                        if line[10:20].strip() == '':
+                            line = line[:10] +  'nan' + line[10:]
+                        if line[30:40].strip() == '':
+                            line = line[:30] +  'nan' + line[30:]
+                        if line[50:60].strip() == '':
+                            line = line[:50] +  'nan' + line[50:]
+                        if line[70:80].strip() == '':
+                            line = line[:70] +  'nan' + line[70:]
+                        
+                    
+                    if i == 6 and line.lower().count('e') < 2 and 'E' not in sys_PRN:
+                        if line[10:20].strip() == '':
+                            line = line[:10] +  'nan' + line[10:]
+                        if line[30:40].strip() == '':
+                            line = line[:30] +  'nan' + line[30:]
+                            
+                    if i == 6 and line.lower().count('e') < 1 and 'E' in sys_PRN: #only one object in last line for Galileo
+                        if line[10:20].strip() == '':
+                            line = line[:10] +  'nan' + line[10:]
+                        
+                    
+                    # if i == 6 and line.lower().count('e') == 1:
+                    #     line = line + 'nan'
+                        
+                    # if i == 4 and 'E' in sys_PRN and line.lower().count('e') < 4:
+                    #     line = line + 'nan'
+            
+                    nl = [el for el in line.split(" ") if el != ""]
+            
+                    block_arr = np.append(block_arr,np.array([nl]))
+                    block_arr = block_arr.reshape(1,len(block_arr))
         
     
     
         ## -- Collecting all data into common variable
+        if block_arr.shape[1] > 36:
+            block_arr = block_arr[:,0:36]
         try:
             if np.size(block_arr) != 0 and 'R' not in sys_PRN:
                 data  = np.concatenate([data , block_arr], axis=0)
+                
             elif np.size(block_arr) != 0 and 'R' in sys_PRN:
                 GLO_dum = np.zeros([1,np.size(data,axis=1) - np.size(block_arr,axis=1)])
                 block_arr = np.append(block_arr,GLO_dum) # adding emtpy columns to match size of other systems

@@ -2,7 +2,9 @@ import numpy as np
 from datetime import date
 from numpy import fix
 import math, os 
-
+from tqdm import tqdm
+from Geodetic_functions import date2gpstime
+import time
 
 def readRinexObs304(filename, readSS, readLLI, includeAllGNSSsystems,includeAllObsCodes, \
                     desiredGNSSsystems, desiredObsCodes, desiredObsBands):
@@ -233,14 +235,7 @@ def readRinexObs304(filename, readSS, readLLI, includeAllGNSSsystems,includeAllO
     D+P channels  (BDS)
     --------------------------------------------------------------------------------------------------------------------------
     """
-    import numpy as np
-    from rinexFindNEpochs304 import rinexFindNEpochs304
-    from rinexReadObsFileHeader304 import rinexReadObsFileHeader304
-    from tqdm import tqdm
-    from rinexReadObsBlock304 import rinexReadObsBlock304
-    from kepler2ecef import date2gpstime
-    from rinexReadObsBlockHead304 import rinexReadObsBlockHead304
-    import time
+
     
     
     ## Get the start time

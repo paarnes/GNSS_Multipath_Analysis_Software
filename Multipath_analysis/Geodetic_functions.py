@@ -272,10 +272,15 @@ def Satkoord2(efemerider,t,xm,ym,zm):
     C_is       = efemerider[21]
     toe        = efemerider[18]
     
-    n0  = sqrt(GM/A**3);   #(rad/s)
-    t_k = tow_mot - toe;
-    n_k = n0 + delta_n;   #Koorigert  midlere bevegelse
-    M_k = M0 + n_k*t_k;   #Midlere anomali (rad/s)
+    n0  = sqrt(GM/A**3)   #(rad/s)
+    t_k = tow_mot - toe
+    if t_k > 302400:       ## added this 08.01.2023 from webpage: https://gssc.esa.int/navipedia/index.php/GPS_and_Galileo_Satellite_Coordinates_Computation
+        t_k = t_k - 604800
+    elif t_k < -302400:
+        t_k = t_k + 604800
+    
+    n_k = n0 + delta_n   #Koorigert  midlere bevegelse
+    M_k = M0 + n_k*t_k   #Midlere anomali (rad/s)
     
     
     #Beregner eksentrisk anomali
@@ -423,6 +428,24 @@ def gpstime2date(week, tow):
     return date_
 
 
+def date2Galileotime(year,month,day,hour,minute,seconds):
+    """
+    Computing Galileo-week nr.(integer) and "time-of-week" from year,month,day,hour,min,sec
+    Origin for Galileo-time is 22.08.1999 00:00:00 UTC
+    
+    NOT IN USE FOR THE MOMENT
+    """
+    from datetime import date
+    from numpy import fix
+    
+    t0=date.toordinal(date(1999,8,22))+366
+    t1=date.toordinal(date(year,month,day))+366 
+    week_flt = (t1-t0)/7;
+    week = fix(week_flt);
+    tow_0 = (week_flt-week)*604800;
+    tow = tow_0 + hour*3600 + minute*60 + seconds;
+    
+    return week, tow
 
 
 def compute_GLO_coord_from_nav(ephemerides, time_epochs):

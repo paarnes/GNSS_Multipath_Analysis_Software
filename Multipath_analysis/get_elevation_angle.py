@@ -94,7 +94,7 @@ def get_elevation_angle(sys, PRN, week, tow, sat_positions, nEpochs, epoch_dates
         n = dx_l[1]
         u = dx_l[2]
     
-        # Calculate elevation angle from receiver to satellite
+        # Calculate elevation and azimut angle from receiver to satellite
         if u != np.nan and e != np.nan and n != np.nan:
             elevation_angle = atanc(u, sqrt(e**2 + n**2))*180/pi
             

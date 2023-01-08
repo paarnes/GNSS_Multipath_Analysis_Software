@@ -1,25 +1,29 @@
 import sys,numpy as np
-sys.path.append(r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS\Read_RINEX_OBS')
-sys.path.append(r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS\Read_RINEX_nav')
-sys.path.append(r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS\Kepler2ECEF')
-from read_rinex3_nav import read_rinex3_nav
+from readRinexNav import read_rinex3_nav
 from read_SP3Nav import readSP3Nav
-from kepler2ecef import Satkoord2
-from kepler2ecef import extract_nav_message
-from readRinexObs304 import readRinexObs304
-from compute_GLO_coord_from_nav import compute_GLO_coord_from_nav
-from compute_azimut_elev import compute_azimut_elev
+from Geodetic_functions import *
+from readRinexObs304 import *
 import pandas as pd
 
 def computeSatElevAimut_fromNav(navigationFile,approxPosition,GNSS_SVs,GNSS_obs,time_epochs):
     """
     A function for computing satellite elevations and azimut angles based on
-    broadcasted ephemerides. Support all global navigation systems. 
+    broadcasted ephemerides. Support all global navigation systems.
+    
+    Input:
+        navigationFile: list of navigation files
     """
         
     ##--- Read rinex nav
-    data,header, n_eph = read_rinex3_nav(navigationFile,dataframe='no')
-    
+    # data_,header, n_eph = read_rinex3_nav(navigationFile,dataframe='no')
+    nav_list = [i for i in navigationFile if i is not None] #remove "NONE" if exist in list
+
+    for idx, nav_file in enumerate(nav_list):
+        data_,header, n_eph = read_rinex3_nav(nav_file,dataframe='no')
+        if idx == 0:
+            data = data_
+        else:
+            data = np.append(data,data_,axis=0)
     ### ------- Compute satellite coordiantes in ECEF and compute azimut and elevation angels
     
     ## -- Extracting approx postion from RINEX obs-file
@@ -58,16 +62,26 @@ def computeSatElevAimut_fromNav(navigationFile,approxPosition,GNSS_SVs,GNSS_obs,
         for PRN in aktuelle_sat_list:
             counter = counter + 1
             print("\rCurrently computing coordinates for the %s system. Progress: %.1f%%" %(GNSS_FullName[sys],counter/len(aktuelle_sat_list)*100), end='\r',flush=True)  # \r makes the line get overwritten
-            try:
-                ephemerides = extract_nav_message(curr_data,PRN,t[epoch-1]) # passing curr_data instead to get correct system
-                ephemerides[0] = ephemerides[0][1::] # Removing system letter from number. Ex G10 -> 10
-                ephemerides = ephemerides.astype(float)
-            except:
-                ephemerides = np.nan
-                continue
+
+            # print("\rCurrently computing coordinates for the %s system. Progress: %.1f%%" %(GNSS_FullName[sys],counter/len(aktuelle_sat_list)*100), end='\r',flush=True)  # \r makes the line get overwritten
+            # try:
+            #     ephemerides = extract_nav_message(curr_data,PRN,t[epoch-1]) # passing curr_data instead to get correct system
+            #     ephemerides[0] = ephemerides[0][1::] # Removing system letter from number. Ex G10 -> 10
+            #     ephemerides = ephemerides.astype(float)
+            # except:
+            #     ephemerides = np.nan
+            #     continue
             ## Computing satellite coordinates
-            for i in range(0,len(t)):
+            # for i in range(0,len(t)):
+            for i in np.arange(0,len(t)):
                 curr_time = t[i]
+                try:
+                    ephemerides = extract_nav_message(curr_data,PRN,curr_time) # passing curr_data instead to get correct system
+                    ephemerides[0] = ephemerides[0][1::] # Removing system letter from number. Ex G10 -> 10
+                    ephemerides = ephemerides.astype(float)
+                except:
+                    ephemerides = np.nan
+                    continue
                 if sys != 'R':
                     X[i,PRN], Y[i,PRN], Z[i,PRN],_ = Satkoord2(ephemerides, curr_time, x, y, z)
                 else:
