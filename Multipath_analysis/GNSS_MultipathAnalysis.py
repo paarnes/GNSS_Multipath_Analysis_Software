@@ -12,6 +12,7 @@ from detectClockJumps import detectClockJumps
 from tqdm import tqdm, trange
 from writeOutputFile import writeOutputFile
 from make_polarplot import make_polarplot
+from plotResults import *
 
 def GNSS_MultipathAnalysis(rinObsFilename,
                           broadcastNav1=None,
@@ -755,15 +756,18 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         
     if 'sat_pos' in locals(): # add satellite position,azimut, elevation to analysResults
         analysisResults['Sat_position'] = sat_pos
+    
+
         
     print('\n\nINFO: Analysis complete!')
     ## -- Create output file    
     baseFileName = os.path.basename(rinObsFilename)
     outputFilename = baseFileName.split('.')[0] +   '_Report.txt'
-    
     writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSummary, includeCompactSummary, includeObservationOverview, includeLLIOverview)
     print('INFO: The output file %s has been written.' % (outputFilename))
-    
+    ## -- Make barplot if plotEstimates is True 
+    if plotEstimates:
+        make_barplot(analysisResults,graphDir)
     ## -- Saving the workspace as a binary pickle file ---
     results_name = os.path.join(outputDir, 'analysisResults.pkl')
     f = open(results_name,"wb")

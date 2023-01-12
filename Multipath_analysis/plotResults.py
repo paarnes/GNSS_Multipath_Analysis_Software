@@ -1,58 +1,58 @@
 def plotResults(ion_delay_phase1, multipath_range1, sat_elevation_angles,\
     tInterval, currentGNSSsystem, range1_Code, range2_Code, phase1_Code, phase2_Code, graphDir):
     """
-    # Function that plots the results of estimates of delay on signals. The
-    # following plots are made:
-    #                           ionosphere delay on phase 1 signal vs time
+     Function that plots the results of estimates of delay on signals. The
+     following plots are made:
+                               ionosphere delay on phase 1 signal vs time
     
-    #                           zenit mapped ionosphere delay on phase 1 
-    #                           signal vs time
+                               zenit mapped ionosphere delay on phase 1 
+                               signal vs time
     
-    #                           multipath delay on range 1 signal vs time
+                               multipath delay on range 1 signal vs time
     
-    #                           multipath delay on range 1 signal vs elevation
-    #                           angle
+                               multipath delay on range 1 signal vs elevation
+                               angle
     
-    #                           a combined plot of both multipath plots. This
-    #                           plot is also saved
-    #--------------------------------------------------------------------------------------------------------------------------
-    # INPUTS
+                               a combined plot of both multipath plots. This
+                               plot is also saved
+    --------------------------------------------------------------------------------------------------------------------------
+     INPUTS
     
-    # ion_delay_phase1:     matrix containing estimates of ionospheric delays 
-    #                       on the first phase signal for each PRN, at each epoch.
+     ion_delay_phase1:     matrix containing estimates of ionospheric delays 
+                           on the first phase signal for each PRN, at each epoch.
     
-    #                       ion_delay_phase1(epoch, PRN)
+                           ion_delay_phase1(epoch, PRN)
     
-    # multipath_range1:     matrix containing estimates of multipath delays 
-    #                       on the first range signal for each PRN, at each epoch.
+     multipath_range1:     matrix containing estimates of multipath delays 
+                           on the first range signal for each PRN, at each epoch.
     
-    #                       multipath_range1(epoch, PRN)
+                           multipath_range1(epoch, PRN)
     
-    # sat_elevation_angles: Array contaning satellite elevation angles at each
-    #                       epoch, for current GNSS system. 
+     sat_elevation_angles: Array contaning satellite elevation angles at each
+                           epoch, for current GNSS system. 
     
-    #                       sat_elevation_angles(epoch, PRN)
+                           sat_elevation_angles(epoch, PRN)
     
-    # tInterval:            observations interval; seconds. 
+     tInterval:            observations interval; seconds. 
     
-    # currentGNSSsystem:    string containing code for current GNSS system,
-    #                       ex. "G" or "E"
+     currentGNSSsystem:    string containing code for current GNSS system,
+                           ex. "G" or "E"
     
-    # range1_Code:          string, defines the observation type that will be 
-    #                       used as the first range observation. ex. "C1X", "C5X"    
+     range1_Code:          string, defines the observation type that will be 
+                           used as the first range observation. ex. "C1X", "C5X"    
     
-    # range2_Code:          string, defines the observation type that will be 
-    #                       used as the second range observation. ex. "C1X", "C5X"
+     range2_Code:          string, defines the observation type that will be 
+                           used as the second range observation. ex. "C1X", "C5X"
     
-    # phase1_Code:          string, defines the observation type that will be 
-    #                       used as the first phase observation. ex. "L1X", "L5X"
+     phase1_Code:          string, defines the observation type that will be 
+                           used as the first phase observation. ex. "L1X", "L5X"
     
-    # phase2_Code:          string, defines the observation type that will be 
-    #                       used as the second phase observation. ex. "L1X", "L5X"
+     phase2_Code:          string, defines the observation type that will be 
+                           used as the second phase observation. ex. "L1X", "L5X"
     
-    # graphDir:             string. Gives path to where figure the combined
-    #                       multipath figure should be saved.
-    #--------------------------------------------------------------------------------------------------------------------------
+     graphDir:             string. Gives path to where figure the combined
+                           multipath figure should be saved.
+    --------------------------------------------------------------------------------------------------------------------------
     """
     import matplotlib.pyplot as plt
     import matplotlib
@@ -65,9 +65,7 @@ def plotResults(ion_delay_phase1, multipath_range1, sat_elevation_angles,\
     rc('font',**{'family':'serif','serif':['Computer Modern Roman']})
     rc('text', usetex=True)
     plt.rc('figure', figsize=(14, 9),dpi = 170)
-    # plt.rcParams['axes.facecolor'] = (0.95294, 0.92157, 0.87058)
-    # graphDir = r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS\Multipath_analysis' #FJERN!!!
-    
+
     ## -- Map mapping GNSS system code to full name
     GNSSsystemName_map = dict(zip(['G', 'R', 'E', 'C'], ['GPS', 'GLONASS', 'Galileo', 'BeiDou']))
     GNSSsystemName = GNSSsystemName_map[currentGNSSsystem]
@@ -181,17 +179,10 @@ def plotResults(ion_delay_phase1, multipath_range1, sat_elevation_angles,\
 
 
     ## ----- Plot multipath delay on range 1 signal vs elevation angles -----
-    """
-    SJEKK UT HVORFOR FØRSTE OG SISTE OPS ER NAN FOR SATELITTE ELEVASJONVINKENELE
-    """
     excluded_PRN = []
     fig4, ax4 = plt.subplots(nrows=1, ncols=1,sharex=True, squeeze=True,figsize=(16,9),dpi=170)
     fig4.subplots_adjust(left=0.07, bottom=0.1, right=0.78, top=None, wspace=None, hspace=None)
     
-    # sat_elevation_angles = sat_elevation_angles[1:-1,:] ## DETTE MÅ FJERNES. FINN UT HVORFOR LENGDEN IKKE STEMMER! MANGLER TO EPOKER i sat_elevation_angles
-    # multipath_range1 = multipath_range1[1:-1,:] ## DETTE MÅ FJERNES. FINN UT HVORFOR LENGDEN IKKE STEMMER! MANGLER TO EPOKER i sat_elevation_angles
-    # t = t[1:-1] # Matlab er det null der hvor de ikke er satellitt.
-   
     for PRN in range(1,m):
         epoch_missing_sat_ele = np.where(np.isnan(sat_elevation_angles[:,PRN]))
         multipath_range1[epoch_missing_sat_ele,PRN] = np.nan
@@ -371,4 +362,117 @@ def plotResults(ion_delay_phase1, multipath_range1, sat_elevation_angles,\
     fig6.savefig(graphDir + "/" +  fig6_name,bbox_inches='tight')
     plt.close()
 
+    return
+
+
+def make_barplot(analysisResults,graphDir):
+    """
+    Function that takes in the dictionary containing the results from the
+    analysis and makes a bar plot of the RMS values. Both weighted and unweigted.
+    Saves them as a pdf. If all system are used, all plot will be gathered in one 
+    subplot. Else one plot for each system. 
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np, os
+    
+    current_systems = analysisResults['GNSSsystems'] # Extracting the system used in the analysis
+    if len(current_systems) == 4:
+        max_MP = []
+        fig, ax = plt.subplots(nrows=2, ncols=2,sharex=False,figsize=(18,12),dpi = 100)
+        fig.subplots_adjust(left=0.082, bottom=0.08, right=0.887, top=0.93, wspace=None, hspace=0.2)
+        for idx,sys in enumerate(current_systems):
+            if idx == 0:
+                row_idx = 0
+                col_idx = 0
+            elif idx == 1:
+                row_idx = 0
+                col_idx = 1
+            elif idx == 2:
+                row_idx = 1
+                col_idx = 0
+            elif idx == 3:
+                row_idx = 1
+                col_idx = 1
+            data_elw_rms = []
+            data_rms = []
+            data_codes = []
+            bands_curr_sys = analysisResults[sys]['Bands']
+            for band in bands_curr_sys:
+                codes_curr_sys = analysisResults[sys][band]['Codes']
+                codes_curr_sys = [ele for ele in codes_curr_sys if ele != []] # removing empty list if exist
+                for code in codes_curr_sys:
+                    elweight_rms_MP = analysisResults[sys][band][code]['elevation_weighted_average_rms_multipath_range1']
+                    rms_MP = analysisResults[sys][band][code]['rms_multipath_range1_averaged']
+                    data_rms.append(rms_MP)
+                    data_elw_rms.append(elweight_rms_MP)
+                    data_codes.append(code)
+            # creating the bar plot
+            max_MP.append(max(data_rms + data_elw_rms))
+            width = 0.35  # the width of the bars
+            x = np.arange(len(data_codes))  # the label locations
+            rects1 = ax[row_idx,col_idx].bar(x - width/2, data_rms, width, label='RMS')
+            rects2 = ax[row_idx,col_idx].bar(x + width/2, data_elw_rms, width, label='RMS (weighted)')
+            # Add some text for labels, title and custom x-axis tick labels, etc.
+            ax[row_idx,col_idx].set_ylabel('RMS [m]',fontsize=18,labelpad=20)
+            ax[row_idx,col_idx].set_title('RMS values for the multipath effect (%s)' %(sys),fontsize=24)
+            ax[row_idx,col_idx].set_xticks(x)
+            ax[row_idx,col_idx].set_xticklabels(data_codes)
+            ax[row_idx,col_idx].locator_params(tight=True, nbins=12)
+            ax[row_idx,col_idx].legend(fontsize=15,fancybox=True, shadow=True)
+            ax[row_idx,col_idx].tick_params(axis='both', labelsize= 15)
+            ax[row_idx,col_idx].grid(color='grey', linestyle='-', linewidth=0.3)
+        plt.setp(ax,ylim=(0,max(max_MP)+0.08))
+        # plt.show()
+        # fig.savefig('Barplot_RMS.png', dpi=300, orientation='landscape')
+        fig.savefig('Barplot_RMS_all.pdf', orientation='landscape',bbox_inches='tight')
+    else:
+        ## first find max value of RMS
+        max_MP = []
+        for idx,sys in enumerate(current_systems):
+            data_elw_rms = []
+            data_rms = []
+            bands_curr_sys = analysisResults[sys]['Bands']
+            for band in bands_curr_sys:
+                codes_curr_sys = [ele for ele in analysisResults[sys][band]['Codes'] if ele != []] # removing empty list if exist
+                for code in codes_curr_sys:
+                    elweight_rms_MP = analysisResults[sys][band][code]['elevation_weighted_average_rms_multipath_range1']
+                    rms_MP = analysisResults[sys][band][code]['rms_multipath_range1_averaged']
+                    data_rms.append(rms_MP)
+            max_MP.append(max(data_rms + data_elw_rms))
+        ## then do the plotting
+        for idx,sys in enumerate(current_systems):
+            data_elw_rms = []
+            data_rms = []
+            data_codes = []
+            bands_curr_sys = analysisResults[sys]['Bands']
+            fig, ax = plt.subplots(nrows=1, ncols=1,sharex=False,figsize=(18,12),dpi = 150)
+            fig.subplots_adjust(left=0.082, bottom=0.08, right=0.887, top=0.93, wspace=None, hspace=0.2)
+            for band in bands_curr_sys:
+                codes_curr_sys = analysisResults[sys][band]['Codes']
+                codes_curr_sys = [ele for ele in codes_curr_sys if ele != []] # removing empty list if exist
+                for code in codes_curr_sys:
+                    elweight_rms_MP = analysisResults[sys][band][code]['elevation_weighted_average_rms_multipath_range1']
+                    rms_MP = analysisResults[sys][band][code]['rms_multipath_range1_averaged']
+                    data_rms.append(rms_MP)
+                    data_elw_rms.append(elweight_rms_MP)
+                    data_codes.append(code)
+            # creating the bar plot
+            width = 0.35  # the width of the bars
+            x = np.arange(len(data_codes))  # the label locations
+            rects1 = ax.bar(x - width/2, data_rms, width, label='RMS')
+            rects2 = ax.bar(x + width/2, data_elw_rms, width, label='RMS (weighted)')
+            ax.set_ylabel('RMS [m]',fontsize=18,labelpad=20)
+            ax.set_title('RMS values for the multipath effect (%s)' %(sys),fontsize=24)
+            ax.set_xticks(x); ax.set_xticklabels(data_codes)
+            ax.locator_params(tight=True, nbins=12)
+            ax.legend(fontsize=15,fancybox=True, shadow=True)
+            ax.tick_params(axis='both', labelsize= 15)
+            ax.grid(color='grey', linestyle='-', linewidth=0.3)
+            plt.setp(ax,ylim=(0,max(max_MP)+0.08))
+            # plt.show()
+            # fig.savefig('Barplot_RMS.png', dpi=300, orientation='landscape')
+            fileName = 'Barplot_RMS_%s.pdf' % (sys)
+            file_path = os.path.join(graphDir, fileName) 
+            fig.savefig(file_path, orientation='landscape',bbox_inches='tight')    
+    
     return

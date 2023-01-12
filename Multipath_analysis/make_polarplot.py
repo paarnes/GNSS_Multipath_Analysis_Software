@@ -38,8 +38,9 @@ def make_polarplot(multipath,sat_elevation,sat_azimut,GNSSsystemName,range1_code
     color = np.arange(1,0,-0.1)
     color = color.reshape(len(color),1)
     pc = ax.imshow(color,cmap = cmap,vmin = vmin, vmax = vmax,data = multipath, origin='upper', extent=[0,0,0,0])
-    cbar = fig.colorbar(pc, ax=ax, orientation='vertical',cmap = cmap,shrink=0.55,pad=.04,aspect=15)
-    
+    # cbar = fig.colorbar(pc, ax=ax, orientation='vertical',cmap = cmap,shrink=0.55,pad=.04,aspect=15)
+    cbar = fig.colorbar(pc, ax=ax, orientation='vertical',shrink=0.55,pad=.04,aspect=15) #removed cmap due to warning 10.01.2023
+
     cbar.ax.set_title('MP[m]',fontsize=18,pad=15)
     cbar.ax.tick_params(labelsize=18) 
         

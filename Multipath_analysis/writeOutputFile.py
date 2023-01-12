@@ -7,13 +7,6 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
     """
     import os, numpy as np
     
-    # if isempty(outputDir)
-    #     outputDir = 'Outputs_Files';
-    # end
-    
-    # if ~exist(outputDir, 'dir')
-    #     mkdir(outputDir)
-    # end
     
     if outputDir is None:
         outputDir = 'Outputs_Files'
