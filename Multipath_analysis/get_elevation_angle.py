@@ -1,3 +1,5 @@
+from Geodetic_functions import *
+
 def get_elevation_angle(sys, PRN, week, tow, sat_positions, nEpochs, epoch_dates, epochInterval, navGNSSsystems, x_e):
     """
     Calculates elevation angle of a satelite with specified PRN at specified
@@ -48,8 +50,8 @@ def get_elevation_angle(sys, PRN, week, tow, sat_positions, nEpochs, epoch_dates
     --------------------------------------------------------------------------------------------------------------------------
     """
     import numpy as np 
-    from math import sqrt,sin,cos,tan,pi,atan,atan2,asin
-    from numpy import fix,log,fmod,arctan,arctan2
+    # from math import sqrt,sin,cos,tan,pi,atan,atan2,asin
+    from numpy import fix,log,fmod,arctan,arctan2,sqrt
     from get_elevation_angle import ECEF2enu
     from gpstime2date import gpstime2date
     from preciseOrbits2ECEF import preciseOrbits2ECEF
@@ -95,16 +97,17 @@ def get_elevation_angle(sys, PRN, week, tow, sat_positions, nEpochs, epoch_dates
         u = dx_l[2]
     
         # Calculate elevation and azimut angle from receiver to satellite
-        if u != np.nan and e != np.nan and n != np.nan:
+        # if u != np.nan and e != np.nan and n != np.nan:
+        if not np.isnan(u) and not np.isnan(e) and not np.isnan(n):
             elevation_angle = atanc(u, sqrt(e**2 + n**2))*180/pi
             
             # Azimut computation and quadrant correction 
             if (e> 0 and n< 0) or (e < 0 and n < 0):
-                azimut_angle = (atan(e/n)*(180/pi) + 180)
+                azimut_angle = (arctan(e/n)*(180/pi) + 180)
             elif e < 0 and n > 0:
-                azimut_angle = (atan(e/n)*(180/pi) + 360)
+                azimut_angle = (arctan(e/n)*(180/pi) + 360)
             else:
-                azimut_angle = (atan(e/n)*(180/pi))
+                azimut_angle = (arctan(e/n)*(180/pi))
 
         else:
             elevation_angle = np.nan
@@ -116,90 +119,98 @@ def get_elevation_angle(sys, PRN, week, tow, sat_positions, nEpochs, epoch_dates
 
 
 
-def ECEF2geodb(a,b,X,Y,Z):
-    '''
-    Konverter fra kartesiske ECEF-koordinater til geodetiske koordinater vha Bowrings metode.
+# def ECEF2geodb(a,b,X,Y,Z):
+#     '''
+#     Konverter fra kartesiske ECEF-koordinater til geodetiske koordinater vha Bowrings metode.
 
-    Parameters
-    ----------
-    a : Store halvakse
-    b : Lille halvakse
-    X : X-koordinat
-    Y : Y-koordinat
-    Z : Z-koordinat
+#     Parameters
+#     ----------
+#     a : Store halvakse
+#     b : Lille halvakse
+#     X : X-koordinat
+#     Y : Y-koordinat
+#     Z : Z-koordinat
 
-    Returns
-    -------
-    lat : Breddegrad
-    lon : Lengdegrad
-    h :   Høyde
+#     Returns
+#     -------
+#     lat : Breddegrad
+#     lon : Lengdegrad
+#     h :   Høyde
 
-    '''
-    import numpy as np 
-    from math import sqrt,sin,cos,tan,pi,atan,atan2,asin
-    from numpy import fix,log,fmod,arctan,arctan2
-    from get_elevation_angle import Nrad
+#     '''
+#     import numpy as np 
+#     from math import sqrt,sin,cos,tan,pi,atan,atan2,asin
+#     from numpy import fix,log,fmod,arctan,arctan2
+#     from get_elevation_angle import Nrad
     
-    e2m = (a**2 - b**2)/b**2
-    e2  = (a**2 - b**2)/a**2
-    rho = sqrt(X**2 +Y**2)
-    my  = atan((Z*a)/(rho*b))
-    lat = atan(( Z +e2m*b*(sin(my))**3)/(rho - e2*a*(cos(my))**3))
-    lon = atan(Y/X)
-    N   = Nrad(a,b,lat)
-    h   = rho*cos(lat) + Z*sin(lat) - N*( 1 - e2*(sin(lat))**2)
-    return lat, lon, h
+#     e2m = (a**2 - b**2)/b**2
+#     e2  = (a**2 - b**2)/a**2
+#     rho = sqrt(X**2 +Y**2)
+#     my  = atan((Z*a)/(rho*b))
+#     lat = atan(( Z +e2m*b*(sin(my))**3)/(rho - e2*a*(cos(my))**3))
+#     lon = atan(Y/X)
+#     N   = Nrad(a,b,lat)
+#     h   = rho*cos(lat) + Z*sin(lat) - N*( 1 - e2*(sin(lat))**2)
+#     return lat, lon, h
 
 
-def ECEF2enu(lat,lon,dX,dY,dZ):
-    """
-    Konverterer fra ECEF til lokaltoposentrisk koordinatsystem ENU.
-    """
-    import numpy as np 
-    from math import sqrt,sin,cos,tan,pi,atan,atan2,asin
-    from numpy import fix,log,fmod,arctan,arctan2,array
-    dP_ECEF = array([dX, dY, dZ]).reshape((3,1))
+# def ECEF2enu(lat,lon,dX,dY,dZ):
+#     """
+#     Konverterer fra ECEF til lokaltoposentrisk koordinatsystem ENU.
+#     """
+#     import numpy as np 
+#     from math import sqrt,sin,cos,tan,pi,atan,atan2,asin
+#     from numpy import fix,log,fmod,arctan,arctan2,array
+#     dP_ECEF = array([dX, dY, dZ]).reshape((3,1))
     
-    M = array([[-sin(lon), cos(lon), 0], 
-        [-sin(lat)*cos(lon), -sin(lat)*sin(lon), cos(lat)], 
-        [cos(lat)*cos(lon), cos(lat)*sin(lon), sin(lat)]])
+#     M = array([[-sin(lon), cos(lon), 0], 
+#         [-sin(lat)*cos(lon), -sin(lat)*sin(lon), cos(lat)], 
+#         [cos(lat)*cos(lon), cos(lat)*sin(lon), sin(lat)]])
     
-    dP_ENU = M @ dP_ECEF
+#     dP_ENU = M @ dP_ECEF
     
-    e = float(dP_ENU[0]) 
-    n = float(dP_ENU[1])
-    u = float(dP_ENU[2])
-    return dP_ENU
+#     e = float(dP_ENU[0]) 
+#     n = float(dP_ENU[1])
+#     u = float(dP_ENU[2])
+#     return dP_ENU
 
 
-def atanc(y,x):
-    import numpy as np 
-    from math import sqrt,sin,cos,tan,pi,atan,atan2,asin
-    from numpy import fix,log,fmod,arctan,arctan2
-    z=atan2(y,x)
-    atanc=fmod(2*pi + z, 2*pi)
-    return atanc
+# def atanc(y,x):
+#     import numpy as np 
+#     from math import sqrt,sin,cos,tan,pi,atan,atan2,asin
+#     from numpy import fix,log,fmod,arctan,arctan2
+#     z=atan2(y,x)
+#     atanc=fmod(2*pi + z, 2*pi)
+#     return atanc
 
-def Nrad(a,b,lat):
-    '''
-    Funksjonen beregner Normalkrumningsradiusen for den gitte breddegraden. På engelsk
-    "Earth's prime-vertical radius of curvature", eller "The Earth's transverse radius of curvature".
-    Den står ortogonalt på M (meridiankrumningsradiusen) for den gitte breddegraden. Dvs øst-vest. 
 
-    Parameters
-    ----------
-    a : Store halvakse
-    b : Lille halvakse
-    lat : Breddegrad
 
-    Returns
-    -------
-    N : Normalkrumningsradiusen
+# def atanc(y,x): 
+#     from numpy import fmod,arctan2,pi
+#     z=arctan2(y,x)
+#     atanc=fmod(2*pi + z, 2*pi)
+#     return atanc
 
-    '''
-    import numpy as np 
-    from math import sqrt,sin,cos,tan,pi,atan,atan2,asin
-    from numpy import fix,log,fmod,arctan,arctan2
-    e2 = (a**2 - b**2)/a**2
-    N = a/(1 - e2*sin(lat)**2)**(1/2)
-    return N
+# def Nrad(a,b,lat):
+#     '''
+#     Funksjonen beregner Normalkrumningsradiusen for den gitte breddegraden. På engelsk
+#     "Earth's prime-vertical radius of curvature", eller "The Earth's transverse radius of curvature".
+#     Den står ortogonalt på M (meridiankrumningsradiusen) for den gitte breddegraden. Dvs øst-vest. 
+
+#     Parameters
+#     ----------
+#     a : Store halvakse
+#     b : Lille halvakse
+#     lat : Breddegrad
+
+#     Returns
+#     -------
+#     N : Normalkrumningsradiusen
+
+#     '''
+#     import numpy as np 
+#     from math import sqrt,sin,cos,tan,pi,atan,atan2,asin
+#     from numpy import fix,log,fmod,arctan,arctan2
+#     e2 = (a**2 - b**2)/a**2
+#     N = a/(1 - e2*sin(lat)**2)**(1/2)
+#     return N

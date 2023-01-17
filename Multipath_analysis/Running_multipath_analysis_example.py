@@ -14,11 +14,13 @@ full_path_ouputdir = os.path.join(base_path, relpath_to_outputdir)
 ## -----  Defining input data --------
 
 ## Rinex observation file
-rinObsFilename = full_path_testdata  + '/ObservationFiles/' + 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04.rnx'
+# rinObsFilename = full_path_testdata  + '/ObservationFiles/' + 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04.rnx'
+rinObsFilename = full_path_testdata  + '/ObservationFiles/' + 'OPEC00NOR_S_20220010000_01D_30S_CONV.rnx'
 # rinObsFilename = r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS\Multipath_analysis/NMBUS_SAMSUNG_S20.20o'
 
 
 ## SP3 files
+# sp3NavFilename_1 = full_path_testdata  + '/SP3/' + 'samsung2.SP3'
 sp3NavFilename_1 = full_path_testdata  + '/SP3/' + 'test1.eph'
 sp3NavFilename_2 = full_path_testdata  + '/SP3/' + 'test2.SP3'
 sp3NavFilename_3 = full_path_testdata  + '/SP3/' + 'test3.SP3'
@@ -29,7 +31,7 @@ broadcastNav2 =  full_path_testdata  + '/NavigationFiles/' + 'OPEC00NOR_S_202200
 broadcastNav3 =  full_path_testdata  + '/NavigationFiles/' + 'OPEC00NOR_S_20220010000_01D_EN.rnx'
 broadcastNav4 =  full_path_testdata  + '/NavigationFiles/' + 'OPEC00NOR_S_20220010000_01D_CN.rnx'
 
-# broadcastNav1 =  full_path_testdata  + '/NavigationFiles/' + 'BRDC00IGS_R_20220010000_01D_MN.rnx'
+broadcastNav1 =  full_path_testdata  + '/NavigationFiles/' + 'BRDC00IGS_R_20220010000_01D_MN.rnx'
 
 ## Broadcast ephemerides
 # broadcastNav1 =  full_path_testdata  + '/NavigationFiles/' + 'OPEC00NOR_S_20220010000_01D_GN.rnx'
@@ -46,12 +48,13 @@ broadcastNav4 =  full_path_testdata  + '/NavigationFiles/' + 'OPEC00NOR_S_202200
 
 
 analysisResults = GNSS_MultipathAnalysis(rinObsFilename,
-                                         desiredGNSSsystems=['G'],
+                                          desiredGNSSsystems=['G'],
                                           broadcastNav1=broadcastNav1
                                           )
 
 
-# analysisResults = GNSS_MultipathAnalysis(rinObsFilename, 
+# analysisResults = GNSS_MultipathAnalysis(rinObsFilename,
+#                                           desiredGNSSsystems=['G'],
 #                                           sp3NavFilename_1=sp3NavFilename_1
 #                                           )
 

@@ -1,8 +1,9 @@
-from math import sqrt,sin,cos,tan,pi,atan,atan2,asin
-from numpy import fix,array,log,fmod,arctan,arctan2
-import datetime
+# from math import sqrt,sin,cos,tan,pi,atan,atan2,asin
+from numpy import fix,array,log,fmod,arctan,arctan2,arcsin,sqrt,sin,cos,pi
+# import datetime
 import numpy as np
 import pandas as pd
+from datetime import datetime,timedelta
 
 
 
@@ -28,9 +29,9 @@ def ECEF2geodb(a,b,X,Y,Z):
     e2m = (a**2 - b**2)/b**2
     e2  = (a**2 - b**2)/a**2
     rho = sqrt(X**2 +Y**2)
-    my  = atan((Z*a)/(rho*b))
-    lat = atan(( Z +e2m*b*(sin(my))**3)/(rho - e2*a*(cos(my))**3))
-    lon = atan(Y/X)
+    my  = arctan((Z*a)/(rho*b))
+    lat = arctan(( Z +e2m*b*(sin(my))**3)/(rho - e2*a*(cos(my))**3))
+    lon = arctan(Y/X)
     N   = Nrad(a,b,lat)
     h   = rho*cos(lat) + Z*sin(lat) - N*( 1 - e2*(sin(lat))**2)
     return lat, lon, h
@@ -101,15 +102,14 @@ def compute_azimut_elev(X,Y,Z,xm,ym,zm):
     az: Azimut in degrees
     elev: Elevation angel in degrees
     """
-    from math import sin,cos,tan,asin,acos,atan,pi
+    # from math import sin,cos,tan,asin,acos,atan,pi
     import numpy as np
+    from numpy import arctan,arcsin,pi,sqrt
 
     ## -- WGS 84 datumsparametre:
     a   =  6378137.0         # store halvakse
-    b   =  6356752.314245   # lille halvakse
-    f   =  (a -b)/a         # flattrykning
-    e2  = (a**2 - b**2)/a**2   # eksentrisitet
-    
+    b   =  6356752.314245    # lille halvakse
+
     ## -- Beregner bredde og lengdegrad til mottakeren:
     lat,lon,h = ECEF2geodb(a,b,xm,ym,zm)
     
@@ -124,15 +124,16 @@ def compute_azimut_elev(X,Y,Z,xm,ym,zm):
         east,north,up = ECEF2enu(lat,lon,dX,dY,dZ)
         ## -- Computes the azimut angle and elevation angel for current coordinates (in degrees)
         if (east > 0 and north < 0) or (east < 0 and north < 0):
-            az = (atan(east/north)*(180/pi) + 180)
+            az = (arctan(east/north)*(180/pi) + 180)
         elif east < 0 and north > 0:
-           az = atan(east/north)*(180/pi) + 360
+            az = arctan(east/north)*(180/pi) + 360
         else:
-            az = atan(east/north)*(180/pi)
-        elev = asin(up/(sqrt(east**2 + north**2 + up**2)))*(180/pi)
+            az = arctan(east/north)*(180/pi)
+        # elev = arcsin(up/(sqrt(east**2 + north**2 + up**2)))*(180/pi)
+        elev = atanc(up, sqrt(east**2 + north**2))*180/pi
     else:
         east = np.array([]); north = np.array([]); up = np.array([])
-        for i in range(0,len(dX)):    
+        for i in np.arange(0,len(dX)):    
             east_,north_,up_ = ECEF2enu(lat,lon,dX[i],dY[i],dZ[i])
             east = np.append(east,east_)
             north = np.append(north,north_)
@@ -140,38 +141,58 @@ def compute_azimut_elev(X,Y,Z,xm,ym,zm):
       
         ## -- Computes the azimut angle and elevation angel for list  coordinates (in degrees)
         az = []; elev = []
-        for p in range(0,len(dX)):
-            # Kvadrantkorreksjon 
+        for p in np.arange(0,len(dX)):
+            # # Kvadrantkorreksjon 
             if (east[p]> 0 and north[p]< 0) or (east[p] < 0 and north[p] < 0):
-                az.append(atan(east[p]/north[p])*(180/pi) + 180)
+                az.append(arctan(east[p]/north[p])*(180/pi) + 180)
             elif east[p] < 0 and north[p] > 0:
-               az.append(atan(east[p]/north[p])*(180/pi) + 360)
+                az.append(arctan(east[p]/north[p])*(180/pi) + 360)
             else:
-                az.append(atan(east[p]/north[p])*(180/pi))
-            elev.append(asin(up[p]/(sqrt(east[p]**2 + north[p]**2 + up[p]**2)))*(180/pi)) 
+                az.append(arctan(east[p]/north[p])*(180/pi))
+            # elev.append(arcsin(up[p]/(sqrt(east[p]**2 + north[p]**2 + up[p]**2)))*(180/pi))
+            elev.append(atanc(up, sqrt(east**2 + north**2))*180/pi) 
 
     return az,elev
 
 
+def atanc(y,x): 
+    z=arctan2(y,x)
+    atanc=fmod(2*pi + z, 2*pi)
+    return atanc
 
-def date2gpstime(year,month,day,hour,minute,seconds):
+
+# def date2gpstime(year,month,day,hour,minute,seconds):
+#     """
+#     Computing GPS-week nr.(integer) and "time-of-week" from year,month,day,hour,min,sec
+#     Origin for GPS-time is 06.01.1980 00:00:00 UTC
+#     """
+#     from datetime import date
+#     from numpy import fix
+    
+#     t0=date.toordinal(date(1980,1,6))+366
+#     t1=date.toordinal(date(year,month,day))+366 
+#     week_flt = (t1-t0)/7;
+#     week = fix(week_flt);
+#     tow_0 = (week_flt-week)*604800;
+#     tow = tow_0 + hour*3600 + minute*60 + seconds;
+    
+#     return week, tow
+
+
+
+def date2gpstime(year, month, day, hour, minute, seconds):
     """
     Computing GPS-week nr.(integer) and "time-of-week" from year,month,day,hour,min,sec
     Origin for GPS-time is 06.01.1980 00:00:00 UTC
     """
-    from datetime import date
-    from numpy import fix
-    
-    t0=date.toordinal(date(1980,1,6))+366
-    t1=date.toordinal(date(year,month,day))+366 
-    week_flt = (t1-t0)/7;
-    week = fix(week_flt);
-    tow_0 = (week_flt-week)*604800;
-    tow = tow_0 + hour*3600 + minute*60 + seconds;
-    
-    return week, tow
+    origin = datetime(1980, 1, 6, 0, 0, 0)
+    current_time = datetime(year, month, day, hour, minute, seconds)
+    time_diff = current_time - origin
+    weeks, tow = divmod(time_diff.days * 86400 + time_diff.seconds, 604800)
+    return weeks, tow
 
 # week, tow = date2gpstime(2022,11,5,9,45,00)
+
 
 def extract_nav_message(data,PRN,tidspunkt):
     """
@@ -188,11 +209,11 @@ def gathering_sat_by_PRN(data,PRN):
     Funksjonen bruker rinex-data i form av array ordnet ved funksjonen read_rinex2_nav
     """
     import numpy as np
-    j = 0;
+    j = 0
     m = len(data) # kanskje m = len(data[0]) for å få ant col 
     # Sat_data = np.array(np.empty)
     Sat_data  = np.zeros((1,36))
-    for k in range(0,m):
+    for k in np.arange(0,m):
         PRN_ = np.array([])
         
         if len(data[k,0]) == 3: # RINEX v3 navfiles have letters in addition. EX: G01.
@@ -217,26 +238,34 @@ def gathering_sat_by_PRN(data,PRN):
     return Sat_data
 
 
-def find_message_closest_in_time(data,tow_mot):
+# def find_message_closest_in_time(data,tow_mot):
+#     """
+#     Funksjonen plukker ut den linjen i et datasett som ligg nærmest tidspunktet vi ønsker i bestemme koordinatene for. 
+#     """
+#     towSat = [] # Tom liste for å lagre tidspunktene
+#     length = len(data)
+#     towSat = np.array([])
+#     for i in np.arange(0,length):
+#         week, tow = date2gpstime(2000 + int(data[i,1]), int(data[i,2]), int(data[i,3]), int(data[i,4]), int(data[i,5]), int(data[i,6]))
+#         towSat = np.append(towSat,tow)
+#     # Finner verdien som ligger nærmest
+#     # index = int(min(abs(tow_mot - towSat)))
+#     index = np.abs(tow_mot - towSat).argmin()
+#     GNSS_linjer = data[index,:]   
+    
+#     return GNSS_linjer
+
+
+def find_message_closest_in_time(data, tow_mot):
     """
     Funksjonen plukker ut den linjen i et datasett som ligg nærmest tidspunktet vi ønsker i bestemme koordinatene for. 
     """
-    import numpy as np
-    towSat = [] # Tom liste for å lagre tidspunktene
-    length = len(data)
-    towSat = np.array([])
-    for i in range(0,length):
-        week, tow = date2gpstime(2000 + int(data[i,1]), int(data[i,2]), int(data[i,3]), int(data[i,4]), int(data[i,5]), int(data[i,6]))
-        towSat = np.append(towSat,tow)
-    # Finner verdien som ligger nærmest
-    # index = int(min(abs(tow_mot - towSat)))
-    index = np.abs(tow_mot - towSat).argmin()
+    # Using np.vectorize to apply date2gpstime function on all rows of data
+    week, tow = np.vectorize(date2gpstime)(2000 + data[:,1], data[:,2], data[:,3], data[:,4], data[:,5], data[:,6])
+    # Finding index of closest time-of-week
+    index = np.abs(tow_mot - tow).argmin()
     GNSS_linjer = data[index,:]   
-    
     return GNSS_linjer
-
-
-
 
 
 def Satkoord2(efemerider,t,xm,ym,zm):
@@ -244,8 +273,8 @@ def Satkoord2(efemerider,t,xm,ym,zm):
     Funksjonen beregner satellittkordinater og korrigerer for jordrotasjonen. Fra keplerelemtenter til ECEF.
     """
     
-    from numpy import sqrt,pi, fmod,cos, sin, tan
-    from math import atan
+    from numpy import sqrt,pi, fmod,cos, sin, tan, arctan, arange
+    # from math import atan
     
     
     GM         = 3.986005e14      # Produktet av jordas masse og gravitasjonskonstanten
@@ -274,10 +303,10 @@ def Satkoord2(efemerider,t,xm,ym,zm):
     
     n0  = sqrt(GM/A**3)   #(rad/s)
     t_k = tow_mot - toe
-    if t_k > 302400:       ## added this 08.01.2023 from webpage: https://gssc.esa.int/navipedia/index.php/GPS_and_Galileo_Satellite_Coordinates_Computation
-        t_k = t_k - 604800
-    elif t_k < -302400:
-        t_k = t_k + 604800
+    # if t_k > 302400:       ## added this 08.01.2023 from webpage: https://gssc.esa.int/navipedia/index.php/GPS_and_Galileo_Satellite_Coordinates_Computation
+    #     t_k = t_k - 604800
+    # elif t_k < -302400:
+    #     t_k = t_k + 604800
     
     n_k = n0 + delta_n   #Koorigert  midlere bevegelse
     M_k = M0 + n_k*t_k   #Midlere anomali (rad/s)
@@ -285,14 +314,14 @@ def Satkoord2(efemerider,t,xm,ym,zm):
     
     #Beregner eksentrisk anomali
     E_old = M_k;
-    for i in range(0,10):
+    for i in arange(0,10):
         E = M_k+ e*sin(E_old);
         dE = fmod(E - E_old, 2*pi)
         if abs(dE) < 1.e-12:
            break
         E_old = E
         
-    E      = fmod(E+2*pi,2*pi);
+    E = fmod(E+2*pi,2*pi);
     
     cosv = (cos(E) - e)/(1 - e*cos(E));
     sinv = (sqrt(1 - e**2)*sin(E))/(1-e*cos(E))
@@ -300,11 +329,11 @@ def Satkoord2(efemerider,t,xm,ym,zm):
     
     ## -- Kvadrantkorreksjon
     if sinv > 0 and cosv < 0 or sinv < 0 and cosv < 0:
-        v = atan(tanv) + pi
+        v = arctan(tanv) + pi
     elif sinv < 0 and cosv > 0:
-        v = atan(tanv) + 2*pi
+        v = arctan(tanv) + 2*pi
     else: 
-        v = atan(tanv)
+        v = arctan(tanv)
 
     
     theta   = v + omega
@@ -343,7 +372,7 @@ def Satkoord2(efemerider,t,xm,ym,zm):
         j = 0
         while(abs(TRANS0 - TRANS) > 1e-10):
             j = j +1
-            if(j > 20):
+            if (j > 20):
                 print('Feil, Gangtids-rotasjonen konvergerer ikke!')
                 break
             
@@ -371,81 +400,9 @@ def Satkoord2(efemerider,t,xm,ym,zm):
 
 
 
-def gpstime2date(week, tow):
-    """
-    Calculates date from GPS-week number and "time-of-week" to Gregorian calendar.
-    
-    
-    Example:
-    week = 2236
-    tow = 35898
-    date = gpstime2date(week,tow) --> 2022-11-13 09:58:00  (13 november 2022)
-        
-    Parameters
-    ----------
-    week : GPS-week  
-    tow : "Time of week" 
-    
-    Returns
-    -------
-    date : The date given in the Gregorian calender ([year, month, day, hour, min, sec]) 
-    
-    """
-    
-    
-    import numpy as np
-    from datetime import datetime, timedelta
-
-    hour = np.floor(tow/3600)
-    res = tow/3600 - hour
-    min_ = np.floor(res*60)
-    res = res*60-min_
-    sec = res*60
-    
-    # if hours is more than 24, extract days built up from hours
-    days_from_hours = np.floor(hour/24)
-    # hours left over
-    hour = hour - days_from_hours*24
-    
-    ## -- Computing number of days
-    days_to_start_of_week = week*7
-    
-    # Origo of GPS-time: 06/01/1980 
-    # t0 = date.toordinal(date(1980,1,6))+366
-    t0 = datetime(1980,1,6)
-    # t0 = t0.strftime("%Y %m %d")
-    # t1 = t0 + days(days_to_start_of_week + days_from_hours); 
-    t1 = t0 + timedelta(days=(days_to_start_of_week + days_from_hours))
-    
-    
-    ## --  Formating the date to "year-month- day"
-    t1 = t1.strftime("%Y %m %d")
-    t1_ = [int(i) for i in t1.split(" ")]
-    
-    [year, month, day] = t1_
-    
-    date_ = [year, month, day, hour, min_, sec]
-    return date_
 
 
-def date2Galileotime(year,month,day,hour,minute,seconds):
-    """
-    Computing Galileo-week nr.(integer) and "time-of-week" from year,month,day,hour,min,sec
-    Origin for Galileo-time is 22.08.1999 00:00:00 UTC
-    
-    NOT IN USE FOR THE MOMENT
-    """
-    from datetime import date
-    from numpy import fix
-    
-    t0=date.toordinal(date(1999,8,22))+366
-    t1=date.toordinal(date(year,month,day))+366 
-    week_flt = (t1-t0)/7;
-    week = fix(week_flt);
-    tow_0 = (week_flt-week)*604800;
-    tow = tow_0 + hour*3600 + minute*60 + seconds;
-    
-    return week, tow
+
 
 # year = 2020
 # month = 10
@@ -470,14 +427,7 @@ def compute_GLO_coord_from_nav(ephemerides, time_epochs):
         
         
     """
-    ## Parameters (from GLONASS Interface Control Document 1988)
-    GM         = 398600.44e9     # Gravitational constant [m3/s2]   (product of the mass of the earth and and gravity constant)
-    omega_e    = 7.292115e-5     # Earth rotation rate    [rad/sek]
-    c          = 299792458       # Speed of light         [m/s]
-    a          = 6378136         # Semi major axis PZ-90   [m]
-    f          = 1/298.257839303 # Inverse flattening
-    C_20       = -1082.63e-6     # Second zonal coefficient of spherical harmonic expression.
-    ephemerides[0] = 9999
+    ephemerides[0] = 9999 #reming char from string (ex G01 -> 9999)
     ephemerides = ephemerides.astype(float)
 
     ## Read in data:
@@ -555,7 +505,8 @@ def format_date_string(week,toc):
         + ":" + str(int(min_)) + ":" + str(sec)[0:9]      
     sec_dum = time.split(':')[-1]
     time = time.replace(sec_dum, str(format(float(sec_dum), '.6f'))) # removing decimals if more than 3
-    time = datetime.datetime.strptime(time, "%Y/%m/%d %H:%M:%S.%f")   
+    # time = datetime.datetime.strptime(time, "%Y/%m/%d %H:%M:%S.%f")   
+    time = datetime.strptime(time, "%Y/%m/%d %H:%M:%S.%f")  
     return time
         
 
@@ -585,9 +536,11 @@ def glonass_diff_eq(state, acc):
 
 
 
+
 def gpstime2date(week, tow):
     """
     Calculates date from GPS-week number and "time-of-week" to Gregorian calendar.
+    
     
     Example:
     week = 2236
@@ -605,8 +558,8 @@ def gpstime2date(week, tow):
     
     """
     
-    import numpy as np
-    from datetime import datetime, timedelta
+    # import numpy as np
+    # from datetime import datetime, timedelta
 
     hour = np.floor(tow/3600)
     res = tow/3600 - hour
@@ -618,14 +571,17 @@ def gpstime2date(week, tow):
     days_from_hours = np.floor(hour/24)
     # hours left over
     hour = hour - days_from_hours*24
+    
     ## -- Computing number of days
     days_to_start_of_week = week*7
+    
     # Origo of GPS-time: 06/01/1980 
     # t0 = date.toordinal(date(1980,1,6))+366
     t0 = datetime(1980,1,6)
     # t0 = t0.strftime("%Y %m %d")
     # t1 = t0 + days(days_to_start_of_week + days_from_hours); 
     t1 = t0 + timedelta(days=(days_to_start_of_week + days_from_hours))
+    
     
     ## --  Formating the date to "year-month- day"
     t1 = t1.strftime("%Y %m %d")
@@ -635,7 +591,8 @@ def gpstime2date(week, tow):
     
     date_ = [year, month, day, hour, min_, sec]
     return date_
- 
+
+
 
 def utc_to_gpst(t_utc):
     """
@@ -665,22 +622,7 @@ def get_leap_seconds(week,tow):
         return 18
 
 
-def date2gpstime(year,month,day,hour,minute,seconds):
-    """
-    Computing GPS-week nr.(integer) and "time-of-week" from year,month,day,hour,min,sec
-    Origin for GPS-time is 06.01.1980 00:00:00 UTC
-    """
-    from datetime import date
-    from numpy import fix
-    
-    t0=date.toordinal(date(1980,1,6))+366
-    t1=date.toordinal(date(year,month,day))+366 
-    week_flt = (t1-t0)/7;
-    week = fix(week_flt);
-    tow_0 = (week_flt-week)*604800;
-    tow = tow_0 + hour*3600 + minute*60 + seconds;
-    
-    return week, tow
+
 
 
 
