@@ -1,10 +1,9 @@
 # from math import sqrt,sin,cos,tan,pi,atan,atan2,asin
-from numpy import fix,array,log,fmod,arctan,arctan2,arcsin,sqrt,sin,cos,pi
+from numpy import fix,array,log,fmod,arctan,arctan2,arcsin,sqrt,sin,cos,pi,arange
 # import datetime
 import numpy as np
 import pandas as pd
 from datetime import datetime,timedelta
-
 
 
 def ECEF2geodb(a,b,X,Y,Z):
@@ -103,8 +102,8 @@ def compute_azimut_elev(X,Y,Z,xm,ym,zm):
     elev: Elevation angel in degrees
     """
     # from math import sin,cos,tan,asin,acos,atan,pi
-    import numpy as np
-    from numpy import arctan,arcsin,pi,sqrt
+    # import numpy as np
+    # from numpy import arctan,arcsin,pi,sqrt
 
     ## -- WGS 84 datumsparametre:
     a   =  6378137.0         # store halvakse
@@ -208,10 +207,8 @@ def gathering_sat_by_PRN(data,PRN):
     """
     Funksjonen bruker rinex-data i form av array ordnet ved funksjonen read_rinex2_nav
     """
-    import numpy as np
     j = 0
-    m = len(data) # kanskje m = len(data[0]) for å få ant col 
-    # Sat_data = np.array(np.empty)
+    m = len(data) 
     Sat_data  = np.zeros((1,36))
     for k in np.arange(0,m):
         PRN_ = np.array([])
@@ -228,52 +225,38 @@ def gathering_sat_by_PRN(data,PRN):
         if np.size(PRN_) != 0:
             Sat_data  = np.concatenate([Sat_data , PRN_], axis=0)
             
-    # check = str(Sat_data[0,:] == 0)
-    # if 'False' not in check:
-    #     Sat_data  = np.delete(Sat_data , (0), axis=0)
     if all(Sat_data[0,:].astype(float)) == 0:
         Sat_data  = np.delete(Sat_data , (0), axis=0)
-
 
     return Sat_data
 
 
-# def find_message_closest_in_time(data,tow_mot):
-#     """
-#     Funksjonen plukker ut den linjen i et datasett som ligg nærmest tidspunktet vi ønsker i bestemme koordinatene for. 
-#     """
-#     towSat = [] # Tom liste for å lagre tidspunktene
-#     length = len(data)
-#     towSat = np.array([])
-#     for i in np.arange(0,length):
-#         week, tow = date2gpstime(2000 + int(data[i,1]), int(data[i,2]), int(data[i,3]), int(data[i,4]), int(data[i,5]), int(data[i,6]))
-#         towSat = np.append(towSat,tow)
-#     # Finner verdien som ligger nærmest
-#     # index = int(min(abs(tow_mot - towSat)))
-#     index = np.abs(tow_mot - towSat).argmin()
-#     GNSS_linjer = data[index,:]   
-    
-#     return GNSS_linjer
-
-
-def find_message_closest_in_time(data, tow_mot):
+def find_message_closest_in_time(data,tow_mot):
     """
     Funksjonen plukker ut den linjen i et datasett som ligg nærmest tidspunktet vi ønsker i bestemme koordinatene for. 
     """
-    # Using np.vectorize to apply date2gpstime function on all rows of data
-    week, tow = np.vectorize(date2gpstime)(2000 + data[:,1], data[:,2], data[:,3], data[:,4], data[:,5], data[:,6])
-    # Finding index of closest time-of-week
-    index = np.abs(tow_mot - tow).argmin()
+    towSat = [] # Tom liste for å lagre tidspunktene
+    length = len(data)
+    towSat = np.array([])
+    for i in np.arange(0,length):
+        week, tow = date2gpstime(2000 + int(data[i,1]), int(data[i,2]), int(data[i,3]), int(data[i,4]), int(data[i,5]), int(data[i,6]))
+        towSat = np.append(towSat,tow)
+    # Finner verdien som ligger nærmest
+    # index = int(min(abs(tow_mot - towSat)))
+    index = np.abs(tow_mot - towSat).argmin()
     GNSS_linjer = data[index,:]   
+    
     return GNSS_linjer
 
 
-def Satkoord2(efemerider,t,xm,ym,zm):
+
+
+def Satkoord2(efemerider,tow_mot,xm,ym,zm):
     """
     Funksjonen beregner satellittkordinater og korrigerer for jordrotasjonen. Fra keplerelemtenter til ECEF.
     """
     
-    from numpy import sqrt,pi, fmod,cos, sin, tan, arctan, arange
+    # from numpy import sqrt,pi, fmod,cos, sin, tan, arctan, arange
     # from math import atan
     
     
@@ -281,7 +264,6 @@ def Satkoord2(efemerider,t,xm,ym,zm):
     omega_e    = 7.2921151467e-5  # [rad/sek]
     c          = 299792458        # Lyshastigheten [m/s]
     
-    tow_mot  = t
     
     #Leser inn data: 
     M0         = efemerider[13]
@@ -303,10 +285,6 @@ def Satkoord2(efemerider,t,xm,ym,zm):
     
     n0  = sqrt(GM/A**3)   #(rad/s)
     t_k = tow_mot - toe
-    # if t_k > 302400:       ## added this 08.01.2023 from webpage: https://gssc.esa.int/navipedia/index.php/GPS_and_Galileo_Satellite_Coordinates_Computation
-    #     t_k = t_k - 604800
-    # elif t_k < -302400:
-    #     t_k = t_k + 604800
     
     n_k = n0 + delta_n   #Koorigert  midlere bevegelse
     M_k = M0 + n_k*t_k   #Midlere anomali (rad/s)
