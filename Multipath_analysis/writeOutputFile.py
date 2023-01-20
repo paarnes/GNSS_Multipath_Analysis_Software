@@ -8,7 +8,7 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
     import os, numpy as np
     
     
-    if outputDir is None:
+    if outputDir is None or outputDir == "":
         outputDir = 'Outputs_Files'
     
     

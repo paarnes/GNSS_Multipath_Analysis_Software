@@ -160,35 +160,35 @@ def atanc(y,x):
     return atanc
 
 
-# def date2gpstime(year,month,day,hour,minute,seconds):
-#     """
-#     Computing GPS-week nr.(integer) and "time-of-week" from year,month,day,hour,min,sec
-#     Origin for GPS-time is 06.01.1980 00:00:00 UTC
-#     """
-#     from datetime import date
-#     from numpy import fix
-    
-#     t0=date.toordinal(date(1980,1,6))+366
-#     t1=date.toordinal(date(year,month,day))+366 
-#     week_flt = (t1-t0)/7;
-#     week = fix(week_flt);
-#     tow_0 = (week_flt-week)*604800;
-#     tow = tow_0 + hour*3600 + minute*60 + seconds;
-    
-#     return week, tow
-
-
-
-def date2gpstime(year, month, day, hour, minute, seconds):
+def date2gpstime(year,month,day,hour,minute,seconds):
     """
     Computing GPS-week nr.(integer) and "time-of-week" from year,month,day,hour,min,sec
     Origin for GPS-time is 06.01.1980 00:00:00 UTC
     """
-    origin = datetime(1980, 1, 6, 0, 0, 0)
-    current_time = datetime(year, month, day, hour, minute, seconds)
-    time_diff = current_time - origin
-    weeks, tow = divmod(time_diff.days * 86400 + time_diff.seconds, 604800)
-    return weeks, tow
+    from datetime import date
+    from numpy import fix
+    
+    t0=date.toordinal(date(1980,1,6))+366
+    t1=date.toordinal(date(year,month,day))+366 
+    week_flt = (t1-t0)/7;
+    week = fix(week_flt);
+    tow_0 = (week_flt-week)*604800;
+    tow = tow_0 + hour*3600 + minute*60 + seconds;
+    
+    return week, tow
+
+
+
+# def date2gpstime(year, month, day, hour, minute, seconds):
+#     """
+#     Computing GPS-week nr.(integer) and "time-of-week" from year,month,day,hour,min,sec
+#     Origin for GPS-time is 06.01.1980 00:00:00 UTC
+#     """
+#     origin = datetime(1980, 1, 6, 0, 0, 0)
+#     current_time = datetime(year, month, day, hour, minute, seconds)
+#     time_diff = current_time - origin
+#     weeks, tow = divmod(time_diff.days * 86400 + time_diff.seconds, 604800)
+#     return weeks, tow
 
 # week, tow = date2gpstime(2022,11,5,9,45,00)
 

@@ -11,7 +11,7 @@ from plotResults import plotResults
 from detectClockJumps import detectClockJumps
 from tqdm import tqdm, trange
 from writeOutputFile import writeOutputFile
-from make_polarplot import make_polarplot
+from make_polarplot import make_polarplot,make_skyplot
 from plotResults import *
 
 def GNSS_MultipathAnalysis(rinObsFilename,
@@ -245,7 +245,9 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, success] = \
         readRinexObs304(rinObsFilename, readSS, readLLI, includeAllGNSSsystems,includeAllObsCodes, desiredGNSSsystems,\
         desiredObsCodes, desiredObsBands)
-    
+            
+            
+    sat_pos = {}
     if sp3NavFilename_1 != '':
         # ## -- Compute satellite elevation angles from SP3 files
         # sat_elevation_angles = computeSatElevations(GNSS_SVs, GNSSsystems, approxPosition,\
@@ -695,13 +697,20 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                             azimut_currentSys = sat_azimut_angles[sys]
                         make_polarplot(current_code_struct['multipath_range1'],current_code_struct['sat_elevation_angles'],\
                                        azimut_currentSys,GNSSsystemName,range1_Code ,graphDir)
+          
                         
     
                
             ## -- Replace the, now altered, hard copy of current band struct in its original place in system struct
             # current_sys_struct.(current_sys_struct.Bands{bandNumInd}) = current_band_struct;
             current_sys_struct[current_sys_struct['Bands'][bandNumInd]] = current_band_struct
-           
+            if sp3NavFilename_1 != '':
+                try:
+                    sat_pos[currentGNSSsystem] = {}
+                    sat_pos[currentGNSSsystem]['Azimut'] = sat_azimut_angles[sys]
+                    sat_pos[currentGNSSsystem]['Elevation'] = current_code_struct['sat_elevation_angles']
+                except:
+                    pass
         
         
         ## -- Replace the, now altered, hard copy of current system struct in its original place in results struct
@@ -761,6 +770,19 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         
     print('\n\nINFO: Analysis complete!')
     ## -- Create output file    
+    if outputDir == "":
+        outputDir = 'Output_Files'
+       
+    ## -- Unless output directory already exists, create output directory
+    if not os.path.isdir(outputDir):
+        os.mkdir(outputDir)
+    
+   
+    ## --Unless graph directory already exists, create directory
+    graphDir = outputDir + '/Graphs' 
+    if not os.path.isdir(graphDir):
+        os.mkdir(graphDir)
+        
     baseFileName = os.path.basename(rinObsFilename)
     outputFilename = baseFileName.split('.')[0] +   '_Report.txt'
     writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSummary, includeCompactSummary, includeObservationOverview, includeLLIOverview)
@@ -768,6 +790,17 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     ## -- Make barplot if plotEstimates is True 
     if plotEstimates:
         make_barplot(analysisResults,graphDir)
+        ## -- Make skyplot of all systems        
+        GNSS_Name2Code =  dict(zip(['GPS', 'GLONASS', 'Galileo', 'BeiDou'], ['G', 'R', 'E', 'C'])) #mmaoung from name to code
+        for sys in analysisResults['GNSSsystems']:
+            curr_sys = GNSS_Name2Code[sys]
+            try:
+                azimut_currentSys = analysisResults['Sat_position'][curr_sys]['Azimut']
+                elevation_currentSys = analysisResults['Sat_position'][curr_sys]['Elevation'] 
+                make_skyplot(azimut_currentSys,elevation_currentSys,sys,graphDir)
+            except:
+                print('Skyplot is not possible for %s! Missing data.' % (sys))
+                pass
     ## -- Saving the workspace as a binary pickle file ---
     results_name = os.path.join(outputDir, 'analysisResults.pkl')
     f = open(results_name,"wb")
