@@ -379,7 +379,8 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                             fid.write( '|   |            |               |         |              |               |___________________________|___________________________|___________________________|___________________________|___________________________|___________________________|___________________________|___________________________|___________________________|\n')
                             fid.write(  '|   |            |               |         |              |               | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  |\n')
                             for PRN in range(0,nSat):
-                               if current_code_struct['n_range1_obs_per_sat'][:,PRN] > 0:
+                               # if current_code_struct['n_range1_obs_per_sat'][:,PRN] > 0:
+                               if current_code_struct['nEstimates_per_sat'][PRN] > 0: ##added 21.01.2023 to prevent sat with only nan in resultfile
                                    fid.write( '|___|____________|_______________|_________|______________|_______________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|\n')
                                    fid.write(  '|%3s|%12d|%15d|%9.3f|%14.3f|%15.3f|%10d|%7d|%8d|%10.3f|%7.3f|%8.3f|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|\n' % (\
                                       GNSS_Name2Code[GNSSsystems[i]] + str(PRN), \
@@ -427,7 +428,8 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                             fid.write(  '|      |           |            |               |         |              |               | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  |\n')
                             # for PRN in range(0,nSat):
                             for PRN in list(GLO_Slot2ChannelMap.keys()):
-                               if current_code_struct['n_range1_obs_per_sat'][:,PRN] > 0:
+                               # if current_code_struct['n_range1_obs_per_sat'][:,PRN] > 0:
+                               if current_code_struct['nEstimates_per_sat'][PRN] > 0: ##added 21.01.2023 to prevent sat with only nan in resultfile
                                    fid.write(  '|______|___________|____________|_______________|_________|______________|_______________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|\n')
                                    fid.write(  '|%6s|%11d|%12d|%15d|%9.3f|%14.3f|%15.3f|%10d|%7d|%8d|%10.3f|%7.3f|%8.3f|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|\n' % ( \
                                       GNSS_Name2Code[GNSSsystems[i]] + str(PRN), \
@@ -476,7 +478,8 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                             fid.write(   '|   |            |   Estimates   |[meters] |   [meters]   |   [degrees]   |    Periods    |   [%%]   |  0-10 degrees   |  10-20 degrees  |  20-30 degrees  |  30-40 degrees  |  40-50 degrees  |   >50 degrees   |   NaN degrees   |\n');
                             
                             for PRN in range(0,nSat):
-                               if current_code_struct['n_range1_obs_per_sat'][:,PRN] > 0:
+                               # if current_code_struct['n_range1_obs_per_sat'][:,PRN] > 0:
+                               if current_code_struct['nEstimates_per_sat'][PRN] > 0: ##added 21.01.2023 to prevent sat with only nan in resultfile
                                    fid.write( '|___|____________|_______________|_________|______________|_______________|_______________|__________|_________________|_________________|_________________|_________________|_________________|_________________|_________________|\n');
                                    fid.write(  '|%3s|%12d|%15d|%9.3f|%14.3f|%15.3f|%15d|%10.3f|%17d|%17d|%17d|%17d|%17d|%17d|%17d|\n' % (\
                                       GNSS_Name2Code[GNSSsystems[i]] + str(PRN), \
@@ -504,7 +507,8 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                             fid.write(  '|      |           |            |   Estimates   |[meters] |   [meters]   |   [degrees]   |    Periods    |   [%%]    |  0-10 degrees   |  10-20 degrees  |  20-30 degrees  |  30-40 degrees  |  40-50 degrees  |   >50 degrees   |   NaN degrees   |\n')
                             
                             for PRN in list(GLO_Slot2ChannelMap.keys()):
-                               if current_code_struct['n_range1_obs_per_sat'][:,PRN] > 0:
+                               # if current_code_struct['n_range1_obs_per_sat'][:,PRN] > 0:
+                               if current_code_struct['nEstimates_per_sat'][PRN] > 0: ##added 21.01.2023 to prevent sat with only nan in resultfile
                                    fid.write(   '|______|___________|____________|_______________|_________|______________|_______________|_______________|__________|_________________|_________________|_________________|_________________|_________________|_________________|_________________|\n')
                                    fid.write(   '|%6s|%11d|%12d|%15d|%9.3f|%14.3f|%15.3f|%15d|%10.3f|%17d|%17d|%17d|%17d|%17d|%17d|%17d|\n' % (\
                                       GNSS_Name2Code[analysisResults[GNSSsystems[i]]] + str(PRN),\

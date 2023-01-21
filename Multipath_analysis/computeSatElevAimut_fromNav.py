@@ -123,7 +123,7 @@ def shorten_navigation_file(navigationFile):
             IDX = idx + 1
             while 'S' not in lines[IDX]:
                 IDX = IDX + 1
-                if IDX == len(lines):
+                if IDX == len(lines) or re.match(r'[J,S,G,R,I,E,C]\d+',lines[IDX]):
                     break
             del_end_indx.append(IDX)
                 
@@ -133,7 +133,7 @@ def shorten_navigation_file(navigationFile):
             IDX = idx + 1
             while 'I' not in lines[IDX]:
                 IDX = IDX + 1
-                if IDX == len(lines):
+                if IDX == len(lines) or re.match(r'[J,S,G,R,I,E,C]\d+',lines[IDX]):
                     break
             del_end_indx.append(IDX)
         ## -- Checking if file contains 'J' code
@@ -142,7 +142,7 @@ def shorten_navigation_file(navigationFile):
             IDX = idx + 1
             while 'J' not in lines[IDX]:
                 IDX = IDX + 1
-                if IDX == len(lines):
+                if IDX == len(lines) or re.match(r'[J,S,G,R,I,E,C]\d+',lines[IDX]):
                     break
             del_end_indx.append(IDX)
             

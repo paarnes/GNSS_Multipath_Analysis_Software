@@ -59,6 +59,7 @@ def plotResults(ion_delay_phase1, multipath_range1, sat_elevation_angles,\
     import numpy as np
     from matplotlib import rc
     matplotlib.use('Agg') # dont want the plots to be displayed.
+
     
     n,m = ion_delay_phase1.shape
     plt.rcParams['axes.axisbelow'] = True
@@ -378,6 +379,7 @@ def make_barplot(analysisResults,graphDir):
     """
     import matplotlib.pyplot as plt
     import numpy as np, os
+    import pandas as pd
     
     current_systems = analysisResults['GNSSsystems'] # Extracting the system used in the analysis
     if len(current_systems) == 4:
@@ -420,7 +422,13 @@ def make_barplot(analysisResults,graphDir):
             except:
                 print("Bar plot not possible for %s" % (sys))
                 continue
-            width = 0.35  # the width of the bars
+            # width = 0.35  # the width of the bars
+            if len(data_codes) >2:
+                width =0.65
+            elif len(data_codes)==2:
+                width=0.35
+            else:
+                width=0.25
             x = np.arange(len(data_codes))  # the label locations
             rects1 = ax[row_idx,col_idx].bar(x - width/2, data_rms, width, label='RMS')
             rects2 = ax[row_idx,col_idx].bar(x + width/2, data_elw_rms, width, label='RMS (weighted)')
@@ -438,67 +446,83 @@ def make_barplot(analysisResults,graphDir):
             fileName = 'Barplot_RMS_all.pdf' 
             file_path = os.path.join(graphDir, fileName) 
             fig.savefig(file_path, orientation='landscape',bbox_inches='tight')
-        else:
-            ## first find max value of RMS
-            max_MP = []
-            for idx,sys in enumerate(current_systems):
-                data_elw_rms = []
-                data_rms = []
-                bands_curr_sys = analysisResults[sys]['Bands']
-                for band in bands_curr_sys:
-                    codes_curr_sys = [ele for ele in analysisResults[sys][band]['Codes'] if ele != []] # removing empty list if exist
-                    for code in codes_curr_sys:
-                        if code not in list(analysisResults[sys][band].keys()):
-                            continue
-                        else:
-                            elweight_rms_MP = analysisResults[sys][band][code]['elevation_weighted_average_rms_multipath_range1']
-                            rms_MP = analysisResults[sys][band][code]['rms_multipath_range1_averaged']
-                            data_rms.append(rms_MP)
-                    try:
-                        max_MP.append(max(data_rms + data_elw_rms))
-                    except:
+
+    ## Then make plot of all availeble system seperate
+    ## first find max value of RMS
+    max_MP = []
+    for idx,sys in enumerate(current_systems):
+        data_elw_rms = []
+        data_rms = []
+        bands_curr_sys = analysisResults[sys]['Bands']
+        for band in bands_curr_sys:
+            codes_curr_sys = [ele for ele in analysisResults[sys][band]['Codes'] if ele != []] # removing empty list if exist
+            for code in codes_curr_sys:
+                if code not in list(analysisResults[sys][band].keys()):
+                    continue
+                else:
+                    elweight_rms_MP = analysisResults[sys][band][code]['elevation_weighted_average_rms_multipath_range1']
+                    rms_MP = analysisResults[sys][band][code]['rms_multipath_range1_averaged']
+                    data_rms.append(rms_MP)
+            try:
+                max_MP.append(max(data_rms + data_elw_rms))
+            except:
+                continue
+            # max_MP.append(max(data_rms + data_elw_rms))
+        ## then do the plotting
+        for idx,sys in enumerate(current_systems):
+            data_elw_rms = []
+            data_rms = []
+            data_codes = []
+            bands_curr_sys = analysisResults[sys]['Bands']
+            # fig, ax = plt.subplots(nrows=1, ncols=1,sharex=False,figsize=(18,12),dpi = 150)
+            # fig.subplots_adjust(left=0.082, bottom=0.08, right=0.887, top=0.93, wspace=None, hspace=0.2)
+            for band in bands_curr_sys:
+                codes_curr_sys = analysisResults[sys][band]['Codes']
+                codes_curr_sys = [ele for ele in codes_curr_sys if ele != []] # removing empty list if exist
+                for code in codes_curr_sys:
+                    if code not in list(analysisResults[sys][band].keys()):
                         continue
-                    # max_MP.append(max(data_rms + data_elw_rms))
-                ## then do the plotting
-                for idx,sys in enumerate(current_systems):
-                    data_elw_rms = []
-                    data_rms = []
-                    data_codes = []
-                    bands_curr_sys = analysisResults[sys]['Bands']
-                    # fig, ax = plt.subplots(nrows=1, ncols=1,sharex=False,figsize=(18,12),dpi = 150)
-                    # fig.subplots_adjust(left=0.082, bottom=0.08, right=0.887, top=0.93, wspace=None, hspace=0.2)
-                    for band in bands_curr_sys:
-                        codes_curr_sys = analysisResults[sys][band]['Codes']
-                        codes_curr_sys = [ele for ele in codes_curr_sys if ele != []] # removing empty list if exist
-                        for code in codes_curr_sys:
-                            if code not in list(analysisResults[sys][band].keys()):
-                                continue
-                            else:
-                                elweight_rms_MP = analysisResults[sys][band][code]['elevation_weighted_average_rms_multipath_range1']
-                                rms_MP = analysisResults[sys][band][code]['rms_multipath_range1_averaged']
-                                data_rms.append(rms_MP)
-                                data_elw_rms.append(elweight_rms_MP)
-                                data_codes.append(code)
-                        # creating the bar plot
-                        fig, ax = plt.subplots(nrows=1, ncols=1,sharex=False,figsize=(18,12),dpi = 150)
-                        fig.subplots_adjust(left=0.082, bottom=0.08, right=0.887, top=0.93, wspace=None, hspace=0.2)
-                        width = 0.35  # the width of the bars
-                        x = np.arange(len(data_codes))  # the label locations
-                        rects1 = ax.bar(x - width/2, data_rms, width, label='RMS')
-                        rects2 = ax.bar(x + width/2, data_elw_rms, width, label='RMS (weighted)')
-                        ax.set_ylabel('RMS [m]',fontsize=18,labelpad=20)
-                        ax.set_title('RMS values for the multipath effect (%s)' %(sys),fontsize=24)
-                        ax.set_xticks(x); ax.set_xticklabels(data_codes)
-                        ax.locator_params(tight=True, nbins=12)
-                        ax.legend(fontsize=15,fancybox=True, shadow=True)
-                        ax.tick_params(axis='both', labelsize= 15)
-                        ax.grid(color='grey', linestyle='-', linewidth=0.3)
-                    plt.setp(ax,ylim=(0,max(max_MP)+0.08))
-                    # plt.show()
-                    # fig.savefig('Barplot_RMS.png', dpi=300, orientation='landscape')
-                    fileName = 'Barplot_RMS_%s.pdf' % (sys)
-                    file_path = os.path.join(graphDir, fileName) 
-                    fig.savefig(file_path, orientation='landscape',bbox_inches='tight')
-                    # plt.close()
+                    else:
+                        elweight_rms_MP = analysisResults[sys][band][code]['elevation_weighted_average_rms_multipath_range1']
+                        rms_MP = analysisResults[sys][band][code]['rms_multipath_range1_averaged']
+                        data_rms.append(rms_MP)
+                        data_elw_rms.append(elweight_rms_MP)
+                        data_codes.append(code)
+            # creating the bar plot
+            fig, ax = plt.subplots(nrows=1, ncols=1,sharex=False,figsize=(18,12),dpi = 150)
+            fig.subplots_adjust(left=0.082, bottom=0.08, right=0.887, top=0.93, wspace=None, hspace=0.2)
+            data = {"Codes":data_codes, "RMS": data_rms, "RMS (weighted)":data_elw_rms} # make dict
+            df = pd.DataFrame(data)
+            if len(data_codes) >2:
+                width =0.65
+            elif len(data_codes)==2:
+                width=0.35
+            else:
+                width=0.25
+            try:
+                df.set_index('Codes').plot(kind="bar", align='center', width=width,ax=ax,legend=False,xlabel="")
+            except:
+                continue
+            plt.tick_params(rotation=0)
+            plt.show()
+            # x = np.arange(len(data_codes))  # the label locations
+            # if len(data_codes) > 2:
+            #     width = 0.35  # the width of the bars
+            # else:
+            #     width =0.15
+            # rects1 = ax.bar(x - width/2, data_rms, width, label='RMS')
+            # rects2 = ax.bar(x + width/2, data_elw_rms, width, label='RMS (weighted)')
+            ax.set_ylabel('RMS [m]',fontsize=18,labelpad=20)
+            ax.set_title('RMS values for the multipath effect (%s)' %(sys),fontsize=24)
+            # ax.set_xticks(x); ax.set_xticklabels(data_codes)
+            ax.locator_params(tight=True, nbins=12)
+            ax.legend(fontsize=16,fancybox=True, shadow=True)
+            ax.tick_params(axis='both', labelsize= 16)
+            ax.grid(color='grey', linestyle='-', linewidth=0.3,axis='y')
+            plt.setp(ax,ylim=(0,max(max_MP)+0.08))
+            fileName = 'Barplot_RMS_%s.pdf' % (sys)
+            file_path = os.path.join(graphDir, fileName) 
+            fig.savefig(file_path, orientation='landscape',bbox_inches='tight')
+            # plt.close()
     
     return

@@ -99,17 +99,22 @@ def make_skyplot(azimut_currentSys, elevation_currentSys, GNSSsystemName,graph_d
         # Plot the satellite positions on the skyplot
         PRN_ = sys_code+str(PRN)
         PRN_ = sys_code+str(PRN).zfill(2)
-        ax.scatter(azimuth_rad, sat_el,label=PRN_)
+        # ax.scatter(azimuth_rad, sat_el,label=PRN_)
+        line = ax.plot(azimuth_rad, sat_el,label=PRN_,linewidth=5.5)
 
     ax.set_rticks([10 ,20 ,30, 40, 50, 60, 70, 80, 90])  # Less radial ticks
     # ax.set_rlabel_position(-22.5)  # Move radial labels away from plotted line
     ax.tick_params(axis='both',labelsize=18,pad=7)
     ax.grid(True)
-    ax.legend(fontsize=14,bbox_to_anchor=(1.40, 0.5),fancybox=True, shadow=True,ncol=2,loc='center right')
+    # ax.legend(fontsize=14,bbox_to_anchor=(1.40, 0.5),fancybox=True, shadow=True,ncol=2,loc='center right')
+    legend = ax.legend(fontsize=14,bbox_to_anchor=(1.40, 0.5),fancybox=True, shadow=True,ncol=2,loc='center right')
+    ## Set the linewidth of each legend object (then not dependent of linewith in plot)
+    for legobj in legend.legendHandles:
+        legobj.set_linewidth(3.5)
     filename = 'Skyplot_' + GNSSsystemName + '.png'
-    # filename2 = 'Skyplot_' + GNSSsystemName + '.pdf'
-    fig.savefig(graph_dir + "/" + filename, dpi=300, orientation='landscape')
-    # fig.savefig(filename2, orientation='landscape',bbox_inches='tight')
+    filename2 = 'Skyplot_' + GNSSsystemName + '.pdf'
+    # fig.savefig(graph_dir + "/" + filename, dpi=300, orientation='landscape')
+    fig.savefig(graph_dir + "/" + filename2, orientation='landscape',bbox_inches='tight')
     
     return
         
