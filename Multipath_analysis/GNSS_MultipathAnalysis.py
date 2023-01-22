@@ -374,7 +374,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     ### --- Build the structure of the struct used for storing results ----
     
     ## --initialize variable storing total number of observation codes processed
-    nCodes_Total = 0;
+    nCodes_Total = 0
     
     ## -- initialize results struct
     analysisResults = {}
@@ -401,7 +401,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
             current_sys_struct['observationOverview']['Sat_'+ str(i)] = {}
             current_sys_struct['observationOverview']['Sat_'+ str(i)]['Bands'] = []
             Bands_list = []
-            for j in range(0,nPossibleBands):
+            for j in np.arange(0,nPossibleBands):
                 current_sys_struct['observationOverview']['Sat_'+ str(i)]['n_possible_bands'] = nPossibleBands
                 ## in sat. struct create 1 field for every possible band for this
                 ## system as empty string
@@ -413,7 +413,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         current_sys_struct['Bands'] = {}
     
         Bands_list = []
-        for bandNumInd in range(0,9):
+        for bandNumInd in np.arange(0,9):
             ## See if current system has any observations in in carrier band(bandnum)
             # nCodes_currentBand = length(obsCodeOverview{sys}{bandNumInd});
             bandNumInd = str(bandNumInd+1) # because python nullindexed
@@ -573,8 +573,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                                            sat_elevation_angles[sys], phaseCodeLimit, ionLimit, cutoff_elevation_angle)
                 
                                        if not success:
-                                           pass ##   REMOVE AND ADD RETUNR!!!!!!
-                                            # return success
+                                            return success
                                        
                                     
                                     ##  -- Get number of estimates produced from analysis
