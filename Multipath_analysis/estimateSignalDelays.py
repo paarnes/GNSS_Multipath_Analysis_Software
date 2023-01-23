@@ -149,7 +149,7 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
     ## -- Initialize data matrices
     ion_delay_phase1        = np.zeros([nepochs, max_sat+1]) # Addin 1 to since python is nullindexed
     multipath_range1        = np.zeros([nepochs, max_sat+1])
-    multipath_range2        = np.zeros([nepochs, max_sat+1])
+    # multipath_range2        = np.zeros([nepochs, max_sat+1]) # kommenterte bort 23.01.2023
     N1_pseudo_estimate      = np.zeros([nepochs, max_sat+1])
     missing_obs_overview    = np.zeros([nepochs, max_sat+1])
     missing_range1_overview = np.zeros([nepochs, max_sat+1])
@@ -161,11 +161,11 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
     range1_slip_periods = {}
     
     ## -- Make estimates of delays
-    for epoch in range(0,nepochs):
+    for epoch in np.arange(0,nepochs):
         ## -- Calculate how many satelites with observations in current epoch
         n_sat = int(GNSS_SVs[epoch,0])
         ## - Iterate over all satellites of current epoch
-        for i in range(0,n_sat):  
+        for i in np.arange(0,n_sat):  
             PRN = int(GNSS_SVs[epoch, 1+i]) # Get PRN ## KANSJE FJERNE +1??? for å få med PRN 11
             
             if FDMA_used:
@@ -194,7 +194,7 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
                 
                 ## -- Calculate multipath on both code signals
                 multipath_range1[epoch,PRN] = range1 - (1 + 2/(alpha-1))*phase1 + (2/(alpha-1))*phase2
-                multipath_range2[epoch,PRN] = range2 - (2*alpha/(alpha-1))*phase1 + ((2*alpha)/(alpha-1) - 1)*phase2
+                # multipath_range2[epoch,PRN] = range2 - (2*alpha/(alpha-1))*phase1 + ((2*alpha)/(alpha-1) - 1)*phase2 ## kommenterte bort 23.01.2023
                 N1_pseudo_estimate[epoch, PRN] = phase1 - range1
             else:
                 ## Flag epoch and PRN as missing obs
@@ -206,7 +206,7 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
 
     
     ## -- Detect and correct for ambiguity slips
-    for PRN in range(0,max_sat):
+    for PRN in np.arange(0,max_sat):
         PRN = PRN + 1
         ## -- Get first and last epoch with observations for current PRN
         if len(np.nonzero(ion_delay_phase1[:,PRN])[0]) != 0:
@@ -233,9 +233,10 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
         ionosphere_slip_epochs = detectPhaseSlips(ion_delay_phase1[:, PRN], missing_obs_overview[:, PRN],epoch_first_obs, epoch_last_obs, tInterval, ionLimit)
            
         ## -- Make combined array of slip epochs from both lin. combinations used to detects slips
-        ambiguity_slip_epochs = np.union1d(range1_slip_epochs, ionosphere_slip_epochs) # TRENGER KANSKJE SORTERING???
-        range1_slip_epochs = np.intersect1d(range1_slip_epochs, ionosphere_slip_epochs)
-        
+        ambiguity_slip_epochs = np.union1d(range1_slip_epochs, ionosphere_slip_epochs) 
+        # range1_slip_epochs = np.intersect1d(range1_slip_epochs, ionosphere_slip_epochs) # hvorfor intersect her?
+        range1_slip_epochs = range1_slip_epochs #tester om det gir stor forskjell uten intersect
+
         ## -- Organize slips detected on range1/phase1 signal only
         range1_slip_periods[PRN],_ = orgSlipEpochs(range1_slip_epochs)
         
@@ -245,7 +246,7 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
         # Set all zero estimates to NaN so that epochs with missing observations are not corrected        
         ion_delay_phase1[ion_delay_phase1[:, PRN]==0, PRN] = np.nan
         multipath_range1[multipath_range1[:, PRN]==0, PRN] = np.nan
-        multipath_range2[multipath_range2[:, PRN]==0, PRN] = np.nan
+        # multipath_range2[multipath_range2[:, PRN]==0, PRN] = np.nan ## 23.01.2023 kommenterer bort
         
         ## If there are no slips then there is only one "ambiguity period". All estimates are therefore reduced by the same relative value
         if len(ambiguity_slip_periods[PRN]) == 0:
@@ -254,7 +255,7 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
             else:    
                 ion_delay_phase1[epoch_first_obs::, PRN] = ion_delay_phase1[epoch_first_obs::, PRN] - ion_delay_phase1[epoch_first_obs, PRN]  
                 multipath_range1[epoch_first_obs::, PRN] = multipath_range1[epoch_first_obs::, PRN] - np.mean(np.nonzero(multipath_range1[epoch_first_obs::, PRN]))  
-                multipath_range2[epoch_first_obs::, PRN] = multipath_range2[epoch_first_obs::, PRN] - np.mean(np.nonzero(multipath_range2[epoch_first_obs::, PRN])) 
+                # multipath_range2[epoch_first_obs::, PRN] = multipath_range2[epoch_first_obs::, PRN] - np.mean(np.nonzero(multipath_range2[epoch_first_obs::, PRN])) 
         else:
             ## -- Set all estimates of epochs with cycle slips to nan
             for slip_period in range(0,n_slip_periods):
@@ -264,15 +265,15 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
                 if slip_start == slip_end:  # need a if test bacause if there equal, python dont set to nan
                     ion_delay_phase1[slip_start, PRN] = np.nan
                     multipath_range1[slip_start, PRN] = np.nan
-                    multipath_range2[slip_start, PRN] = np.nan
+                    # multipath_range2[slip_start, PRN] = np.nan
                 else: 
                     ion_delay_phase1[slip_start:slip_end+1, PRN] = np.nan # + 1 because a[2:3] gives one element. Matlab a(2:3) gives 2 element.
                     multipath_range1[slip_start:slip_end+1, PRN] = np.nan # if error msg here, try add "if slip_end != epoch_last_obs else epoch_last_obs" in the slicing (oneliner)
-                    multipath_range2[slip_start:slip_end+1, PRN] = np.nan
+                    # multipath_range2[slip_start:slip_end+1, PRN] = np.nan
             
               
             ## Extract start and end of each segment and correct multipath and ionosphere estimates for each segment
-            for ambiguity_period in range(0,n_slip_periods+1): # removed + 1 cause of indexproblem 29.11
+            for ambiguity_period in np.arange(0,n_slip_periods+1): # removed + 1 cause of indexproblem 29.11
                 if ambiguity_period == 0: 
                     ambiguity_period_start  = epoch_first_obs
                     ambiguity_period_end    = int(ambiguity_slip_periods[PRN][0,0])   #INK -1 igjen???
@@ -300,8 +301,8 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
                     multipath_range1[ambiguity_period_start:ambiguity_period_end, PRN] = multipath_range1[ambiguity_period_start:ambiguity_period_end, PRN] - \
                         np.nanmean(multipath_range1[ambiguity_period_start:ambiguity_period_end, PRN]) # added nanmean 30.11
                         
-                    multipath_range2[ambiguity_period_start:ambiguity_period_end, PRN] = multipath_range2[ambiguity_period_start:ambiguity_period_end, PRN] -\
-                        np.nanmean(multipath_range2[ambiguity_period_start:ambiguity_period_end, PRN])
+                    # multipath_range2[ambiguity_period_start:ambiguity_period_end, PRN] = multipath_range2[ambiguity_period_start:ambiguity_period_end, PRN] -\
+                        # np.nanmean(multipath_range2[ambiguity_period_start:ambiguity_period_end, PRN])
                 else:
                     
                     ion_delay_phase1[ambiguity_period_start, PRN] = ion_delay_phase1[ambiguity_period_start, PRN] - \
@@ -310,18 +311,19 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
                     multipath_range1[ambiguity_period_start, PRN] = multipath_range1[ambiguity_period_start, PRN] - \
                         np.nanmean(multipath_range1[ambiguity_period_start, PRN])
                        
-                    multipath_range2[ambiguity_period_start, PRN] = multipath_range2[ambiguity_period_start, PRN] -\
-                        np.nanmean(multipath_range2[ambiguity_period_start, PRN])
+                    # multipath_range2[ambiguity_period_start, PRN] = multipath_range2[ambiguity_period_start, PRN] -\
+                        # np.nanmean(multipath_range2[ambiguity_period_start, PRN])
         ## -- Get range1 and phase 1 observations for all epochs and PRN
         range1_observations =  np.zeros([nepochs, max_sat+1]) 
         phase1_observations =  np.zeros([nepochs, max_sat+1]) 
-        for ep in range(0, len(GNSS_obs)):
-            for PRN in range(0,max_sat):
+        for ep in np.arange(0, len(GNSS_obs)):
+            for PRN in np.arange(0,max_sat):
                 range1_observations[ep,PRN] = GNSS_obs[ep+1][PRN,ismember(obsCodes[currentGNSSsystem],range1_Code)] # MAALAB uses transpose her
                 phase1_observations[ep,PRN] = GNSS_obs[ep+1][PRN,ismember(obsCodes[currentGNSSsystem],phase1_Code)] # MAALAB uses transpose her
 
-    return ion_delay_phase1, multipath_range1, multipath_range2, range1_slip_periods, range1_observations, phase1_observations, success
-
+    # return ion_delay_phase1, multipath_range1, multipath_range2, range1_slip_periods, range1_observations, phase1_observations, success
+    # return ion_delay_phase1, multipath_range1, multipath_range2, ambiguity_slip_periods, range1_observations, phase1_observations, success # changeing from range1slip to amgiguity
+    return ion_delay_phase1, multipath_range1, range1_slip_periods, range1_observations, phase1_observations, success #fjernet multipath_range2
 
 
 def ismember(list_,code):

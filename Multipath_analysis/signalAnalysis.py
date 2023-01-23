@@ -2,28 +2,28 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
     tInterval, current_max_sat, current_GNSS_SVs, current_obsCodes, current_GNSS_obs, current_GNSS_LLI, current_sat_elevation_angles,\
     phaseCodeLimit, ionLimit, cutoff_elevation_angle):
     """
-    # Function that executes a signal analysis on a specific GNSS code range
-    # signal for a specific GNSS system. Function computes statistics on
+     Function that executes a signal analysis on a specific GNSS code range
+     signal for a specific GNSS system. Function computes statistics on
     
-    #--------------------------------------------------------------------------------------------------------------------------
-    # INPUTS:
+    --------------------------------------------------------------------------------------------------------------------------
+     INPUTS:
     
-    # currentGNSSsystem:            string. Code that gives current GNSS
-    #                               system.
-    #                               ex. "G" or "E"
+     currentGNSSsystem:            string. Code that gives current GNSS
+                                   system.
+                                   ex. "G" or "E"
     
-    # range1_Code:                  string. obs code for first code pseudorange
-    #                               observation
+     range1_Code:                  string. obs code for first code pseudorange
+                                   observation
     
-    # range2_Code:                  string. obs code for second code pseudorange
-    #                               observation
+     range2_Code:                  string. obs code for second code pseudorange
+                                   observation
     
-    # GNSSsystems:                  cell array containing codes of GNSS systems. 
-    #                               Elements are strings.
-    #                               ex. "G" or "E"
+     GNSSsystems:                  cell array containing codes of GNSS systems. 
+                                   Elements are strings.
+                                   ex. "G" or "E"
     
-    # frequencyOverview:            cell. each elements contains carrier band
-    #                               frequenies for a specific GNSS system.
+     frequencyOverview:            cell. each elements contains carrier band
+                                   frequenies for a specific GNSS system.
                                     Order is set by GNSSsystems. If system is
                                     GLONASS then element is matrix where each
                                     row i gives carrier band i frequencies for
@@ -94,7 +94,7 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
                                     is lower than cutoff are removed, so are
                                     estimated slip periods
     --------------------------------------------------------------------------------------------------------------------------
-     OUPUTS:
+     OUTPUTS:
     
       currentStats:                 struct. Contains statitics from analysis
                                     executed. More detail of each stattistic
@@ -109,17 +109,12 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
     import numpy as np
     
     ## --Get corrosponding phase codes to the range codes
-    # phase1_Code = "L"+extractAfter(range1_Code, 1);
-    # phase2_Code = "L"+extractAfter(range2_Code, 1);
     phase1_Code = "L" + range1_Code[1::]
     phase2_Code = "L" + range2_Code[1::]
     # Get current GNSS system index
-    # GNSSsystemIndex = find([GNSSsystems{:}] == currentGNSSsystem); # index of current system
     GNSSsystemIndex = [k for k in GNSSsystems if GNSSsystems[k]==currentGNSSsystem][0]
     
     ## -- Get freuencies of carrier bands. These are arrays if current GNSS system is GLONASS. Each element for a specific GLONASS SV.
-    # carrier_freq1 = frequencyOverview{GNSSsystemIndex}(str2double(extractBetween(range1_Code, 2, 2)), :);
-    # carrier_freq2 = frequencyOverview{GNSSsystemIndex}(str2double(extractBetween(range2_Code, 2, 2)), :);
     if currentGNSSsystem == 'R':
         carrier_freq1 = frequencyOverview[GNSSsystemIndex][int(range1_Code[1])-1, :] ## added this if test 07.12.2022
         carrier_freq2 = frequencyOverview[GNSSsystemIndex][int(range2_Code[1])-1, :]
@@ -128,30 +123,22 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
         carrier_freq2 = frequencyOverview[GNSSsystemIndex][int(range2_Code[1])-1, :][0]
     
     ## -- Run function to compute estimates of ionospheric delay, multipath delays slip periods of range1 signal.
-    ion_delay_phase1, multipath_range1, _, range1_slip_periods, range1_observations, phase1_observations, success = estimateSignalDelays(range1_Code, range2_Code, \
-        phase1_Code, phase2_Code, carrier_freq1, carrier_freq2,nepochs, current_max_sat,\
-          current_GNSS_SVs, current_obsCodes, current_GNSS_obs, currentGNSSsystem, tInterval, phaseCodeLimit, ionLimit)
-    # estimateSignalDelays(range1_Code, range2_Code, \
+    # ion_delay_phase1, multipath_range1, _, range1_slip_periods, range1_observations, phase1_observations, success = estimateSignalDelays(range1_Code, range2_Code, \
     #     phase1_Code, phase2_Code, carrier_freq1, carrier_freq2,nepochs, current_max_sat,\
-    #       current_GNSS_SVs, current_obsCodes, current_GNSS_obs, currentGNSSsystem, tInterval, phaseCodeLimit, ionLimit) 
-    
-    
+    #       current_GNSS_SVs, current_obsCodes, current_GNSS_obs, currentGNSSsystem, tInterval, phaseCodeLimit, ionLimit)
+    ion_delay_phase1, multipath_range1, range1_slip_periods, range1_observations, phase1_observations, success = estimateSignalDelays(range1_Code, range2_Code, \
+        phase1_Code, phase2_Code, carrier_freq1, carrier_freq2,nepochs, current_max_sat,\
+          current_GNSS_SVs, current_obsCodes, current_GNSS_obs, currentGNSSsystem, tInterval, phaseCodeLimit, ionLimit) # tester uten multipath_range2 23.01.2023
+
     
     ## -- Create logical mask for epochs where sat elevation is lower than cutoff or missing
-    # cutoff_elevation_mask = current_sat_elevation_angles;
-    # cutoff_elevation_mask(cutoff_elevation_mask<cutoff_elevation_angle) = 0;
-    # cutoff_elevation_mask(cutoff_elevation_mask>=cutoff_elevation_angle) = 1;
     cutoff_elevation_mask = current_sat_elevation_angles.copy() ## hardcopy instead??
     cutoff_elevation_mask[cutoff_elevation_mask < cutoff_elevation_angle] = 0
     cutoff_elevation_mask[cutoff_elevation_mask >= cutoff_elevation_angle] = 1
     
 
     ## -- Apply satellite elevation cutoff mask to estimates
-    # ion_delay_phase1 = ion_delay_phase1 .* cutoff_elevation_mask;
-    # multipath_range1 = multipath_range1 .* cutoff_elevation_mask;
-    # range1_observations = range1_observations .* cutoff_elevation_mask;
-    # phase1_observations = phase1_observations .* cutoff_elevation_mask;
-    ion_delay_phase1 = ion_delay_phase1 * cutoff_elevation_mask  # MATLAV uses dot notation here elementwise
+    ion_delay_phase1 = ion_delay_phase1 * cutoff_elevation_mask  
     multipath_range1 = multipath_range1 * cutoff_elevation_mask
     range1_observations = range1_observations * cutoff_elevation_mask
     phase1_observations = phase1_observations * cutoff_elevation_mask
@@ -159,35 +146,21 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
     
 
     ## -- Remove estimated slip periods if satellite elevation angle was lower than cutoff or missing.
-    # for sat = 1:length(range1_slip_periods)
     for sat in range(0,len(range1_slip_periods)):
-        # current_sat_slip_periods = np.array(range1_slip_periods[sat+1])
-        # [n_slip_periods, ~] = size(current_sat_slip_periods);
-        # n_slip_periods = current_sat_slip_periods.shape ## use len??
-        # current_sat_slip_periods = range1_slip_periods[sat+1]
         current_sat_slip_periods = np.array(range1_slip_periods[sat+1]).astype(int)
         if len(current_sat_slip_periods) > 0:
             n_slip_periods,_ = current_sat_slip_periods.shape
             n_slips_removed = 0
-            # for slip_period = 1:n_slip_periods
             for slip_period in range(0,n_slip_periods):
-              # if cutoff_elevation_mask(current_sat_slip_periods(slip_period-n_slips_removed, 1), sat) == 0 || cutoff_elevation_mask(current_sat_slip_periods(slip_period-n_slips_removed, 2), sat) == 0
-              #     current_sat_slip_periods(slip_period - n_slips_removed, :) = [];
-
                 if cutoff_elevation_mask[current_sat_slip_periods[slip_period - n_slips_removed, 0], sat] == 0 \
                     or cutoff_elevation_mask[current_sat_slip_periods[slip_period - n_slips_removed, 1], sat] == 0:
                       
                     current_sat_slip_periods[slip_period - n_slips_removed, :] = []
                     n_slips_removed = n_slips_removed + 1
                   
-            # range1_slip_periods{sat} = current_sat_slip_periods;
             range1_slip_periods[sat+1] = current_sat_slip_periods
     
     
-    # if ~success
-    #   currentStats = NaN;
-    #   return
-    # end
     if not success:
       currentStats = np.nan
       return currentStats
@@ -196,7 +169,6 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
     max_sat = len(current_GNSS_obs[1])
     LLI_current_phase =  np.zeros([nepochs,max_sat]) ## sjekk hvordan LLI beeregnes. Skal være 1 i øvserste raden for mange av satellittene
     for ep in range(0, nepochs):
-        # LLI_current_phase[ep,:] = np.array(current_GNSS_LLI[1][:,ismember(current_obsCodes[currentGNSSsystem],range1_Code)]).reshape(1,len(np.array(current_GNSS_LLI[1][:,ismember(current_obsCodes[currentGNSSsystem],range1_Code)]))) # MAALAB uses transpose her
         LLI_current_dum = np.array(current_GNSS_LLI[ep+1][:,ismember(current_obsCodes[currentGNSSsystem],phase1_Code)]).reshape(1, len(current_GNSS_LLI[ep+1][:,ismember(current_obsCodes[currentGNSSsystem],phase1_Code)]))
         LLI_current_phase[ep,:] = np.squeeze(LLI_current_dum)
 
