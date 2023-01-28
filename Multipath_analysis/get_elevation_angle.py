@@ -69,12 +69,13 @@ def get_elevation_angle(sys, PRN, week, tow, sat_positions, nEpochs, epoch_dates
     
     # get date in form of [year, month, week, day, min, sec] from GPS-week
     #  "time-of-week"
-    date_ = gpstime2date(week, tow)
+    # date_ = gpstime2date(week, tow)
+    date_ = gpstime2date(week, round(tow,1)) ## added round to prevent 59.99999 seconds
     # date_ = datetime.datetime(int(date_[0]),int(date_[1]),int(date_[2]),int(date_[3]),int(date_[4]),int(date_[5]))
     
     
     Xs, Ys, Zs = preciseOrbits2ECEF(sys, PRN, date_, epoch_dates, epochInterval, nEpochs, sat_positions, navGNSSsystems)
-    
+    # interpol_coord = np.array([Xs,Ys,Zs])
     if all([Xs,Ys,Zs]) == 0:
          missing_nav_data = 1
          elevation_angle = 0
@@ -113,104 +114,4 @@ def get_elevation_angle(sys, PRN, week, tow, sat_positions, nEpochs, epoch_dates
             elevation_angle = np.nan
             azimut_angle = np.nan
 
-        
-
-    return elevation_angle,azimut_angle, missing_nav_data
-
-
-
-# def ECEF2geodb(a,b,X,Y,Z):
-#     '''
-#     Konverter fra kartesiske ECEF-koordinater til geodetiske koordinater vha Bowrings metode.
-
-#     Parameters
-#     ----------
-#     a : Store halvakse
-#     b : Lille halvakse
-#     X : X-koordinat
-#     Y : Y-koordinat
-#     Z : Z-koordinat
-
-#     Returns
-#     -------
-#     lat : Breddegrad
-#     lon : Lengdegrad
-#     h :   Høyde
-
-#     '''
-#     import numpy as np 
-#     from math import sqrt,sin,cos,tan,pi,atan,atan2,asin
-#     from numpy import fix,log,fmod,arctan,arctan2
-#     from get_elevation_angle import Nrad
-    
-#     e2m = (a**2 - b**2)/b**2
-#     e2  = (a**2 - b**2)/a**2
-#     rho = sqrt(X**2 +Y**2)
-#     my  = atan((Z*a)/(rho*b))
-#     lat = atan(( Z +e2m*b*(sin(my))**3)/(rho - e2*a*(cos(my))**3))
-#     lon = atan(Y/X)
-#     N   = Nrad(a,b,lat)
-#     h   = rho*cos(lat) + Z*sin(lat) - N*( 1 - e2*(sin(lat))**2)
-#     return lat, lon, h
-
-
-# def ECEF2enu(lat,lon,dX,dY,dZ):
-#     """
-#     Konverterer fra ECEF til lokaltoposentrisk koordinatsystem ENU.
-#     """
-#     import numpy as np 
-#     from math import sqrt,sin,cos,tan,pi,atan,atan2,asin
-#     from numpy import fix,log,fmod,arctan,arctan2,array
-#     dP_ECEF = array([dX, dY, dZ]).reshape((3,1))
-    
-#     M = array([[-sin(lon), cos(lon), 0], 
-#         [-sin(lat)*cos(lon), -sin(lat)*sin(lon), cos(lat)], 
-#         [cos(lat)*cos(lon), cos(lat)*sin(lon), sin(lat)]])
-    
-#     dP_ENU = M @ dP_ECEF
-    
-#     e = float(dP_ENU[0]) 
-#     n = float(dP_ENU[1])
-#     u = float(dP_ENU[2])
-#     return dP_ENU
-
-
-# def atanc(y,x):
-#     import numpy as np 
-#     from math import sqrt,sin,cos,tan,pi,atan,atan2,asin
-#     from numpy import fix,log,fmod,arctan,arctan2
-#     z=atan2(y,x)
-#     atanc=fmod(2*pi + z, 2*pi)
-#     return atanc
-
-
-
-# def atanc(y,x): 
-#     from numpy import fmod,arctan2,pi
-#     z=arctan2(y,x)
-#     atanc=fmod(2*pi + z, 2*pi)
-#     return atanc
-
-# def Nrad(a,b,lat):
-#     '''
-#     Funksjonen beregner Normalkrumningsradiusen for den gitte breddegraden. På engelsk
-#     "Earth's prime-vertical radius of curvature", eller "The Earth's transverse radius of curvature".
-#     Den står ortogonalt på M (meridiankrumningsradiusen) for den gitte breddegraden. Dvs øst-vest. 
-
-#     Parameters
-#     ----------
-#     a : Store halvakse
-#     b : Lille halvakse
-#     lat : Breddegrad
-
-#     Returns
-#     -------
-#     N : Normalkrumningsradiusen
-
-#     '''
-#     import numpy as np 
-#     from math import sqrt,sin,cos,tan,pi,atan,atan2,asin
-#     from numpy import fix,log,fmod,arctan,arctan2
-#     e2 = (a**2 - b**2)/a**2
-#     N = a/(1 - e2*sin(lat)**2)**(1/2)
-#     return N
+    return elevation_angle,azimut_angle, missing_nav_data, float(Xs), float(Ys), float(Zs)
