@@ -1,4 +1,13 @@
 from Geodetic_functions import *
+import numpy as np 
+# from math import sqrt,sin,cos,tan,pi,atan,atan2,asin
+from numpy import fix,log,fmod,arctan,arctan2,sqrt
+from get_elevation_angle import ECEF2enu
+from gpstime2date import gpstime2date
+from preciseOrbits2ECEF import preciseOrbits2ECEF
+import datetime
+import warnings
+warnings.filterwarnings(action='ignore', message='invalid value encountered in fmod')
 
 def get_elevation_angle(sys, PRN, week, tow, sat_positions, nEpochs, epoch_dates, epochInterval, navGNSSsystems, x_e):
     """
@@ -49,15 +58,6 @@ def get_elevation_angle(sys, PRN, week, tow, sat_positions, nEpochs, epoch_dates
                       missing from sp3 file, o otherwise
     --------------------------------------------------------------------------------------------------------------------------
     """
-    import numpy as np 
-    # from math import sqrt,sin,cos,tan,pi,atan,atan2,asin
-    from numpy import fix,log,fmod,arctan,arctan2,sqrt
-    from get_elevation_angle import ECEF2enu
-    from gpstime2date import gpstime2date
-    from preciseOrbits2ECEF import preciseOrbits2ECEF
-    import datetime
-    import warnings
-    warnings.filterwarnings(action='ignore', message='invalid value encountered in fmod')
     
     ## -- Define GRS80 ellipsoid parameters
     a       = 6378137
@@ -73,9 +73,7 @@ def get_elevation_angle(sys, PRN, week, tow, sat_positions, nEpochs, epoch_dates
     date_ = gpstime2date(week, round(tow,1)) ## added round to prevent 59.99999 seconds
     # date_ = datetime.datetime(int(date_[0]),int(date_[1]),int(date_[2]),int(date_[3]),int(date_[4]),int(date_[5]))
     
-    
     Xs, Ys, Zs = preciseOrbits2ECEF(sys, PRN, date_, epoch_dates, epochInterval, nEpochs, sat_positions, navGNSSsystems)
-    # interpol_coord = np.array([Xs,Ys,Zs])
     if all([Xs,Ys,Zs]) == 0:
          missing_nav_data = 1
          elevation_angle = 0

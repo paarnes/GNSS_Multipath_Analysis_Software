@@ -36,23 +36,50 @@ def ECEF2geodb(a,b,X,Y,Z):
     return lat, lon, h
 
 
-def ECEF2enu(lat,lon,dX,dY,dZ):
-    """
-    Konverterer fra ECEF til lokaltoposentrisk koordinatsystem ENU.
-    """
+# def ECEF2enu(lat,lon,dX,dY,dZ):
+#     """
+#     Konverterer fra ECEF til lokaltoposentrisk koordinatsystem ENU.
+#     """
 
-    dP_ECEF = array([dX, dY, dZ]).reshape((3,1))
+#     dP_ECEF = array([dX, dY, dZ]).reshape((3,1))
     
-    M = array([[-sin(lon), cos(lon), 0], 
-        [-sin(lat)*cos(lon), -sin(lat)*sin(lon), cos(lat)], 
-        [cos(lat)*cos(lon), cos(lat)*sin(lon), sin(lat)]])
+#     M = array([[-sin(lon), cos(lon), 0], 
+#         [-sin(lat)*cos(lon), -sin(lat)*sin(lon), cos(lat)], 
+#         [cos(lat)*cos(lon), cos(lat)*sin(lon), sin(lat)]])
     
-    dP_ENU = M @ dP_ECEF
+#     dP_ENU = M @ dP_ECEF
+    
+#     e = float(dP_ENU[0]) 
+#     n = float(dP_ENU[1])
+#     u = float(dP_ENU[2])
+#     return e, n, u
+
+
+
+def ECEF2enu(lat,lon,dX,dY,dZ): ## added this new function 28.01.2023
+    """
+    Test if this is faster?????
+    Convert from ECEF to a local toposentric coordinate system (ENU)
+    """
+    ## -- Compute sin and cos before putting in to matrix
+    sin_lon = np.sin(lon)
+    cos_lon = np.cos(lon)
+    sin_lat = np.sin(lat)
+    cos_lat = np.cos(lat)
+    
+    dP_ECEF = np.array([dX, dY, dZ]).reshape((3,1))
+    
+    M = np.array([[-sin_lon, cos_lon, 0], 
+        [-sin_lat*cos_lon, -sin_lat*sin_lon, cos_lat], 
+        [cos_lat*cos_lon, cos_lat*sin_lon, sin_lat]])
+    
+    dP_ENU = np.dot(M, dP_ECEF)
     
     e = float(dP_ENU[0]) 
     n = float(dP_ENU[1])
     u = float(dP_ENU[2])
     return e, n, u
+
 
 
 

@@ -1,3 +1,5 @@
+import numpy as np
+from datetime import datetime, timedelta
 def gpstime2date(week, tow):
     """
     Calculates date from GPS-week number and "time-of-week" to Gregorian calendar.
@@ -18,11 +20,6 @@ def gpstime2date(week, tow):
     date : The date given in the Gregorian calender ([year, month, day, hour, min, sec]) 
     
     """
-    
-    
-    import numpy as np
-    from datetime import datetime, timedelta
-
     hour = np.floor(tow/3600)
     res = tow/3600 - hour
     min_ = np.floor(res*60)
@@ -54,7 +51,23 @@ def gpstime2date(week, tow):
     date_ = [year, month, day, hour, min_, sec]
     return date_
 
+# ## TESTING OUT NEW FUNTION
+# from datetime import datetime, timedelta
+
+# def gpstime2date(week, time_of_week):
+#     # GPS epoch (January 6, 1980)
+#     gps_epoch = datetime(1980, 1, 6)
+    
+#     # Calculate time in seconds
+#     time_in_seconds = (week * 7 * 24 * 60 * 60) + time_of_week
+#     # Round to nearest second
+#     time_in_seconds = round(time_in_seconds, 0)
+#     # Add seconds to GPS epoch
+#     date = gps_epoch + timedelta(seconds=time_in_seconds)
+#     # return date in the format of a list
+#     return [date.year, date.month, date.day, date.hour, date.minute, date.second]
+
 # week = 2190
 # tow = 518399
 # gpstime2date(week, tow)
-
+# gps_to_date(week, tow)

@@ -1,3 +1,9 @@
+import numpy as np
+from orgSlipEpochs import orgSlipEpochs
+from detectPhaseSlips import detectPhaseSlips
+import warnings
+warnings.filterwarnings(action='ignore', message='Mean of empty slice')
+
 def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carrier_freq1, \
                          carrier_freq2, nepochs, max_sat, GNSS_SVs, obsCodes, GNSS_obs, \
                              currentGNSSsystem, tInterval, phaseCodeLimit, ionLimit):
@@ -117,11 +123,6 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
     
     --------------------------------------------------------------------------------------------------------------------------
     """
-    import numpy as np
-    from orgSlipEpochs import orgSlipEpochs
-    from detectPhaseSlips import detectPhaseSlips
-    import warnings
-    warnings.filterwarnings(action='ignore', message='Mean of empty slice')
     
     FDMA_used = 0
     success = 1
@@ -313,6 +314,7 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
                        
                     # multipath_range2[ambiguity_period_start, PRN] = multipath_range2[ambiguity_period_start, PRN] -\
                         # np.nanmean(multipath_range2[ambiguity_period_start, PRN])
+                        
         ## -- Get range1 and phase 1 observations for all epochs and PRN
         range1_observations =  np.zeros([nepochs, max_sat+1]) 
         phase1_observations =  np.zeros([nepochs, max_sat+1]) 
@@ -323,7 +325,7 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
 
     # return ion_delay_phase1, multipath_range1, multipath_range2, range1_slip_periods, range1_observations, phase1_observations, success
     # return ion_delay_phase1, multipath_range1, multipath_range2, ambiguity_slip_periods, range1_observations, phase1_observations, success # changeing from range1slip to amgiguity
-    return ion_delay_phase1, multipath_range1, range1_slip_periods, range1_observations, phase1_observations, success #fjernet multipath_range2
+    return ion_delay_phase1, multipath_range1, range1_slip_periods,ambiguity_slip_periods, range1_observations, phase1_observations, success #fjernet multipath_range2
 
 
 def ismember(list_,code):

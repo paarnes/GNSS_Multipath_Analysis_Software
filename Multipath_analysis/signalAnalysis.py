@@ -126,7 +126,7 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
     # ion_delay_phase1, multipath_range1, _, range1_slip_periods, range1_observations, phase1_observations, success = estimateSignalDelays(range1_Code, range2_Code, \
     #     phase1_Code, phase2_Code, carrier_freq1, carrier_freq2,nepochs, current_max_sat,\
     #       current_GNSS_SVs, current_obsCodes, current_GNSS_obs, currentGNSSsystem, tInterval, phaseCodeLimit, ionLimit)
-    ion_delay_phase1, multipath_range1, range1_slip_periods, range1_observations, phase1_observations, success = estimateSignalDelays(range1_Code, range2_Code, \
+    ion_delay_phase1, multipath_range1, range1_slip_periods,ambiguity_slip_periods ,range1_observations, phase1_observations, success = estimateSignalDelays(range1_Code, range2_Code, \
         phase1_Code, phase2_Code, carrier_freq1, carrier_freq2,nepochs, current_max_sat,\
           current_GNSS_SVs, current_obsCodes, current_GNSS_obs, currentGNSSsystem, tInterval, phaseCodeLimit, ionLimit) # tester uten multipath_range2 23.01.2023
 
@@ -145,13 +145,13 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
     
     
 
-    ## -- Remove estimated slip periods if satellite elevation angle was lower than cutoff or missing.
-    for sat in range(0,len(range1_slip_periods)):
+    ## -- Remove estimated slip periods (range_1 slips) if satellite elevation angle was lower than cutoff or missing.
+    for sat in np.arange(0,len(range1_slip_periods)):
         current_sat_slip_periods = np.array(range1_slip_periods[sat+1]).astype(int)
         if len(current_sat_slip_periods) > 0:
             n_slip_periods,_ = current_sat_slip_periods.shape
             n_slips_removed = 0
-            for slip_period in range(0,n_slip_periods):
+            for slip_period in np.arange(0,n_slip_periods):
                 if cutoff_elevation_mask[current_sat_slip_periods[slip_period - n_slips_removed, 0], sat] == 0 \
                     or cutoff_elevation_mask[current_sat_slip_periods[slip_period - n_slips_removed, 1], sat] == 0:
                       
@@ -160,6 +160,20 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
                   
             range1_slip_periods[sat+1] = current_sat_slip_periods
     
+    ## -- Remove estimated slip periods (both ionspher residuals and code phase) if satellite elevation angle was lower than cutoff or missing.
+    for sat in np.arange(0,len(ambiguity_slip_periods)):
+        current_sat_slip_periods = np.array(ambiguity_slip_periods[sat+1]).astype(int)
+        if len(current_sat_slip_periods) > 0:
+            n_slip_periods,_ = current_sat_slip_periods.shape
+            n_slips_removed = 0
+            for slip_period in np.arange(0,n_slip_periods):
+                if cutoff_elevation_mask[current_sat_slip_periods[slip_period - n_slips_removed, 0], sat] == 0 \
+                    or cutoff_elevation_mask[current_sat_slip_periods[slip_period - n_slips_removed, 1], sat] == 0:
+                      
+                    current_sat_slip_periods[slip_period - n_slips_removed, :] = []
+                    n_slips_removed = n_slips_removed + 1
+                  
+            ambiguity_slip_periods[sat+1] = current_sat_slip_periods
     
     if not success:
       currentStats = np.nan
@@ -168,20 +182,20 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
     ## -- Compute slips from LLI in rinex file
     max_sat = len(current_GNSS_obs[1])
     LLI_current_phase =  np.zeros([nepochs,max_sat]) ## sjekk hvordan LLI beeregnes. Skal være 1 i øvserste raden for mange av satellittene
-    for ep in range(0, nepochs):
+    for ep in np.arange(0, nepochs):
         LLI_current_dum = np.array(current_GNSS_LLI[ep+1][:,ismember(current_obsCodes[currentGNSSsystem],phase1_Code)]).reshape(1, len(current_GNSS_LLI[ep+1][:,ismember(current_obsCodes[currentGNSSsystem],phase1_Code)]))
         LLI_current_phase[ep,:] = np.squeeze(LLI_current_dum)
 
     LLI_slip_periods = getLLISlipPeriods(LLI_current_phase)
    
-    ## -- Compute statistics of estimates --------------    
+    ## -- Compute statistics of estimates --------------    #added ambiguity_slip_distribution_per_sat, ambiguity_slip_distribution 24.01.2023
     mean_multipath_range1, overall_mean_multipath_range1,\
         rms_multipath_range1, average_rms_multipath_range1,\
         mean_ion_delay_phase1, overall_mean_ion_delay_phase1, mean_sat_elevation_angles, nEstimates, nEstimates_per_sat,\
-        nRange1Obs_Per_Sat, nRange1Obs, range1_slip_distribution_per_sat, range1_slip_distribution, LLI_slip_distribution_per_sat, LLI_slip_distribution, \
+        nRange1Obs_Per_Sat, nRange1Obs, range1_slip_distribution_per_sat, range1_slip_distribution,ambiguity_slip_distribution_per_sat, ambiguity_slip_distribution,LLI_slip_distribution_per_sat, LLI_slip_distribution, \
         combined_slip_distribution_per_sat, combined_slip_distribution, elevation_weighted_rms_multipath_range1, \
         elevation_weighted_average_rms_multipath_range1 = \
-        computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_angles,range1_slip_periods, LLI_slip_periods, range1_observations, tInterval)
+        computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_angles,range1_slip_periods,ambiguity_slip_periods,LLI_slip_periods, range1_observations, tInterval) # add ambibuity_slip_pero\iod 24.01.2023
     
     
     
@@ -198,6 +212,8 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
                     'nRange1Obs' : nRange1Obs,
                     'range1_slip_distribution_per_sat' : range1_slip_distribution_per_sat,
                     'range1_slip_distribution' : range1_slip_distribution,
+                    'cycle_slip_distribution_per_sat' : ambiguity_slip_distribution_per_sat, # added 24.01.2023
+                    'cycle_slip_distribution' : ambiguity_slip_distribution,                 # added 24.01.2023
                     'LLI_slip_distribution_per_sat' : LLI_slip_distribution_per_sat,
                     'LLI_slip_distribution' : LLI_slip_distribution,
                     'slip_distribution_per_sat_LLI_fusion' : combined_slip_distribution_per_sat,
@@ -222,7 +238,7 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
     
     ## -- Store slips
     currentStats['range1_slip_periods'] = range1_slip_periods
-
+    currentStats['cycle_slip_periods'] = ambiguity_slip_periods
 
     return currentStats, success
 

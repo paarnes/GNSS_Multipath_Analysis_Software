@@ -1,3 +1,4 @@
+
 def plotResults(ion_delay_phase1, multipath_range1, sat_elevation_angles,\
     tInterval, currentGNSSsystem, range1_Code, range2_Code, phase1_Code, phase2_Code, graphDir):
     """
@@ -66,6 +67,7 @@ def plotResults(ion_delay_phase1, multipath_range1, sat_elevation_angles,\
     rc('font',**{'family':'serif','serif':['Computer Modern Roman']})
     rc('text', usetex=True)
     plt.rc('figure', figsize=(14, 9),dpi = 170)
+    plt.rcParams.update({'figure.max_open_warning': 0})
 
     ## -- Map mapping GNSS system code to full name
     GNSSsystemName_map = dict(zip(['G', 'R', 'E', 'C'], ['GPS', 'GLONASS', 'Galileo', 'BeiDou']))
@@ -380,6 +382,14 @@ def make_barplot(analysisResults,graphDir):
     import matplotlib.pyplot as plt
     import numpy as np, os
     import pandas as pd
+    from matplotlib import rc
+    import matplotlib
+    matplotlib.use('Agg') # dont want the plots to be displayed.
+    plt.rcParams['axes.axisbelow'] = True
+    rc('font',**{'family':'serif','serif':['Computer Modern Roman']})
+    rc('text', usetex=True)
+    plt.rcParams.update({'figure.max_open_warning': 0})
+    
     
     current_systems = analysisResults['GNSSsystems'] # Extracting the system used in the analysis
     if len(current_systems) == 4:
@@ -422,13 +432,7 @@ def make_barplot(analysisResults,graphDir):
             except:
                 print("Bar plot not possible for %s" % (sys))
                 continue
-            # width = 0.35  # the width of the bars
-            if len(data_codes) >2:
-                width =0.65
-            elif len(data_codes)==2:
-                width=0.35
-            else:
-                width=0.25
+            width = 0.35  # the width of the bars
             x = np.arange(len(data_codes))  # the label locations
             rects1 = ax[row_idx,col_idx].bar(x - width/2, data_rms, width, label='RMS')
             rects2 = ax[row_idx,col_idx].bar(x + width/2, data_elw_rms, width, label='RMS (weighted)')
@@ -504,7 +508,7 @@ def make_barplot(analysisResults,graphDir):
             except:
                 continue
             plt.tick_params(rotation=0)
-            plt.show()
+            # plt.show()
             # x = np.arange(len(data_codes))  # the label locations
             # if len(data_codes) > 2:
             #     width = 0.35  # the width of the bars
@@ -514,7 +518,6 @@ def make_barplot(analysisResults,graphDir):
             # rects2 = ax.bar(x + width/2, data_elw_rms, width, label='RMS (weighted)')
             ax.set_ylabel('RMS [m]',fontsize=18,labelpad=20)
             ax.set_title('RMS values for the multipath effect (%s)' %(sys),fontsize=24)
-            # ax.set_xticks(x); ax.set_xticklabels(data_codes)
             ax.locator_params(tight=True, nbins=12)
             ax.legend(fontsize=16,fancybox=True, shadow=True)
             ax.tick_params(axis='both', labelsize= 16)
