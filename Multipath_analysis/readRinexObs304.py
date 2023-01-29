@@ -311,7 +311,7 @@ def readRinexObs304(filename, readSS, readLLI, includeAllGNSSsystems,includeAllO
     
     if success==0:
         pass 
-       # return
+        return
     
     ## -- Compute number of epochs with observations
     nepochs, tLastObs, tInterval, success =\
@@ -1177,6 +1177,8 @@ def rinexReadObsFileHeader304(filename, includeAllGNSSsystems, includeAllObsCode
             line = line[0:60]     # deletes 'SYS / # / OBS TYPES'
             line_ = [el for el in line.split(" ") if el != ""]
             Sys = line_.pop(0) # assingning system to variable and removing it from the list
+            if Sys not in ["G","R","E","C"]: # added this line 29.01.2023 to fix bug where Only one system and several lines with Obscodes in rinex file
+                continue
             nObs = int(line_.pop(0))
              
              # [Sys, line] = strtok(line);      # reads GNSS system of this line
@@ -1194,7 +1196,7 @@ def rinexReadObsFileHeader304(filename, includeAllGNSSsystems, includeAllObsCode
                 GNSSsystems[numGNSSsystems] = str(Sys) # Store current GNSS system
                  # GNSSsystems{numGNSSsystems} = string(Sys); # Store current GNSS system
              
-                GNSSSystemObsCodes = {}; # Reset cell of obsCodes for this GNSS system
+                GNSSSystemObsCodes = {}  # Reset cell of obsCodes for this GNSS system
                 obsCode_list = []
                 for k in range(0,nObs):
                     obsCode = line_.pop(0)
