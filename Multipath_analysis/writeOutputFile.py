@@ -268,14 +268,14 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
             rmsMultiPathmsg                 = '|RMS multipath[meters]                        |'
             rmsMultiPathmsg_weighted        = '|Weighted RMS multipath[meters]               |'
             nSlipsmsg                       = '|N ambiguity slips periods                    |'
-            slipRatiomsg                    = '|Ratio of N slip periods/N obs epochs [%%]    |'
+            slipRatiomsg                    = '|Ratio of N slip periods/N obs epochs [%]     |'
             nSlipsOver10msg                 = '|N slip periods, elevation angle > 10 degrees |'
             nSlipsUnder10msg                = '|N slip periods, elevation angle < 10 degrees |'
             nSlipsNaNmsg                    = '|N slip periods, elevation angle not computed |'
-            topline                         = ' _____________________________________________ '
+            topline                         = ' _____________________________________________'
             bottomline                      = '|_____________________________________________|'
     
-            fid.write(  '\n\n\n\n');
+            fid.write(  '\n\n\n\n')
             fid.write(  '%s ANALYSIS SUMMARY\n\n' % (GNSSsystems[i]))
             for j in range(0,nBands_current_sys):
                 bandName = current_sys_struct['Bands'][j]
@@ -321,6 +321,73 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
             fid.write(bottomline + '\n')
             fid.write(slipRatiomsg + '\n')
             fid.write(bottomline + '\n')
+            
+            
+            
+            ## -- Summary for cycle slip detected with both ionospheric residuals and code-phase difference
+            fid.write(  '\n\n') # make some space
+            headermsg                       = '|                                             |'
+            nSlipsmsg                       = '|N detected cycle slips                       |'
+            slipRatiomsg                    = '|Ratio of N cycle slips/N obs epochs [%]      |'
+            nSlipsUnder10msg                = '|N cycle slip, elevation angle < 10 degrees   |'
+            nSlips10_20msg                  = '|N cycle slip, elevation angle 10-20 degrees  |'
+            nSlips20_30msg                  = '|N cycle slip, elevation angle 20-30 degrees  |'
+            nSlips30_40msg                  = '|N cycle slip, elevation angle 30-40 degrees  |'
+            nSlips40_50msg                  = '|N cycle slip, elevation angle 40-50 degrees  |'
+            nSlipsOver50msg                 = '|N cycle slip, elevation angle > 50 degrees   |'
+            nSlipsNaNmsg                    = '|N cycle slip, elevation angle not computed   |'
+            topline                         = ' _____________________________________________'
+            bottomline                      = '|_____________________________________________|'
+    
+            fid.write('\n')
+            fid.write(  '%s: DETECTED CYCLE SLIPS IN TOTAL FOR THE SIGNAL COMBINATION (IONOSPHERIC RESIDUALS & CODE-PHASE COMBINATION)\n' % (GNSSsystems[i]))
+            for j in range(0,nBands_current_sys):
+                bandName = current_sys_struct['Bands'][j]
+                current_band_struct = current_sys_struct[bandName]    
+                nCodes_current_band = current_band_struct['nCodes']
+                for k in range(0,nCodes_current_band):
+                    codeName = current_band_struct['Codes'][k]
+                    try:
+                        current_code_struct = current_band_struct[codeName]
+                    except:
+                        print("No estimates to put in report for this code")
+                        break
+    
+                    topline                     = topline + '_________'
+                    bottomline                  = bottomline + '________|'
+                    headermsg                   = headermsg + '%8s|' % (codeName)
+                    slipRatiomsg                = slipRatiomsg +  '%8.3f|' % (100*current_code_struct['cycle_slip_distribution']['n_slips_Tot']/current_code_struct['nRange1Obs']) 
+                    nSlipsmsg                   = nSlipsmsg + '%8d|' % (current_code_struct['cycle_slip_distribution']['n_slips_Tot'])
+                    nSlipsUnder10msg            = nSlipsUnder10msg + '%8d|' % (current_code_struct['cycle_slip_distribution']['n_slips_0_10'])
+                    nSlips10_20msg              = nSlips10_20msg + '%8d|' % (current_code_struct['cycle_slip_distribution']['n_slips_10_20'])
+                    nSlips20_30msg              = nSlips20_30msg + '%8d|' % (current_code_struct['cycle_slip_distribution']['n_slips_20_30'])
+                    nSlips30_40msg              = nSlips30_40msg + '%8d|' % (current_code_struct['cycle_slip_distribution']['n_slips_30_40'])
+                    nSlips40_50msg              = nSlips40_50msg + '%8d|' % (current_code_struct['cycle_slip_distribution']['n_slips_40_50'])
+                    nSlipsOver50msg             = nSlipsOver50msg + '%8d|' % (current_code_struct['cycle_slip_distribution']['n_slips_over50'])
+                    nSlipsNaNmsg                = nSlipsNaNmsg + '%8d|' % (current_code_struct['cycle_slip_distribution']['n_slips_NaN'])
+
+            fid.write(topline + '\n')
+            fid.write(headermsg + '\n')
+            fid.write(bottomline +'\n')
+            fid.write(nSlipsmsg + '\n')
+            fid.write(bottomline + '\n')
+            fid.write(nSlipsUnder10msg + '\n')   
+            fid.write(bottomline + '\n')        
+            fid.write(nSlips10_20msg + '\n')
+            fid.write(bottomline + '\n')
+            fid.write(nSlips20_30msg + '\n')
+            fid.write(bottomline + '\n')
+            fid.write(nSlips30_40msg + '\n')
+            fid.write(bottomline + '\n')            
+            fid.write(nSlips40_50msg + '\n')
+            fid.write(bottomline + '\n')            
+            fid.write(nSlipsOver50msg + '\n')
+            fid.write(bottomline + '\n')
+            fid.write(nSlipsNaNmsg + '\n') 
+            fid.write(bottomline + '\n')
+            fid.write(slipRatiomsg + '\n')
+            fid.write(bottomline + '\n')            
+            
 
         fid.write(   '\n======================================================================================================================================================================================================================================================================================================================================================\n')
         fid.write(   'END OF ANALYSIS RESULTS SUMMARY (COMPACT)\n\n\n\n\n')
@@ -374,10 +441,10 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                             fid.write(  '\nSatellite Overview\n');
                             fid.write( ' _____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________\n')
                             fid.write( '|   |    n %s   | n Epochs with |   RMS   | Weighted RMS |  Average Sat. |                           |     Slip Periods/Obs      |       n Slip Periods      |       n Slip Periods      |       n Slip Periods      |       n Slip Periods      |       n Slip Periods      |       n Slip Periods      |       n Slip Periods      |\n' % current_code_struct['range1_Code'])
-                            fid.write(  '|PRN|Observations|   Multipath   |Multipath|  Multipath   |Elevation Angle|       n Slip Periods      |         Ratio             |      Elevation Angle      |      Elevation Angle      |      Elevation Angle      |      Elevation Angle      |      Elevation Angle      |      Elevation Angle      |      Elevation Angle      |\n')
-                            fid.write( '|   |            |   Estimates   |[meters] |   [meters]   |   [degrees]   |                           |          [%%]              |       0-10 degrees        |        10-20 degrees      |        20-30 degrees      |        30-40 degrees      |        40-50 degrees      |        >50 degrees        |        NaN degrees        |\n')
+                            fid.write( '|PRN|Observations|   Multipath   |Multipath|  Multipath   |Elevation Angle|       n Slip Periods      |         Ratio             |      Elevation Angle      |      Elevation Angle      |      Elevation Angle      |      Elevation Angle      |      Elevation Angle      |      Elevation Angle      |      Elevation Angle      |\n')
+                            fid.write( '|   |            |   Estimates   |[meters] |   [meters]   |   [degrees]   |                           |          [%]              |       0-10 degrees        |        10-20 degrees      |        20-30 degrees      |        30-40 degrees      |        40-50 degrees      |        >50 degrees        |        NaN degrees        |\n')
                             fid.write( '|   |            |               |         |              |               |___________________________|___________________________|___________________________|___________________________|___________________________|___________________________|___________________________|___________________________|___________________________|\n')
-                            fid.write(  '|   |            |               |         |              |               | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  |\n')
+                            fid.write( '|   |            |               |         |              |               | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  |\n')
                             for PRN in range(0,nSat):
                                # if current_code_struct['n_range1_obs_per_sat'][:,PRN] > 0:
                                if current_code_struct['nEstimates_per_sat'][PRN] > 0: ##added 21.01.2023 to prevent sat with only nan in resultfile
@@ -423,7 +490,7 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                             fid.write(  ' ____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________\n')
                             fid.write(  '|      | Frequency |    n %s   | n Epochs with |   RMS   | Weighted RMS |  Average Sat. |                           |        Slip/Obs           |       n Slip Periods      |       n Slip Periods      |       n Slip Periods      |       n Slip Periods      |       n Slip Periods      |       n Slip Periods      |       n Slip Periods      |\n' % current_code_struct['range1_Code'])
                             fid.write(  '|Sat ID|  Channel  |Observations|   Multipath   |Multipath|  Multipath   |Elevation Angle|       n Slip Periods      |         Ratio             |      Elevation Angle      |      Elevation Angle      |      Elevation Angle      |      Elevation Angle      |      Elevation Angle      |      Elevation Angle      |      Elevation Angle      |\n')
-                            fid.write( '|      |           |            |   Estimates   |[meters] |   [meters]   |   [degrees]   |                           |          [%%]              |       0-10 degrees        |        10-20 degrees      |        20-30 degrees      |        30-40 degrees      |        40-50 degrees      |        >50 degrees        |        NaN degrees        |\n')
+                            fid.write(  '|      |           |            |   Estimates   |[meters] |   [meters]   |   [degrees]   |                           |          [%]              |       0-10 degrees        |        10-20 degrees      |        20-30 degrees      |        30-40 degrees      |        40-50 degrees      |        >50 degrees        |        NaN degrees        |\n')
                             fid.write(  '|      |           |            |               |         |              |               |___________________________|___________________________|___________________________|___________________________|___________________________|___________________________|___________________________|___________________________|___________________________|\n')
                             fid.write(  '|      |           |            |               |         |              |               | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  |\n')
                             # for PRN in range(0,nSat):
@@ -475,7 +542,7 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                             fid.write(   ' __________________________________________________________________________________________________________________________________________________________________________________________________________________________________ \n');
                             fid.write(   '|   |    n %s   | n Epochs with |   RMS   | Weighted RMS |  Average Sat. |               | Slip/Obs | n Slip Periods  | n Slip Periods  | n Slip Periods  | n Slip Periods  | n Slip Periods  | n Slip Periods  | n Slip Periods  |\n' % (current_code_struct['range1_Code']))
                             fid.write(   '|PRN|Observations|   Multipath   |Multipath|  Multipath   |Elevation Angle|    n Slip     |  Ratio   | Elevation Angle | Elevation Angle | Elevation Angle | Elevation Angle | Elevation Angle | Elevation Angle | Elevation Angle |\n');
-                            fid.write(   '|   |            |   Estimates   |[meters] |   [meters]   |   [degrees]   |    Periods    |   [%%]   |  0-10 degrees   |  10-20 degrees  |  20-30 degrees  |  30-40 degrees  |  40-50 degrees  |   >50 degrees   |   NaN degrees   |\n');
+                            fid.write(   '|   |            |   Estimates   |[meters] |   [meters]   |   [degrees]   |    Periods    |   [%]    |  0-10 degrees   |  10-20 degrees  |  20-30 degrees  |  30-40 degrees  |  40-50 degrees  |   >50 degrees   |   NaN degrees   |\n');
                             
                             for PRN in range(0,nSat):
                                # if current_code_struct['n_range1_obs_per_sat'][:,PRN] > 0:
@@ -504,7 +571,7 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                             fid.write(  ' _________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________ \n')
                             fid.write(  '|      | Frequency |    n %s   | n Epochs with |   RMS   | Weighted RMS |  Average Sat. |               | Slip/Obs | n Slip Periods  | n Slip Periods  | n Slip Periods  | n Slip Periods  | n Slip Periods  | n Slip Periods  | n Slip Periods  |\n' % current_code_struct['range1_Code'])
                             fid.write(  '|Sat ID|  Channel  |Observations|   Multipath   |Multipath|  Multipath   |Elevation Angle|    n Slip     |  Ratio   | Elevation Angle | Elevation Angle | Elevation Angle | Elevation Angle | Elevation Angle | Elevation Angle | Elevation Angle |\n')
-                            fid.write(  '|      |           |            |   Estimates   |[meters] |   [meters]   |   [degrees]   |    Periods    |   [%%]    |  0-10 degrees   |  10-20 degrees  |  20-30 degrees  |  30-40 degrees  |  40-50 degrees  |   >50 degrees   |   NaN degrees   |\n')
+                            fid.write(  '|      |           |            |   Estimates   |[meters] |   [meters]   |   [degrees]   |    Periods    |   [%]    |  0-10 degrees   |  10-20 degrees  |  20-30 degrees  |  30-40 degrees  |  40-50 degrees  |   >50 degrees   |   NaN degrees   |\n')
                             
                             for PRN in list(GLO_Slot2ChannelMap.keys()):
                                # if current_code_struct['n_range1_obs_per_sat'][:,PRN] > 0:
