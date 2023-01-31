@@ -41,7 +41,6 @@ def read_rinex2_nav(filename, dataframe = None):
     data  = np.zeros((1,36))
    
     while line != '':
-        block = []
         block_arr = np.array([])
         
         ## -- Read first line of navigation message
@@ -61,7 +60,7 @@ def read_rinex2_nav(filename, dataframe = None):
         block_arr = block_arr.reshape(1,len(block_arr))
         
         ## Looping throug the next 7-lines for current message (satellitte)
-        for i in range(0,7):
+        for i in np.arange(0,7):
             line = filnr.readline().rstrip()
             ## -Replacing 'D' with 'E'
             line = line.replace('D','E')
@@ -140,7 +139,6 @@ def read_rinex3_nav(filename, dataframe = None):
         
     data  = np.zeros((1,36))
     while line != '':
-        block = []
         block_arr = np.array([])
         ## -- Read first line of navigation message
         line = filnr.readline().rstrip()
@@ -165,13 +163,13 @@ def read_rinex3_nav(filename, dataframe = None):
                 line = line[:idx+4] + " " + line[idx+4:]
         
         fl = [el for el in line.split(" ") if el != ""]
-        block_arr =np.append(block_arr,np.array([fl]))
+        block_arr = np.append(block_arr,np.array([fl]))
         block_arr = block_arr.reshape(1,len(block_arr))
         
         
         ## Looping throug the next 3-lines for current message (satellitte) (GLONASS)
         if 'R' in sys_PRN:  #PH added if test to add GLONASS 12.12.2022
-            for i in range(0,3):
+            for i in np.arange(0,3):
                 line = filnr.readline().rstrip()
                 ## -- Have to add space between datacolums where theres no whitespace
                 for idx, val in enumerate(line):
@@ -188,7 +186,7 @@ def read_rinex3_nav(filename, dataframe = None):
                 block_arr = block_arr.reshape(1,len(block_arr))
         else:   
             ## Looping throug the next 7-lines for current message (satellitte) (GPS,Galileo,BeiDou)
-            for i in range(0,7):
+            for i in np.arange(0,7):
                 line = filnr.readline().rstrip()
                 if line == '': #PH 07.01.2023
                     continue
