@@ -36,38 +36,20 @@ def ECEF2geodb(a,b,X,Y,Z):
     return lat, lon, h
 
 
-# def ECEF2enu(lat,lon,dX,dY,dZ):
-#     """
-#     Konverterer fra ECEF til lokaltoposentrisk koordinatsystem ENU.
-#     """
-
-#     dP_ECEF = array([dX, dY, dZ]).reshape((3,1))
-    
-#     M = array([[-sin(lon), cos(lon), 0], 
-#         [-sin(lat)*cos(lon), -sin(lat)*sin(lon), cos(lat)], 
-#         [cos(lat)*cos(lon), cos(lat)*sin(lon), sin(lat)]])
-    
-#     dP_ENU = M @ dP_ECEF
-    
-#     e = float(dP_ENU[0]) 
-#     n = float(dP_ENU[1])
-#     u = float(dP_ENU[2])
-#     return e, n, u
-
-
 
 def ECEF2enu(lat,lon,dX,dY,dZ): ## added this new function 28.01.2023
     """
-    Test if this is faster?????
     Convert from ECEF to a local toposentric coordinate system (ENU)
     """
-    ## -- Compute sin and cos before putting in to matrix
+    ## -- Compute sin and cos before putting in to matrix to gain speed
     sin_lon = np.sin(lon)
     cos_lon = np.cos(lon)
     sin_lat = np.sin(lat)
     cos_lat = np.cos(lat)
     
-    dP_ECEF = np.array([dX, dY, dZ]).reshape((3,1))
+    # dP_ECEF = np.array([dX, dY, dZ]).reshape((3,1))
+    dP_ECEF = np.array([[dX, dY, dZ]]).T
+
     
     M = np.array([[-sin_lon, cos_lon, 0], 
         [-sin_lat*cos_lon, -sin_lat*sin_lon, cos_lat], 
@@ -150,13 +132,13 @@ def compute_azimut_elev(X,Y,Z,xm,ym,zm):
         east,north,up = ECEF2enu(lat,lon,dX,dY,dZ)
         ## -- Computes the azimut angle and elevation angel for current coordinates (in degrees)
         if (east > 0 and north < 0) or (east < 0 and north < 0):
-            az = (arctan(east/north)*(180/pi) + 180)
+            az = np.rad2deg(arctan(east/north)) + 180
         elif east < 0 and north > 0:
-            az = arctan(east/north)*(180/pi) + 360
+            az = np.rad2deg(arctan(east/north)) + 360
         else:
-            az = arctan(east/north)*(180/pi)
+            az = np.rad2deg(arctan(east/north))
         # elev = arcsin(up/(sqrt(east**2 + north**2 + up**2)))*(180/pi)
-        elev = atanc(up, sqrt(east**2 + north**2))*180/pi
+        elev = np.rad2deg(atanc(up, sqrt(east**2 + north**2)))
     else:
         east = np.array([]); north = np.array([]); up = np.array([])
         for i in np.arange(0,len(dX)):    
@@ -170,13 +152,13 @@ def compute_azimut_elev(X,Y,Z,xm,ym,zm):
         for p in np.arange(0,len(dX)):
             # # Kvadrantkorreksjon 
             if (east[p]> 0 and north[p]< 0) or (east[p] < 0 and north[p] < 0):
-                az.append(arctan(east[p]/north[p])*(180/pi) + 180)
+                az.append(np.rad2deg(arctan(east[p]/north[p])) + 180)
             elif east[p] < 0 and north[p] > 0:
-                az.append(arctan(east[p]/north[p])*(180/pi) + 360)
+                az.append(np.rad2deg(arctan(east[p]/north[p])) + 360)
             else:
-                az.append(arctan(east[p]/north[p])*(180/pi))
+                az.append(np.rad2deg(arctan(east[p]/north[p])))
             # elev.append(arcsin(up[p]/(sqrt(east[p]**2 + north[p]**2 + up[p]**2)))*(180/pi))
-            elev.append(atanc(up, sqrt(east**2 + north**2))*180/pi) 
+            elev.append(np.rad2deg(atanc(up, sqrt(east**2 + north**2)))) 
 
     return az,elev
 
@@ -222,8 +204,8 @@ def date2gpstime(year,month,day,hour,minute,seconds):
 
 def extract_nav_message(data,PRN,tidspunkt):
     """
-    Funksjonen samler de satellittene som har de spesifiserte PRN nummrene, samt de som ligger nærmest spesifisert tidspunkt. 
-
+    Funksjonen samler de satellittene som har de spesifiserte PRN nummrene, 
+    samt de som ligger nærmest spesifisert tidspunkt. 
     """
     samla_data = gathering_sat_by_PRN(data,PRN);
     Sat_liste = find_message_closest_in_time(samla_data, tidspunkt)
@@ -232,7 +214,7 @@ def extract_nav_message(data,PRN,tidspunkt):
 
 def gathering_sat_by_PRN(data,PRN):
     """
-    Funksjonen bruker rinex-data i form av array ordnet ved funksjonen read_rinex2_nav
+    Funksjonen bruker rinex-data i form av array ordnet ved funksjonen read_rinex2_nav eller read_rines3_nav
     """
     j = 0
     m = len(data) 
@@ -404,20 +386,6 @@ def Satkoord2(efemerider,tow_mot,xm,ym,zm):
     return X,Y,Z,dT_rel
 
 
-
-
-
-
-
-# year = 2020
-# month = 10
-# day = 30
-# hour = 13
-# minute = 22
-# seconds = 14
-
-# weekG, towG = date2Galileotime(year,month,day,hour,minute,seconds)
-# week,tow = date2gpstime(year,month,day,hour,minute,seconds)
 
 def compute_GLO_coord_from_nav(ephemerides, time_epochs):
     """
