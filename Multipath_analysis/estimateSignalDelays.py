@@ -259,7 +259,7 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
                 # multipath_range2[epoch_first_obs::, PRN] = multipath_range2[epoch_first_obs::, PRN] - np.mean(np.nonzero(multipath_range2[epoch_first_obs::, PRN])) 
         else:
             ## -- Set all estimates of epochs with cycle slips to nan
-            for slip_period in range(0,n_slip_periods):
+            for slip_period in np.arange(0,n_slip_periods):
                 slip_start   = int(ambiguity_slip_periods[PRN][slip_period,0])
                 slip_end     = int(ambiguity_slip_periods[PRN][slip_period,1])
                

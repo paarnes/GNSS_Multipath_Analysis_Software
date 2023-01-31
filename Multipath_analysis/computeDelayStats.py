@@ -1,3 +1,6 @@
+from numpy import mean, sqrt, sin, nan,pi,isnan, sum, concatenate, zeros, where, intersect1d,nanmean,count_nonzero,union1d,arange
+import warnings
+warnings.filterwarnings(action='ignore', message='Mean of empty slice')
 def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_angles, range1_slip_periods, ambiguity_slip_periods ,LLI_slip_periods, range1_observations, tInterval):
     """
     Function that computes statistical values on estimates of multipath delay, ionospheric delay and satellite elevation angles
@@ -141,9 +144,6 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
                                    time of the slip.
     --------------------------------------------------------------------------------------------------------------------------
     """
-    from numpy import mean, sqrt, sin, nan,pi,isnan, sum, concatenate, zeros, where, intersect1d,nanmean,count_nonzero,union1d,arange
-    import warnings
-    warnings.filterwarnings(action='ignore', message='Mean of empty slice')
     nSat = len(range1_slip_periods)
 
     ## set all 0 values to NaN so they are excluded from stats calculation
@@ -158,16 +158,16 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
     overall_mean_multipath_range1 = nanmean(mean_multipath_range1,axis=0)
     
     ## RMS multipath of each satellite, excluding NaN
-    rms_multipath_range1 = sqrt(nanmean(multipath_range1*multipath_range1,axis=0)) # matlab uses dot notation here
+    rms_multipath_range1 = sqrt(nanmean(multipath_range1*multipath_range1,axis=0)) 
     
     ## Average RMS multipath, excluding NaN
-    average_rms_multipath_range1 = sqrt(nanmean(multipath_range1*multipath_range1)) # matlab uses dot notation here
+    average_rms_multipath_range1 = sqrt(nanmean(multipath_range1*multipath_range1)) 
     
 
     ## -- Weighted RMS multipath 
-    weights = current_sat_elevation_angles.copy()
-    crit_weight = 4*sin(30*pi/180)**2 # 1
-    weights = 4*sin(weights*pi/180)**2 
+    weights     = current_sat_elevation_angles.copy()
+    crit_weight = 4*sin(30*pi/180)**2 
+    weights     = 4*sin(weights*pi/180)**2 
     weights[weights > crit_weight] = 1
     elevation_weighted_multipath_range1 = multipath_range1*weights
     

@@ -3,7 +3,7 @@ from readRinexNav import read_rinex3_nav
 from Geodetic_functions import *
 from readRinexObs304 import *
 import pandas as pd, re, os
-
+# from datetime import datetime
 
 def computeSatElevAimut_fromNav(navigationFile,approxPosition,GNSS_SVs,GNSS_obs,time_epochs, tLim_GEC=None,tLim_R=None):
     """
@@ -295,7 +295,7 @@ def shorten_navigation_file(navigationFile):
     fid.close()
     return
 
-# from datetime import datetime
+
 
 # def time_difference(list1, list2):
 #     """

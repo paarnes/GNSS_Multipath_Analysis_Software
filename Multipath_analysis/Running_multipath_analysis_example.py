@@ -9,7 +9,7 @@ relpath_to_testdata = 'TestData'
 full_path_testdata = os.path.join(base_path, relpath_to_testdata) 
 
 #Path to outputdir 
-relpath_to_outputdir = 'Results'
+relpath_to_outputdir = 'Results_NMBUS'
 full_path_ouputdir = os.path.join(base_path, relpath_to_outputdir) 
 
 ## -----  Defining input data --------
@@ -36,11 +36,19 @@ analysisResults = GNSS_MultipathAnalysis(rinObsFilename1,
                                           outputDir = full_path_ouputdir,
                                           sp3NavFilename_1=sp3NavFilename_2_opec
                                           )
-#%% Using broadcasted eph
+#%% Using broadcasted eph NMBUS
 analysisResults = GNSS_MultipathAnalysis(rinObsFilename3,
                                           # desiredGNSSsystems=['R'],
                                           outputDir = full_path_ouputdir,
                                           broadcastNav1=broadcastNav4
+                                          )
+
+
+#%% Using broadcasted eph OPEC
+analysisResults = GNSS_MultipathAnalysis(rinObsFilename2,
+                                            desiredGNSSsystems=['G'],
+                                          outputDir = full_path_ouputdir,
+                                          broadcastNav1=broadcastNav5
                                           )
 #%% -- Advanced example (more user defined settings)
 

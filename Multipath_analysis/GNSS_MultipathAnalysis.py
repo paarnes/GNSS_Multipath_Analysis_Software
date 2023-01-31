@@ -14,6 +14,7 @@ from writeOutputFile import writeOutputFile
 from make_polarplot import make_polarplot,make_skyplot
 from plotResults import *
 
+
 def GNSS_MultipathAnalysis(rinObsFilename,
                           broadcastNav1=None,
                           broadcastNav2=None,
@@ -30,6 +31,8 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                           plotEstimates= None,
                           plot_polarplot=None,
                           # include_SNR=None,
+                          tLim_R   = None,
+                          tLim_GEC = None,
                           includeResultSummary= None,
                           includeCompactSummary=None,
                           includeObservationOverview=None,
@@ -169,6 +172,10 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     #     desiredObsCodes = ["C", "L", "S"]
     # else:
     #    return print("include_SNR should be either None or True")
+    if tLim_R == None:
+        tLim_R = 1800 # 30 min
+    if tLim_GEC == None:
+        tLim_GEC = 7200 # 2 hours 
 
     if includeResultSummary == None:
         includeResultSummary = 1 
@@ -264,7 +271,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
             nepochs, time_epochs, max_sat, sp3NavFilename_1, sp3NavFilename_2, sp3NavFilename_3)
     else:
         nav_files = [broadcastNav1,broadcastNav2,broadcastNav3,broadcastNav4]
-        sat_pos = computeSatElevAimut_fromNav(nav_files,approxPosition,GNSS_SVs,GNSS_obs,time_epochs)
+        sat_pos = computeSatElevAimut_fromNav(nav_files,approxPosition,GNSS_SVs,GNSS_obs,time_epochs,tLim_GEC,tLim_R)
         
         ## -- Build same struture for satellit elevation angles if broadcast nav defined
         sat_elevation_angles = {}
