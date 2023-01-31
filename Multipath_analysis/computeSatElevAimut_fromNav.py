@@ -1,33 +1,32 @@
-import sys,numpy as np
+import numpy as np
 from readRinexNav import read_rinex3_nav
-from read_SP3Nav import readSP3Nav
 from Geodetic_functions import *
 from readRinexObs304 import *
-import pandas as pd
-import re
-import os
+import pandas as pd, re, os
 
-def computeSatElevAimut_fromNav(navigationFile,approxPosition,GNSS_SVs,GNSS_obs,time_epochs):
+
+def computeSatElevAimut_fromNav(navigationFile,approxPosition,GNSS_SVs,GNSS_obs,time_epochs, tLim_GEC=None,tLim_R=None):
     """
     A function for computing satellite elevations and azimut angles based on
     broadcasted ephemerides. Support all global navigation systems (GPS,GLONASS,Galileo & BeiDou).
     
     Input:
-        navigationFile: list of navigation files
+    -----
+    navigationFile: list of navigation files
     """
         
     ##--- Read rinex navigation file/files. If several files defined, the will
     ## be added to the same data array for further analysis
-    # data_,header, n_eph = read_rinex3_nav(navigationFile,dataframe='no')
+    
     nav_list = [i for i in navigationFile if i is not None] #remove "NONE" if exist in list
     for idx, nav_file in enumerate(nav_list):
-        shorten_navigation_file(nav_file,7200,1800) # removes system 'S','J' and 'I' and ephermerids of same TOC to increase speed
+        shorten_navigation_file(nav_file) # removes system 'S','J' and 'I' and ephermerids of same TOC to increase speed
         base_path = os.path.split(nav_file)[0]
         org_name = os.path.basename(nav_file)
         new_name = org_name.split('.')[0] + '_temp.' + org_name.split('.')[-1]
         full_path = os.path.join(base_path,new_name)
         data_,header, n_eph = read_rinex3_nav(full_path,dataframe='no')
-        # os.remove(full_path) # removes the temp broadcasted file 
+        os.remove(full_path) # removes the temp broadcasted file 
         if idx == 0:
             data = data_
         else:
@@ -39,59 +38,65 @@ def computeSatElevAimut_fromNav(navigationFile,approxPosition,GNSS_SVs,GNSS_obs,
     y = float(approxPosition[1])
     z = float(approxPosition[2])
     
-    ## -- Make a dictionary for mapping from system code to full name 
-    GNSS_FullName = dict(list(zip(['G','R','E','C'],['GPS','GLONASS','Galileo','BeiDou'])))
-    
-    ## -- Find availible satellittes for the whole RINEX file
-    sat_pos = {}                      # Dict for storing all data
+    ## -- Running the computations for each system
+    GNSS_FullName = dict(list(zip(['G','R','E','C'],['GPS','GLONASS','Galileo','BeiDou']))) # dict for mapping from system code to full name 
+    sat_pos = {}                           # Dict for storing all data
     for sys in GNSS_SVs:
-        sat_pos[sys] = {}             # new dict for each system
-        aktuelle_sat_list = []        # Dummy list for availible satellites
-        curr_pos = {}                 # Cells for storing data
-        nepochs = len(GNSS_obs[sys])  # total nr of epochs 
-        X = np.zeros([nepochs,61])    # Array for storing X-coordinate
-        Y = np.zeros([nepochs,61])    # Array for storing X-coordinate
-        Z = np.zeros([nepochs,61])    # Array for storing X-coordinate
+        sat_pos[sys] = {}                  # new dict for each system
+        curr_pos = {}                      # Cells for storing data
+        nepochs = len(GNSS_obs[sys])       # total nr of epochs 
+        X = np.zeros([nepochs,61])         # Array for storing X-coordinate
+        Y = np.zeros([nepochs,61])         # Array for storing X-coordinate
+        Z = np.zeros([nepochs,61])         # Array for storing X-coordinate
         azimut    = np.zeros([nepochs,61]) # Array for storing satellites azimut angle
         elevation = np.zeros([nepochs,61]) # Array for storing Satellites elevation angle
+        aktuelle_sat_list_all = []         # Dummy list for availible satellites
+        for ep in np.arange(0,nepochs):
+            aktuelle_sat = [PRN for PRN in list(GNSS_SVs[sys][ep][1::].astype(int)) if PRN !=0] ## added [1::] because first ele is nr of satellites
+            aktuelle_sat_list_all.append(aktuelle_sat)
+        aktuelle_sat_list_all = sorted(list({x for l in aktuelle_sat_list_all for x in l})) # finding uniqe value in list in list
+            
+        ## -- Run through all epochs
+        null_epoch = time_epochs[:,1][0]
         for epoch in np.arange(0,nepochs):
-            aktuelle_sat = GNSS_SVs[sys][epoch].astype(int)
-            aktuelle_sat_list = [PRN for PRN in list(GNSS_SVs[sys][epoch].astype(int)) if PRN !=0]   
+            aktuelle_sat_list = [PRN for PRN in list(GNSS_SVs[sys][epoch][1::].astype(int)) if PRN !=0]   ## added [1::] because first ele is nr of satellites 30.01.2023
             print("\rCurrently computing coordinates for the %s system. Progress: %.1f%%" %(GNSS_FullName[sys],epoch/len(GNSS_obs[sys])*100), end='\r',flush=True)  # \r makes the line get overwritten
-
             ## -- Compute satellite coordinates for all availible satellites   
-            t = time_epochs[:,1]  # Extracting time for RINEX obs-file
+            curr_time = time_epochs[:,1][epoch] # Extracting time for RINEX obs-file
             df_data = pd.DataFrame(data) # making dataframe of data
             curr_data = df_data[df_data.iloc[:,0].str.contains(sys)].to_numpy() # extaction data for current system only
-            counter = 0
+            ## -- Extract satellites ephemerids
+            time_diff = curr_time - null_epoch
+            ### Add if test here to speed up the process. Ephemerides get extracted only if time_diff is greater
+            ### than the pre defined limit tLim_GEC and tLim_R
+            if sys != 'R' and time_diff > tLim_GEC or sys == 'R' and time_diff > tLim_R or time_diff == 0:
+                eph_data = np.empty((36,1))        # Preallocation array for storing ephemerids
+                null_epoch = curr_time # resetting null_epoch
+                for PRN in aktuelle_sat_list_all:
+                    try: ## need try/except for satellites that in rinex obs, but not in nav file. consider adding functionality for his on the top script
+                        eph = extract_nav_message(curr_data,PRN,curr_time)
+                        eph[0] = eph[0][1::] # Removing system letter from number. Ex G10 -> 10
+                    except:
+                        eph = np.nan
+                        continue
+                    eph_data = np.column_stack((eph_data, eph))
+                eph_data = pd.DataFrame(eph_data)
+                eph_data.columns = eph_data.iloc[0].astype(int) # set first row as header
             for PRN in aktuelle_sat_list:
-                counter = counter + 1
-                i = epoch  
-                curr_time = t[i]
-                # for sat in aktuelle_sat_list:
-                #     eph = extract_nav_message(curr_data,sat,t[i])
-                #     eph_data = np.column_stack((eph_data, eph))
-                #     eph_data = pd.DataFrame(eph_data)
-                #     df.columns = df.iloc[0] # set first row as header
-                try:
-                    ephemerides = extract_nav_message(curr_data,PRN,curr_time) # passing curr_data instead to get correct system
-                    ephemerides[0] = ephemerides[0][1::] # Removing system letter from number. Ex G10 -> 10
-                    ephemerides = ephemerides.astype(float)
-                except:
-                    ephemerides = np.nan
-                    continue
+                ephemerides = eph_data[PRN].to_numpy().reshape(36,1) # passing curr_data instead to get correct system
+                ephemerides = ephemerides.astype(float)
                 if sys != 'R':
-                    X[i,PRN], Y[i,PRN], Z[i,PRN],_ = Satkoord2(ephemerides, curr_time, x, y, z)
+                    ## -- Computing satellite coordinates for GPS,Galileo and BeiDou if in Rinex file
+                    X[epoch,PRN], Y[epoch,PRN], Z[epoch,PRN],_ = Satkoord2(ephemerides, curr_time, x, y, z)
                 else:
-                    # If current system is GLONASS
-                    curr_time = time_epochs[i]
+                    ## -- Computing satellite coordinates for GLONASS if in Rinex file
+                    curr_time = time_epochs[epoch]
                     pos, _, _, _= compute_GLO_coord_from_nav(ephemerides, curr_time)
-                    X[i,PRN] = pos[0]
-                    Y[i,PRN] = pos[1]
-                    Z[i,PRN] = pos[2]
+                    X[epoch,PRN] = pos[0]
+                    Y[epoch,PRN] = pos[1]
+                    Z[epoch,PRN] = pos[2]
                 ## - Compute azimut and elevation angle
-                azimut[i,PRN],elevation[i,PRN] = compute_azimut_elev(X[i,PRN], Y[i,PRN], Z[i,PRN], x, y, z)
-                    
+                azimut[epoch,PRN],elevation[epoch,PRN] = compute_azimut_elev(X[epoch,PRN], Y[epoch,PRN], Z[epoch,PRN], x, y, z)
                 ## -- Assign the computed variable to temporarly dicts for storing results   
                 curr_pos[str(PRN)] = np.array([X[:,PRN],Y[:,PRN],Z[:,PRN]]).T
         
@@ -104,7 +109,7 @@ def computeSatElevAimut_fromNav(navigationFile,approxPosition,GNSS_SVs,GNSS_obs,
     
             
 
-def shorten_navigation_file(navigationFile,tLim_GEC,tLim_R):
+def shorten_navigation_file(navigationFile):
     """
     Function that is parsing a navigation file and removes system that
     not GPS,GLONASS, GALILEO and BeiDou. In addition it removes epochs that
