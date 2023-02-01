@@ -1,8 +1,6 @@
-import os, sys,numpy as np,pickle
-
+import os, numpy as np, pickle
 from readRinexObs304 import *
 from Geodetic_functions import *
-
 from computeSatElevations import computeSatElevations
 from computeSatElevAimut_fromNav import computeSatElevAimut_fromNav
 from readFrequencyOverview import readFrequencyOverview
@@ -13,7 +11,6 @@ from tqdm import tqdm, trange
 from writeOutputFile import writeOutputFile
 from make_polarplot import make_polarplot,make_skyplot
 from plotResults import *
-
 
 def GNSS_MultipathAnalysis(rinObsFilename,
                           broadcastNav1=None,
@@ -55,11 +52,14 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     further more functions. The function called upon directly in 
     GNSS_MultipathAnalysis are:
     
-      - readRinexObs304.m
-      - computeSatElevations.m
-      - readFrequencyOverview.m
-      - signalAnalysis.m
-      - writeOutputFile.m
+      - readRinexObs304.py
+      - computeSatElevations.py
+      - readFrequencyOverview.py
+      - signalAnalysis.py
+      - plotEstimates.py
+      - make_barplot.py
+      - make_polarplot.py
+      - writeOutputFile.py
     
     --------------------------------------------------------------------------------------------------------------------------
     INPUTS:
@@ -81,11 +81,11 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     
     phaseCodeLimit:           critical limit that indicates cycle slip for
                               phase-code combination. Unit: m/s. If set to 0,
-                              default value will be used
+                              default value of 6.667 m/s will be used
     
     ionLimit:                 critical limit that indicates cycle slip for
                               the rate of change of the ionopheric delay. 
-                              Unit: m/s. If set to 0, default value will be used
+                              Unit: m/s. If set to 0, default value of 0.0667 m/s will be used
     
     cutoff_elevation_angle    Critical cutoff angle for satellite elevation angles, degrees
                               Estimates where satellite elevation angle
@@ -99,13 +99,13 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                               will be generated in sub-directory inside same 
                               directory as GNSS_Receiver_QC_2020.m
     
-    plotEstimates:            boolean. 1 if user desires estimates to be
-                              ploted in figures. 0 otherwise
+    plotEstimates:            boolean. False if user desires estimates not to be
+                              ploted. True by default.
                               
-    plot_polarplot:           boolean. If not defined polarplots will be made
+    plot_polarplot:           boolean. True or False. If not defined polarplots will be made
     
     
-    include_SNR:              boolean. If not defined SNR from Rinex obs file will NOT be used
+    include_SNR:              boolean. (NOT IMPLEMENTED YET) If not defined SNR from Rinex obs file will NOT be used
     
     
     includeResultSummary:     boolean. 1 if user desires output file to
@@ -113,7 +113,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                               including for each individual satellites. 
                               0 otherwise
     
-    includeCompactSummary:    booleab. 1 if user desired output file to
+    includeCompactSummary:    boolean. 1 if user desired output file to
                               include more compact overview og statistics.
     
     includeObservationOverview:     boolean. 1 if user desires output file to
@@ -135,12 +135,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         
     
     if broadcastNav1 == None:    
-        broadcastNav1 = ""  
-    # if broadcastNav2 == None:    
-    #     broadcastNav2 = 
-    # if broadcastNav3 == None:    
-    #     broadcastNav3 = ""
-    
+        broadcastNav1 = ""      
     if sp3NavFilename_1 == None:    
         sp3NavFilename_1 = ""  
     if sp3NavFilename_2 == None:    
@@ -294,10 +289,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         if len(missing_sys) != 0:
             print('\n\nSystems %s does not exist in navigation file! \nMultipath analysis for these systems is therefore not possible. \nConsider using another navigation file.\n\n' % (missing_sys))
 
-                
-                
-
-        
+            
     ## Define carrier frequencies for every GNSS system. Note: Carrier band numbers follow RINEX 3 convention
     nGNSSsystems = len(GNSSsystems)
     max_GLO_ID = 36
@@ -313,9 +305,6 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     ## -- Initialize cell for storing carrier bands for all systems
     frequencyOverview = {}
     ## -- Read frequenxies from overview file
-    # for i in range(0,nGNSSsystems):
-    #     GNSSsystemIndex = [k for k in GNSSsystems if GNSSsystems[k]==GNSSsystems[i+1][0]][0]
-    #     frequencyOverview[i+1] = frequencyOverview_temp[GNSSsystemIndex]
     for i in np.arange(0,nGNSSsystems):
         curr_sys = GNSSsystems[i+1]
         frequencyOverview[i+1] = frequencyOverview_temp2[curr_sys]
@@ -324,21 +313,16 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     ## NOTE: This uses the GLONASS frequency channel information from RINEX 3
     
     ## -- Observation header
-    # if ismember("R", string(GNSSsystems))
     if "R" in list(GNSSsystems.values()):
        # GNSSsystemIndex = find([GNSSsystems{:}] == "R"); 
-       GNSSsystemIndex = [k for k in GNSSsystems if GNSSsystems[k] == 'R'][0]
-       
-       # GLOSatID = cell2mat(keys(GLO_Slot2ChannelMap));
+       GNSSsystemIndex = [k for k in GNSSsystems if GNSSsystems[k] == 'R'][0]       
        GLOSatID = list(GLO_Slot2ChannelMap.keys())
        frequencyOverviewGLO = np.full([9,max_GLO_ID+1], np.nan)
        for k in np.arange(0,9):
            for j in np.arange(0,max_GLO_ID):
                if j in GLOSatID:
                    frequencyOverviewGLO[k, j] = frequencyOverview[GNSSsystemIndex][k,0] + \
-                   GLO_Slot2ChannelMap[j] * frequencyOverview[GNSSsystemIndex][k,1] # added +1 and remove axis 1
-      
-      
+                   GLO_Slot2ChannelMap[j] * frequencyOverview[GNSSsystemIndex][k,1] # added +1 and remove axis 1  
         
        # store GLONASS carrier frequencies in their new structure
        frequencyOverview[GNSSsystemIndex] = frequencyOverviewGLO
@@ -353,8 +337,6 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         
     obsCodeOverview = {}
     for i in np.arange(0,nGNSSsystems):
-        # obsCodeOverview{i} = cell(1,9);
-        # GNSSsystemIndex = [k for k in GNSSsystems if GNSSsystems[k]==GNSSsystems[i+1]][0]
         GNSSsystemIndex = list(GNSSsystems.keys())[i]
         curr_sys = GNSSsystems[GNSSsystemIndex]
         obsCodeOverview[GNSSsystemIndex] = {}
@@ -362,11 +344,9 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         band_list = [band[1] for band in CODES]
         for j in np.arange(1,10):
             obsCodeOverview[GNSSsystemIndex][str(j)] = [] # preallocating slots for band (make 9 slots anyway) 
-    
         for band in band_list:
             obs_dum = [obs for obs in CODES if obs[1] == band]
             obsCodeOverview[GNSSsystemIndex][band] = obs_dum
-    
     
     
     ### --- Build the structure of the struct used for storing results ----
@@ -400,8 +380,6 @@ def GNSS_MultipathAnalysis(rinObsFilename,
             Bands_list = []
             for j in np.arange(0,nPossibleBands):
                 current_sys_struct['observationOverview']['Sat_'+ str(i)]['n_possible_bands'] = nPossibleBands
-                ## in sat. struct create 1 field for every possible band for this
-                ## system as empty string
                 Bands_list.append("Band_" + str(GNSSsystemPossibleBands[j]))
                 current_sys_struct['observationOverview']['Sat_'+ str(i)]['Band_' + str(GNSSsystemPossibleBands[j])] = ""
                 current_sys_struct['observationOverview']['Sat_'+ str(i)]['Bands']  = Bands_list
@@ -412,7 +390,6 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         Bands_list = []
         for bandNumInd in np.arange(0,9):
             ## See if current system has any observations in in carrier band(bandnum)
-            # nCodes_currentBand = length(obsCodeOverview{sys}{bandNumInd});
             bandNumInd = str(bandNumInd+1) # because python nullindexed
             nCodes_currentBand = len(obsCodeOverview[sys+1][bandNumInd])
     
@@ -448,7 +425,6 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     #### -------- Execute analysis of current data, produce results and store results in results dictionary ------
     
     ## -- Intialize wait bar
-    # wbar = waitbar(0, 'INFO(GNSS\\_Receiver\\_QC\\_2020): Data analysis is being executed. Please wait.');
     # waitbar = tqdm(0, 'INFO(GNSS\\_Receiver\\_QC\\_2020): Data analysis is being executed. Please wait.')
     ## --Initialize counter of number of codes processed so far. This is used  mainly for waitbar
     codeNum = 0
@@ -458,9 +434,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     for sys in np.arange(0,nGNSSsystems):    # replaced "range" with np.arange for speed      
         ## --Get current GNSS system code, example GPS: G
         currentGNSSsystem = GNSSsystems[sys+1]
-        GNSSsystemName = GNSSsystemCode2Fullname[GNSSsystems[sys+1]] # I USE THIS INSTEAD
-                
-        # print('INFO: Data analysis is being executed for %s' % (GNSSsystemName))
+        GNSSsystemName = GNSSsystemCode2Fullname[GNSSsystems[sys+1]] # I USE THIS INSTEAD                
         current_sys_struct = analysisResults[GNSSsystemName]
         ## -- Get number of carrier bands in current system struct
         nBands = current_sys_struct['nBands']
@@ -482,26 +456,12 @@ def GNSS_MultipathAnalysis(rinObsFilename,
             ## is the analysis that is stored.
             
             for i in np.arange(0,nCodes): # replaced "range" with np.arange for speed
-            # for i in trange(0,nCodes,initial=1):
-            # for i in tqdm(range(0,nCodes),desc='INFO(GNSS\\_Receiver\\_QC\\_2020): Data analysis is being executed.',position=1,leave=False):
                 ## -- Get code(range) and phase obervation codes
-                # range1_Code = current_band_struct.Codes{i};
                 range1_Code = current_band_struct['Codes'][i]
-                # phase1_Code = "L"+extractAfter(range1_Code, 1);
                 phase1_Code = "L" + range1_Code[1::]
                
                 ## --Increment code counter and update waitbar
                 codeNum = codeNum + 1
-                # msg = sprintf(['INFO(GNSS\\_Receiver\\_QC\\_2020): Data analysis is being executed. Please wait.\nCurrently processing ',...
-                #     '%s %s signal'], GNSSsystemCode2Fullname(currentGNSSsystem), range1_Code);
-                # waitbar(codeNum/nCodes_Total, wbar, msg);
-                
-                # waitbar.update(codeNum/nCodes_Total)
-                # waitbar.set_description('INFO(GNSS\\_Receiver\\_QC\\_2020): Data analysis is being executed. Please wait.\nCurrently processing '\
-                #     '%s %s signal' % (GNSSsystemCode2Fullname[currentGNSSsystem], range1_Code))
-                ## --Check if phase observation matching code observation has been
-                ## -- read from RINEX 3 observation file
-                # if ismember(phase1_Code, obsCodes{sys})
                 if phase1_Code in obsCodes[sys+1][currentGNSSsystem]:
                     ## Initialize variable storing the best number for estimates
                     ## for the different analysis on current code
@@ -521,15 +481,13 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                             nCodesOtherBand = other_band_struct['nCodes'] 
                          
                             # Itterate through codes in other band
-                            # for k in range(0,nCodesOtherBand):
                             for k in np.arange(0,nCodesOtherBand):                                
                                   ## Get code(range) and phase obsertion codes from the other band
                                   range2_Code = other_band_struct['Codes'][k]
                                   phase2_Code = "L" + range2_Code[1::]
                                   ## Check if phase2 observation was read from RINEX 3 observtaion file
                                   if phase2_Code in obsCodes[sys+1][currentGNSSsystem]:
-                                       ## Execute the analysis of current combination of
-                                       ## observations. Return statistics on analysis
+                                       ## Execute the analysis of current combination of observations. Return statistics on analysis
                                        currentStats, success = signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, frequencyOverview, nepochs, tInterval, \
                                        int(max_sat[sys]), GNSS_SVs[currentGNSSsystem], obsCodes[sys+1], GNSS_obs[currentGNSSsystem], GNSS_LLI[currentGNSSsystem],\
                                            sat_elevation_angles[sys], phaseCodeLimit, ionLimit, cutoff_elevation_angle)
@@ -537,9 +495,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                                        if not success:
                                             return success
                                        
-                             
-                                    ##  -- Get number of estimates produced from analysis
-                                    # current_nEstimates = currentStats.nEstimates;
+                                       ##  -- Get number of estimates produced from analysis
                                        current_nEstimates = currentStats['nEstimates']
                                 
                                        ## -- Check if current analysis has more estimate than previous
@@ -550,7 +506,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                                             best_range2 = range2_Code
                                             best_currentStats = currentStats
                                     
-                                    ## If phase2 observation is not read from RINEX 3 observation file
+                                  ## If phase2 observation is not read from RINEX 3 observation file
                                   else:
                                         print('\nINFO(GNSS_MultipathAnalysis): %s code exists in RINEX observation file, but not %s\n'\
                                             'Linear combinations using this signal is not used.\n\n' % (range2_Code, phase2_Code))
@@ -560,13 +516,9 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                                         other_band_struct['nCodes'] = other_band_struct['nCodes'] - 1 
                                         ## -- replace the, now altered, hard copy of other band struct in its original place in system struct
                                         current_sys_struct[current_sys_struct['Bands'][secondBandnum]] = other_band_struct
-    
-                          
-                  
+        
                     ## -- Store best analysis result struct in current band struct
-                    current_code_struct = best_currentStats
-                  
-                  
+                    current_code_struct = best_currentStats                  
                     ## For every satellite that had an observation of range1, it
                     ## is stored in an overview. Hence the user can get overview
                     ## of which satellites have transmitted which observations
@@ -580,7 +532,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                     for sat in np.arange(0,nSat):
                         ## -- If current satellite had observation of range1 code
                         if current_code_struct['n_range1_obs_per_sat'][0,sat+1] > 0:
-                            ## Name of satellite struct
+                            ## Name of satellite 
                             satCode = 'Sat_' + str(sat+1) 
                     
                             ## -- Check that code has not been added to list by fault
@@ -629,17 +581,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                         current_band_struct['Codes'][ismember(current_band_struct['Codes'], range1_Code)] = []
                         current_band_struct['nCodes'] = current_band_struct['nCodes'] - 1 
                         
-                    # if plot_polarplot:
-                    #     try:
-                    #         azimut_currentSys = sat_pos[currentGNSSsystem]['Azimut']
-                    #     except:
-                    #         azimut_currentSys = sat_azimut_angles[sys]
-                    #     make_polarplot(current_code_struct['multipath_range1'],current_code_struct['sat_elevation_angles'],\
-                    #                    azimut_currentSys,GNSSsystemName,range1_Code ,graphDir)
-          
-                        
-    
-               
+                         
             ## -- Replace the, now altered, hard copy of current band struct in its original place in system struct
             current_sys_struct[current_sys_struct['Bands'][bandNumInd]] = current_band_struct
             if sp3NavFilename_1 != '':
@@ -654,7 +596,6 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         
         ## -- Replace the, now altered, hard copy of current system struct in its original place in results struct
         analysisResults[GNSSsystemName] = current_sys_struct
-    
     
         ## -- Store information needed for output file in result struct
         rinex_obs_filename = rinObsFilename.split('/')
