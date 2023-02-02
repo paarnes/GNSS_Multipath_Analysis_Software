@@ -25,9 +25,9 @@ $$d\Phi_1R_1 = \Phi_1 - R_1$$
 6. Multipath estimates get computed by making a linear combination of the code and phase observation. PS: A dual frequency receiver is necessary because observations from two different bands/frequency are needed. 
 $$MP_1 = R_1 - \left(1+\frac{2}{\alpha - 1}\right)\Phi_1 + \left(\frac{2}{\alpha - 1}\right)\Phi_2$$
 where $R_1$ is the code observation on band 1, $\Phi_1$ and $\Phi_2$ is phase observation on band 1 and band 2 respectively. Furthermore $\alpha$ is the ratio between the two frequency squared $\alpha=\frac{{f}^2_1}{{f}^2_2}$
-7.Based on the multipath estimates computed in step 6, both weighted and unweighted RMS-values get computed. The RMS value is given as
+7. Based on the multipath estimates computed in step 6, both weighted and unweighted RMS-values get computed. The RMS value is given as
 $$RMS=\sqrt{\frac{\sum\limits_{i=0}^{N_{sat}}\sum\limits_{j=0}^{N_{epohcs}} MP_{ij}}{N_{est}}}$$ 
-For the weighted RMS value, the satellite elevation angle is used in a weighting function $$w =\frac{1}{4sin^2\beta}$$ for every estimates with elevation angle $\beta$ is below $30^{\circ}$. Else $w =1$. 
+For the weighted RMS value, the satellite elevation angle is used in a weighting function defined as $$w =\frac{1}{4sin^2\beta}$$ for every estimates with elevation angle $\beta$ is below $30^{\circ}$ and $w =1$ for $\beta > $30^{\circ}$. 
 8. Several plot will be generated (if not set to FALSE): 
     * Ionospheric delay wrt time and zenith mapped ionospheric delay (combined)
     * The Multipath effect plotted wrt time and elevation angle (combined)
@@ -39,4 +39,4 @@ For the weighted RMS value, the satellite elevation angle is used in a weighting
 
 
 
-
+![alt text](https://github.com/paarnes/GNSS/blob/master/Results_example/Graphs/MP_GPS_L1_GPS_C1C.png)
