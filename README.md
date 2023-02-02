@@ -21,7 +21,7 @@ The rest of the arguments are optional. Their default values are described in th
 
 6. Multipath estimates get computed by making a linear combination of the code and phase observation. PS: A dual frequency reciver is necessery. Must have observation from two different bands/frequency. 
 $$MP_1 = R_1 - \left(1+\frac{2}{\alpha - 1}\right)\phi_1 + \left(\frac{2}{\alpha - 1}\right)\phi_2$$
-where $$R_1$$ is the code observation on band 1, $$\phi_1$$ and $$\phi_2$$ is phase observation on band 1 and band 2 repectivly. Furthermore $$\alpha$$ is the ratio between the two frequenzy squered $$\alpha=\frac{{f}^2_1}{{f}^2_2}$$
+where $R_1$ is the code observation on band 1, $\phi_1$ and $\phi_2$ is phase observation on band 1 and band 2 repectivly. Furthermore $$\alpha$$ is the ratio between the two frequenzy squered $$\alpha=\frac{{f}^2_1}{{f}^2_2}$$
 7.Based on the multipath estimates computed in step 6, both weighted and unweighted RMS-values get computed. The RMS value is given as
 $$RMS=\sqrt{\frac{\sum\limits_{i=0}^{N_{sat}}\sum\limits_{j=0}^{N_{epohcs}} MP_{ij}}{N_{est}}}$$ 
 For the weighted RMS value, the satellite elevation angle is used in a weighting function $$w =\frac{1}{4sin^2\beta}$$ for every estimates with elevation angle $$\beta$$ is below $$30^{\circ}$$. Else $$w =1$$. 
