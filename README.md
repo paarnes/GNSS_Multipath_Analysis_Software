@@ -30,13 +30,28 @@ $$RMS=\sqrt{\frac{\sum\limits_{i=0}^{N_{sat}}\sum\limits_{j=0}^{N_{epohcs}} MP_{
 For the weighted RMS value, the satellite elevation angle is used in a weighting function defined as $$w =\frac{1}{4sin^2\beta}$$ for every estimates with elevation angle $\beta$ is below $30^{\circ}$ and $w =1$ for $\beta > $30^{\circ}$. 
 8. Several plot will be generated (if not set to FALSE): 
     * Ionospheric delay wrt time and zenith mapped ionospheric delay (combined)
+		<p align="center">
+			<img src="https://github.com/paarnes/GNSS/blob/master/Results_example/Graphs/Galileo_ionospheric_delay_combined.pdf" width="630"/>
+		</p>	
     * The Multipath effect plotted wrt time and elevation angle (combined)
+		<p align="center">
+			<img src="https://onedrive.live.com/?authkey=%21AC7%5FPx0UFCBEBhk&cid=79AFF3EC92A18746&id=79AFF3EC92A18746%21136648&parId=79AFF3EC92A18746%21136447&o=OneUp" width="630"/>
+		</p>	
     * Barplot showing RMS values for each signal and system
+		<p align="center">
+			<img src="https://github.com/paarnes/GNSS/blob/master/Results_example/Graphs/Barplot_RMS_all.pdf" width="630"/>
+		</p>
     * Polar plot of the multipath effect as function of elevation angle and azimuth
+		<p align="center">
+			<img src="https://github.com/paarnes/GNSS/blob/master/Results_example/Graphs/MP_GPS_L1_GPS_C1C.png" width="630"/>
+		</p>
     * Polar plot of each observed satellite in the system
+		<p align="center">
+			<img src="https://github.com/paarnes/GNSS/blob/master/Results_example/Graphs/Skyplot_GLONASS.pdf" width="630"/>
+		</p>
+	
 9. Exporting the results as a pickle file which easily can be imported into python as a dictionary
 10. The results in form of a report get written to a text file with the same name as the RINEX observation file. 
 
 
 
-![alt text](https://github.com/paarnes/GNSS/blob/master/Results_example/Graphs/MP_GPS_L1_GPS_C1C.png)
