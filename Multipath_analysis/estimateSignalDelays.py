@@ -1,6 +1,5 @@
 import numpy as np
-from orgSlipEpochs import orgSlipEpochs
-from detectPhaseSlips import detectPhaseSlips
+from detectCycleSlips import detectCycleSlips, orgSlipEpochs
 import warnings
 warnings.filterwarnings(action='ignore', message='Mean of empty slice')
 
@@ -228,10 +227,10 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
         
         
         ## -- Run function to detect cycle slips for current epoch for range1/phase1 only 
-        range1_slip_epochs = detectPhaseSlips(N1_pseudo_estimate[:, PRN], missing_range1_overview[:, PRN],epoch_first_range1obs, epoch_last_range1obs, tInterval, phaseCodeLimit)
+        range1_slip_epochs = detectCycleSlips(N1_pseudo_estimate[:, PRN], missing_range1_overview[:, PRN],epoch_first_range1obs, epoch_last_range1obs, tInterval, phaseCodeLimit)
        
         # Run function to detect cycle slips for current epoch for either range1/phase1 signal, range2/phase2 signal, or both
-        ionosphere_slip_epochs = detectPhaseSlips(ion_delay_phase1[:, PRN], missing_obs_overview[:, PRN],epoch_first_obs, epoch_last_obs, tInterval, ionLimit)
+        ionosphere_slip_epochs = detectCycleSlips(ion_delay_phase1[:, PRN], missing_obs_overview[:, PRN],epoch_first_obs, epoch_last_obs, tInterval, ionLimit)
            
         ## -- Make combined array of slip epochs from both lin. combinations used to detects slips
         ambiguity_slip_epochs = np.union1d(range1_slip_epochs, ionosphere_slip_epochs) 
@@ -320,12 +319,12 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
         phase1_observations =  np.zeros([nepochs, max_sat+1]) 
         for ep in np.arange(0, len(GNSS_obs)):
             for PRN in np.arange(0,max_sat):
-                range1_observations[ep,PRN] = GNSS_obs[ep+1][PRN,ismember(obsCodes[currentGNSSsystem],range1_Code)] # MAALAB uses transpose her
-                phase1_observations[ep,PRN] = GNSS_obs[ep+1][PRN,ismember(obsCodes[currentGNSSsystem],phase1_Code)] # MAALAB uses transpose her
+                range1_observations[ep,PRN] = GNSS_obs[ep+1][PRN,ismember(obsCodes[currentGNSSsystem],range1_Code)] 
+                phase1_observations[ep,PRN] = GNSS_obs[ep+1][PRN,ismember(obsCodes[currentGNSSsystem],phase1_Code)]
 
     # return ion_delay_phase1, multipath_range1, multipath_range2, range1_slip_periods, range1_observations, phase1_observations, success
     # return ion_delay_phase1, multipath_range1, multipath_range2, ambiguity_slip_periods, range1_observations, phase1_observations, success # changeing from range1slip to amgiguity
-    return ion_delay_phase1, multipath_range1, range1_slip_periods,ambiguity_slip_periods, range1_observations, phase1_observations, success #fjernet multipath_range2
+    return ion_delay_phase1, multipath_range1, range1_slip_periods,ambiguity_slip_periods, range1_observations, phase1_observations, success #removed multipath_range2
 
 
 def ismember(list_,code):
