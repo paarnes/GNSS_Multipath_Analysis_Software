@@ -9,8 +9,7 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
      INPUTS:
     
      currentGNSSsystem:            string. Code that gives current GNSS
-                                   system.
-                                   ex. "G" or "E"
+                                   system. Ex: "G" or "E"
     
      range1_Code:                  string. obs code for first code pseudorange
                                    observation
@@ -22,49 +21,49 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
                                    Elements are strings.
                                    ex. "G" or "E"
     
-     frequencyOverview:            cell. each elements contains carrier band
+     frequencyOverview:            dict. each elements contains carrier band
                                    frequenies for a specific GNSS system.
-                                    Order is set by GNSSsystems. If system is
-                                    GLONASS then element is matrix where each
-                                    row i gives carrier band i frequencies for
-                                    all GLONASS SVs. If not GLONASS, element is
-                                    array with one frequency for each carrier
-                                    band.
+                                   Order is set by GNSSsystems. If system is
+                                   GLONASS then element is matrix where each
+                                   row i gives carrier band i frequencies for
+                                   all GLONASS SVs. If not GLONASS, element is
+                                   array with one frequency for each carrier
+                                   band.
     
-      nepochs:                      nepochs of observations in RINEX
-                                    observation file. 
+      nepochs:                     nepochs of observations in RINEX
+                                   observation file. 
     
-      tInterval:                    observation interval in seconds
+      tInterval:                   observation interval in seconds
     
-      current_max_sat:              max PRN number of current GNSS system
+      current_max_sat:             max PRN number of current GNSS system
 
-      current_GNSS_SVs:             cell containing a matrix for current GNSS system.
-                                    Each matrix contains number of satellites with 
-                                    obsevations for each epoch, and PRN for those 
-                                    satellites
+      current_GNSS_SVs:            cell containing a matrix for current GNSS system.
+                                   Each matrix contains number of satellites with 
+                                   obsevations for each epoch, and PRN for those 
+                                   satellites
     
-                                    GNSS_SVs(epoch, j)  
-                                            j=1: number of observed satellites
-                                            j>1: PRN of observed satellites
+                                   GNSS_SVs(epoch, j)  
+                                           j=1: number of observed satellites
+                                           j>1: PRN of observed satellites
     
-      current_obsCodes:             Cell that defines the observation
-                                    codes available in current GNSS system. 
-                                    Each element in this cell is a
-                                    string with three-characters. The first 
-                                    character (a capital letter) is an observation code 
-                                    ex. "L" or "C". The second character (a digit)
-                                    is a frequency code. The third character(a Capital letter)  
-                                    is the attribute, ex. "P" or "X"
+      current_obsCodes:            Cell that defines the observation
+                                   codes available in current GNSS system. 
+                                   Each element in this cell is a
+                                   string with three-characters. The first 
+                                   character (a capital letter) is an observation code 
+                                   ex. "L" or "C". The second character (a digit)
+                                   is a frequency code. The third character(a Capital letter)  
+                                   is the attribute, ex. "P" or "X"
     
-      current_GNSS_obs:             3D matrix  containing all observation of 
-                                    current GNSS system for all epochs. 
-                                    Order of obsType index is same order as in 
-                                    current_obsCodes
+      current_GNSS_obs:            3D matrix  containing all observation of 
+                                   current GNSS system for all epochs. 
+                                   Order of obsType index is same order as in 
+                                   current_obsCodes
     
-                                    current_GNSS_obs(PRN, obsType, epoch)
-                                                PRN: double
-                                                ObsType: double: 1,2,...,numObsTypes
-                                                epoch: double
+                                   current_GNSS_obs(PRN, obsType, epoch)
+                                               PRN: int
+                                               ObsType: int: 1,2,...,numObsTypes
+                                               epoch: int
     
       current_GNSS_LLI:             3D matrix  containing all Loss of Lock 
                                     indicators of current GNSS system for all epochs. 
@@ -72,9 +71,9 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
                                     current_obsCodes
     
                                     current_GNSS_LLI(PRN, obsType, epoch)
-                                                PRN: double
-                                                ObsType: double: 1,2,...,numObsTypes
-                                                epoch: double
+                                                PRN: int
+                                                ObsType: int: 1,2,...,numObsTypes
+                                                epoch: int
     
     current_sat_elevation_angles:  matrix contaning satellite elevation angles 
                                    at each epoch, for current GNSS system. 
@@ -96,7 +95,7 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
     --------------------------------------------------------------------------------------------------------------------------
      OUTPUTS:
     
-      currentStats:                 struct. Contains statitics from analysis
+      currentStats:                 dict. Contains statitics from analysis
                                     executed. More detail of each stattistic
                                     is given in function computeDelayStats.m
     
@@ -123,28 +122,21 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
         carrier_freq2 = frequencyOverview[GNSSsystemIndex][int(range2_Code[1])-1, :][0]
     
     ## -- Run function to compute estimates of ionospheric delay, multipath delays slip periods of range1 signal.
-    # ion_delay_phase1, multipath_range1, _, range1_slip_periods, range1_observations, phase1_observations, success = estimateSignalDelays(range1_Code, range2_Code, \
-    #     phase1_Code, phase2_Code, carrier_freq1, carrier_freq2,nepochs, current_max_sat,\
-    #       current_GNSS_SVs, current_obsCodes, current_GNSS_obs, currentGNSSsystem, tInterval, phaseCodeLimit, ionLimit)
     ion_delay_phase1, multipath_range1, range1_slip_periods,ambiguity_slip_periods ,range1_observations, phase1_observations, success = estimateSignalDelays(range1_Code, range2_Code, \
         phase1_Code, phase2_Code, carrier_freq1, carrier_freq2,nepochs, current_max_sat,\
           current_GNSS_SVs, current_obsCodes, current_GNSS_obs, currentGNSSsystem, tInterval, phaseCodeLimit, ionLimit) # tester uten multipath_range2 23.01.2023
 
-    
     ## -- Create logical mask for epochs where sat elevation is lower than cutoff or missing
     cutoff_elevation_mask = current_sat_elevation_angles.copy() ## hardcopy instead??
     cutoff_elevation_mask[cutoff_elevation_mask < cutoff_elevation_angle] = 0
     cutoff_elevation_mask[cutoff_elevation_mask >= cutoff_elevation_angle] = 1
     
-
     ## -- Apply satellite elevation cutoff mask to estimates
     ion_delay_phase1 = ion_delay_phase1 * cutoff_elevation_mask  
     multipath_range1 = multipath_range1 * cutoff_elevation_mask
     range1_observations = range1_observations * cutoff_elevation_mask
     phase1_observations = phase1_observations * cutoff_elevation_mask
     
-    
-
     ## -- Remove estimated slip periods (range_1 slips) if satellite elevation angle was lower than cutoff or missing.
     for sat in np.arange(0,len(range1_slip_periods)):
         current_sat_slip_periods = np.array(range1_slip_periods[sat+1]).astype(int)
@@ -238,7 +230,7 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
     
     ## -- Store slips
     currentStats['range1_slip_periods'] = range1_slip_periods
-    currentStats['cycle_slip_periods'] = ambiguity_slip_periods
+    currentStats['cycle_slip_periods']  = ambiguity_slip_periods
 
     return currentStats, success
 

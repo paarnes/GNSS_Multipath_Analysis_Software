@@ -319,7 +319,6 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
         
         
         ## -- For ambiguity 
-        
         ambiguity_slip_distribution_per_sat[i] = {}
         ambiguity_slip_epochs = []
         ambiguity_nSlipPeriods = len(ambiguity_slip_periods[i+1])
@@ -354,12 +353,12 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
         
         
         
-         ## create dict for current sat
+        ## create dict for current sat
         combined_slip_distribution_per_sat[i] = {}
         
         ## -- Get all combined slips for current satellite
         # combined_slip_epochs = intersect1d(slip_epochs, LLI_slip_epochs) ## intersect?? vil vel kobinere begge? union?
-        combined_slip_epochs = union1d(slip_epochs, LLI_slip_epochs) ## må være union han tenkte å bruker her??
+        combined_slip_epochs = union1d(slip_epochs, LLI_slip_epochs) ## må være union her??
 
         # get elevation angles for every combined slip of current sat
         if len(combined_slip_epochs) != 0:
@@ -387,7 +386,7 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
 
         else:
     
-            ## set to zero
+            ## Set to zero
             combined_slip_distribution_per_sat[i]['n_slips_0_10']    = 0
             combined_slip_distribution_per_sat[i]['n_slips_10_20']   = 0
             combined_slip_distribution_per_sat[i]['n_slips_20_30']   = 0
@@ -413,10 +412,6 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
         PRN = PRN + 1
         nRange1Obs_Per_Sat[:,PRN] = count_nonzero(range1_observations[:,PRN] != 0)
     nRange1Obs = sum(nRange1Obs_Per_Sat)
-    # return mean_multipath_range1, overall_mean_multipath_range1, rms_multipath_range1, average_rms_multipath_range1,\
-    #     mean_ion_delay_phase1, overall_mean_ion_delay_phase1, mean_sat_elevation_angles, nEstimates, nEstimates_per_sat,\
-    #     nRange1Obs_Per_Sat, nRange1Obs, range1_slip_distribution_per_sat, range1_slip_distribution, LLI_slip_distribution_per_sat, LLI_slip_distribution,\
-    #     combined_slip_distribution_per_sat, combined_slip_distribution, elevation_weighted_rms_multipath_range1, elevation_weighted_average_rms_multipath_range1
     return mean_multipath_range1, overall_mean_multipath_range1, rms_multipath_range1, average_rms_multipath_range1,\
         mean_ion_delay_phase1, overall_mean_ion_delay_phase1, mean_sat_elevation_angles, nEstimates, nEstimates_per_sat,\
         nRange1Obs_Per_Sat, nRange1Obs, range1_slip_distribution_per_sat, range1_slip_distribution, ambiguity_slip_distribution_per_sat, ambiguity_slip_distribution,LLI_slip_distribution_per_sat, LLI_slip_distribution,\
