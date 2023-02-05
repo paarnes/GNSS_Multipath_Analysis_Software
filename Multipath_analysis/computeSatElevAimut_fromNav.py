@@ -1,7 +1,6 @@
 import numpy as np
 from readRinexNav import read_rinex3_nav
 from Geodetic_functions import *
-from readRinexObs304 import *
 import pandas as pd, re, os
 # from datetime import datetime
 
