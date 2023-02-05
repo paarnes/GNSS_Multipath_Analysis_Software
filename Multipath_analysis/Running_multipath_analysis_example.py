@@ -1,5 +1,5 @@
 import os, sys, pickle,numpy as np
-from readRinexObs304 import readRinexObs304
+from readRinexObs import readRinexObs304
 from GNSS_MultipathAnalysis import GNSS_MultipathAnalysis
 
 abs_path = os.path.abspath("GNSS_MultipathAnalysis.py")
@@ -9,7 +9,7 @@ relpath_to_testdata = 'TestData'
 full_path_testdata = os.path.join(base_path, relpath_to_testdata) 
 
 #Path to outputdir 
-relpath_to_outputdir = 'Results_OPEC'
+relpath_to_outputdir = 'Results_OPEC_eph'
 full_path_ouputdir = os.path.join(base_path, relpath_to_outputdir) 
 
 ## -----  Defining input data --------
@@ -47,6 +47,12 @@ analysisResults = GNSS_MultipathAnalysis(rinObsFilename3,
                                            desiredGNSSsystems=['G'],
                                           outputDir = full_path_ouputdir,
                                           sp3NavFilename_1=sp3NavFilename_1
+                                          )
+#%% Using SP3  OPEC
+analysisResults = GNSS_MultipathAnalysis(rinObsFilename2,
+                                          # desiredGNSSsystems=['G'],
+                                          outputDir = full_path_ouputdir,
+                                          sp3NavFilename_1=sp3NavFilename_1_opec
                                           )
 #%% Using broadcasted eph OPEC
 analysisResults = GNSS_MultipathAnalysis(rinObsFilename2,
