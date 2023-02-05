@@ -1,5 +1,5 @@
 import os, numpy as np, pickle
-from readRinexObs304 import *
+from readRinexObs import *
 from Geodetic_functions import *
 from computeSatElevations import computeSatElevations
 from computeSatElevAimut_fromNav import computeSatElevAimut_fromNav
@@ -258,8 +258,8 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     [GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems,\
         obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType,\
         rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, success] = \
-        readRinexObs304(rinObsFilename, readSS, readLLI, includeAllGNSSsystems,includeAllObsCodes, desiredGNSSsystems,\
-        desiredObsCodes, desiredObsBands)
+        readRinexObs304(rinObsFilename, readSS=readSS, readLLI=readLLI, includeAllGNSSsystems=includeAllGNSSsystems,includeAllObsCodes=includeAllObsCodes, desiredGNSSsystems=desiredGNSSsystems,\
+        desiredObsCodes=desiredObsCodes, desiredObsBands=desiredObsBands)
             
             
     sat_pos = {}
