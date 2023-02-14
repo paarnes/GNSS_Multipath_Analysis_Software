@@ -22,8 +22,12 @@ def make_polarplot(analysisResults, graph_dir):
     for system in analysisResults['GNSSsystems']:
         curr_sys = GNSS_Name2Code[system]
         bands_curr_sys = analysisResults[system]['Bands']
-        sat_elevation = analysisResults['Sat_position'][curr_sys]['Elevation']
-        sat_azimut = analysisResults['Sat_position'][curr_sys]['Azimut']
+        try:
+            sat_elevation = analysisResults['Sat_position'][curr_sys]['Elevation']
+            sat_azimut = analysisResults['Sat_position'][curr_sys]['Azimut']
+        except:
+            print("Polarplot of multipath is not possible for %s Missing data." % (system))
+            break
         vmax_list = []
         ## -- Finding larges mean multipath value for scale on cbar (vmax)
         for band in bands_curr_sys:
