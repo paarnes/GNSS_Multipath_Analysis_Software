@@ -62,10 +62,10 @@ analysisResults = GNSS_MultipathAnalysis(rinObsFilename2,
                                           )
 
 #%%
-sp3 =  full_path_testdata  + '/SP3/' + 'COD0R03FIN_20100010000_01D_05M_ORB.SP3'
+sp3 =  r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData'  + '/SP3/' + 'COD0R03FIN_20100010000_01D_05M_ORB.SP3'
 rinObsFilename = r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles\opec0010_3.10o'
 analysisResults = GNSS_MultipathAnalysis(rinObsFilename,
-                                            # desiredGNSSsystems=['G'],
+                                         desiredGNSSsystems=['G'],
                                           outputDir = r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo/test211',
                                           sp3NavFilename_1=sp3
                                           )
