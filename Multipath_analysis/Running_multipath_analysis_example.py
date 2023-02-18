@@ -60,6 +60,15 @@ analysisResults = GNSS_MultipathAnalysis(rinObsFilename2,
                                           outputDir = full_path_ouputdir,
                                           broadcastNav1=broadcastNav5
                                           )
+
+#%%
+sp3 =  full_path_testdata  + '/SP3/' + 'COD0R03FIN_20100010000_01D_05M_ORB.SP3'
+rinObsFilename = r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles\opec0010_3.10o'
+analysisResults = GNSS_MultipathAnalysis(rinObsFilename,
+                                            # desiredGNSSsystems=['G'],
+                                          outputDir = r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo/test211',
+                                          sp3NavFilename_1=sp3
+                                          )
 #%% -- Advanced example (more user defined settings)
 
 ## Parameters
@@ -104,9 +113,12 @@ loaded_dictionary = pickle.load(file_to_read)
 
 #%% Examplecode for using readrinex
 import os, sys, pickle,numpy as np
-from readRinexObs304 import readRinexObs304
+from readRinexObs import readRinexObs
 
 rinObsFilename = r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles\OPEC00NOR_S_20220010000_01D_30S_MO.rnx'
+rinObsFilename = r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles\opec0010_2.10o'
+
+
 
 phaseCodeLimit              = 0
 ionLimit                    = 0
@@ -130,5 +142,5 @@ desiredObsBands = list(np.arange(1,10))     # all carrier bands. Tot 9, but aran
 [GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems,\
     obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType,\
     rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, success] = \
-    readRinexObs304(rinObsFilename, readSS, readLLI, includeAllGNSSsystems,includeAllObsCodes, desiredGNSSsystems,\
+    readRinexObs(rinObsFilename, readSS, readLLI, includeAllGNSSsystems,includeAllObsCodes, desiredGNSSsystems,\
     desiredObsCodes, desiredObsBands)
