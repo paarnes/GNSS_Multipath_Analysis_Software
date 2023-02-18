@@ -250,11 +250,15 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
         
         ## If there are no slips then there is only one "ambiguity period". All estimates are therefore reduced by the same relative value
         if len(ambiguity_slip_periods[PRN]) == 0:
-            if len(list(epoch_first_obs)) == 0:
+            # if len(list(epoch_first_obs)) == 0:
+            if epoch_first_obs.size == 0: # added 18.02.2023 because of error when running on RINEX v2 (should be like this either way!)
                 pass
             else:    
                 ion_delay_phase1[epoch_first_obs::, PRN] = ion_delay_phase1[epoch_first_obs::, PRN] - ion_delay_phase1[epoch_first_obs, PRN]  
-                multipath_range1[epoch_first_obs::, PRN] = multipath_range1[epoch_first_obs::, PRN] - np.mean(np.nonzero(multipath_range1[epoch_first_obs::, PRN]))  
+                # multipath_range1[epoch_first_obs::, PRN] = multipath_range1[epoch_first_obs::, PRN] - np.mean(np.nonzero(multipath_range1[epoch_first_obs::, PRN]))
+                ### removed np.nonzero and use np.nanmean instead since every zero is replaced by nan in line 247 and 248
+                multipath_range1[epoch_first_obs::, PRN] = multipath_range1[epoch_first_obs::, PRN] - np.nanmean(multipath_range1[epoch_first_obs::, PRN])  
+
                 # multipath_range2[epoch_first_obs::, PRN] = multipath_range2[epoch_first_obs::, PRN] - np.mean(np.nonzero(multipath_range2[epoch_first_obs::, PRN])) 
         else:
             ## -- Set all estimates of epochs with cycle slips to nan

@@ -347,7 +347,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         GNSSsystemIndex = list(GNSSsystems.keys())[i]
         curr_sys = GNSSsystems[GNSSsystemIndex]
         obsCodeOverview[GNSSsystemIndex] = {}
-        CODES = [x for x in obsCodes[GNSSsystemIndex][curr_sys] if 'C' in x[0]]
+        CODES = [x for x in obsCodes[GNSSsystemIndex][curr_sys] if 'C' in x[0] or 'P' in x[0]] #P is used in RINEX v2
         band_list = [band[1] for band in CODES]
         for j in np.arange(1,10):
             obsCodeOverview[GNSSsystemIndex][str(j)] = [] # preallocating slots for band (make 9 slots anyway) 
