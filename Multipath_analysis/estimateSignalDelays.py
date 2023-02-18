@@ -76,7 +76,7 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
                            current observations are coming from. Only used to
                            decide if system uses CDMA or FDMA.
     
-     tInterval:            observations interval; seconds. 
+     tInterval:            observations interval seconds. 
     
      phaseCodeLimit:       critical limit that indicates cycle slip for
                            phase-code combination. Unit: m/s. If set to 0,
@@ -178,8 +178,8 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
             range1 = GNSS_obs[epoch+1][PRN, ismember(obsCodes[currentGNSSsystem],range1_Code)] 
             range2 = GNSS_obs[epoch+1][PRN, ismember(obsCodes[currentGNSSsystem],range2_Code)]
             
-            phase1 = GNSS_obs[epoch+1][PRN, ismember(obsCodes[currentGNSSsystem],phase1_Code)]*c/carrier_freq1;
-            phase2 = GNSS_obs[epoch+1][PRN, ismember(obsCodes[currentGNSSsystem],phase2_Code)]*c/carrier_freq2;
+            phase1 = GNSS_obs[epoch+1][PRN, ismember(obsCodes[currentGNSSsystem],phase1_Code)]*c/carrier_freq1
+            phase2 = GNSS_obs[epoch+1][PRN, ismember(obsCodes[currentGNSSsystem],phase2_Code)]*c/carrier_freq2
             
             if any([str(range1), str(range2), str(phase1), str(phase2)]) == '[]':
                 print('ERROR(estimateSignalDelays): There is no observation type #s. Check for missing data in RINEX observation file!' % (phase1_Code))
