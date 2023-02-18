@@ -128,6 +128,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     analysisResults:          A dictionary that contains alls results of all analysises, for all GNSS systems.
     --------------------------------------------------------------------------------------------------------------------------
     """
+    
     if broadcastNav1 == None and sp3NavFilename_1 == None:
         raise RuntimeError("No SP3 or navigation file is defined! This is \
                            mandatory for this software, so please add one of them.")
@@ -258,7 +259,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     [GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems,\
         obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType,\
         rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, success] = \
-        readRinexObs304(rinObsFilename, readSS=readSS, readLLI=readLLI, includeAllGNSSsystems=includeAllGNSSsystems,includeAllObsCodes=includeAllObsCodes, desiredGNSSsystems=desiredGNSSsystems,\
+        readRinexObs(rinObsFilename, readSS=readSS, readLLI=readLLI, includeAllGNSSsystems=includeAllGNSSsystems,includeAllObsCodes=includeAllObsCodes, desiredGNSSsystems=desiredGNSSsystems,\
         desiredObsCodes=desiredObsCodes, desiredObsBands=desiredObsBands)
             
             
@@ -318,8 +319,11 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     ## -- Observation header
     if "R" in list(GNSSsystems.values()):
        # GNSSsystemIndex = find([GNSSsystems{:}] == "R"); 
-       GNSSsystemIndex = [k for k in GNSSsystems if GNSSsystems[k] == 'R'][0]       
-       GLOSatID = list(GLO_Slot2ChannelMap.keys())
+       GNSSsystemIndex = [k for k in GNSSsystems if GNSSsystems[k] == 'R'][0]
+       try:
+           GLOSatID = list(GLO_Slot2ChannelMap.keys())
+       except:
+           raise ValueError("ERROR! GLONASS k-numbers do not exist. This is mandatory to be able to run analysis for GLONASS. Please add GLONASS SLOT / FRQ  to RINEX header.")
        frequencyOverviewGLO = np.full([9,max_GLO_ID+1], np.nan)
        for k in np.arange(0,9):
            for j in np.arange(0,max_GLO_ID):
@@ -343,7 +347,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         GNSSsystemIndex = list(GNSSsystems.keys())[i]
         curr_sys = GNSSsystems[GNSSsystemIndex]
         obsCodeOverview[GNSSsystemIndex] = {}
-        CODES = [x for x in obsCodes[GNSSsystemIndex][curr_sys] if 'C' in x[0]]
+        CODES = [x for x in obsCodes[GNSSsystemIndex][curr_sys] if 'C' in x[0] or 'P' in x[0]] #P is used in RINEX v2
         band_list = [band[1] for band in CODES]
         for j in np.arange(1,10):
             obsCodeOverview[GNSSsystemIndex][str(j)] = [] # preallocating slots for band (make 9 slots anyway) 
