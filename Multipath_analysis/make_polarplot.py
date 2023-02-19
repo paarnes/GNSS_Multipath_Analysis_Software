@@ -122,7 +122,7 @@ def make_skyplot(azimut_currentSys, elevation_currentSys, GNSSsystemName,graph_d
         PRN_ = sys_code+str(PRN)
         PRN_ = sys_code+str(PRN).zfill(2)
         # ax.scatter(azimuth_rad, sat_el,label=PRN_)
-        line = ax.plot(azimuth_rad, sat_el,label=PRN_,linewidth=5.5)
+        line = ax.plot(azimuth_rad, sat_el,label=PRN_,linewidth=5.5, solid_capstyle='round') #solid_capstyle='round' makes rounded edges on lines
 
     ax.set_rticks([10 ,20 ,30, 40, 50, 60, 70, 80, 90])  # Less radial ticks
     # ax.set_rlabel_position(-22.5)  # Move radial labels away from plotted line
