@@ -21,12 +21,12 @@ def readRinexObs(filename, readSS=None, readLLI=None, includeAllGNSSsystems=None
         GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems,\
             obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType,\
             rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, success=  readRinexObs211(filename, readSS=None, readLLI=None, includeAllGNSSsystems=None,includeAllObsCodes=None, \
-                            desiredGNSSsystems=None, desiredObsCodes=None, desiredObsBands=None)
+                            desiredGNSSsystems=None, desiredObsCodes=None, desiredObsBands=None) ## WHEN A SOUTION IS FOUND ON desiredGNSSsystems, =None must be removed. 
     else:
        GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems,\
            obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType,\
-           rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, success =  readRinexObs304(filename, readSS=None, readLLI=None, includeAllGNSSsystems=None,includeAllObsCodes=None, \
-                            desiredGNSSsystems=None, desiredObsCodes=None, desiredObsBands=None)
+           rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, success =  readRinexObs304(filename, readSS, readLLI, includeAllGNSSsystems,includeAllObsCodes, \
+                            desiredGNSSsystems, desiredObsCodes, desiredObsBands)
                
     return GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems,\
         obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType,\
@@ -428,8 +428,9 @@ def readRinexObs304(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
     
     ## -- Initialize progress bar
     n_update_break = int(np.floor(nepochs/10)) #number of epoch before updating progressbar
-    
-    with tqdm(total=100,desc ="Rinex observations are being read" , position=0, leave=True) as pbar:
+    bar_format = '{desc}: {percentage:3.0f}%|{bar}| ({n_fmt}/{total_fmt})'
+    # with tqdm(total=100,desc ="Rinex observations are being read" , position=0, leave=True) as pbar:
+    with tqdm(total=100,desc ="Rinex observations are being read" , position=0, leave=True, bar_format=bar_format) as pbar:
         while 1:
            ## Read Obs Block Header
            success, _, _, date, numSV, eof = rinexReadObsBlockHead304(fid)
