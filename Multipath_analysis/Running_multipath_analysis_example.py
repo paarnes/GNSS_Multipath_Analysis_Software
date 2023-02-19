@@ -44,7 +44,7 @@ analysisResults = GNSS_MultipathAnalysis(rinObsFilename3,
                                           )
 #%% Using SP3  NMBUS
 analysisResults = GNSS_MultipathAnalysis(rinObsFilename3,
-                                           desiredGNSSsystems=['G'],
+                                            desiredGNSSsystems=['G'],
                                           outputDir = full_path_ouputdir,
                                           sp3NavFilename_1=sp3NavFilename_1
                                           )
