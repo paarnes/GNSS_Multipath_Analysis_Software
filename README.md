@@ -3,14 +3,19 @@ GNSS_MultipathAnalysis is a software for analyzing the multipath effect on Globa
 * Possible to use broadcasted ephemerides (not only SP3 files)
 * Makes polar plot of each satellite for each system
 * Makes polar plot that shows the multipath effect as function of azimuth and elevation angle.
-* Possible to choose which navigation system to run analysis on (no hardcoded anymore)
+* Possible to choose which navigation system to run analysis on (not hardcoded anymore)
 * Summary of the number of cycle slips detected in total (both ionospheric residuals and code- phase difference)
 
 The main function is called "GNSS_MultipathAnalysis.py" and takes in different arguments. Two arguments are mandatory:
 * A RINEX 3 Observation file
 * A sp3/eph file containing precise satellite coordinates or a RINEX 3 navigation file 
 
-The rest of the arguments are optional. Their default values are described in the function description. By default, this software will provide the results in forms of plots and an analysis report as a text file. In addition, it exports the results as a pickle file which can be imported as a dictionary in python for instance. 
+The rest of the arguments are optional. Their default values are described in the function description. By default, this software will provide the results in forms of plots and an analysis report as a text file. In addition, it exports the results as a pickle file which can be imported as a dictionary in python for instance.
+
+## Installation 
+To install the required packages, run: 
+`pip install -r requirements.txt`
+where the *requirements.txt* is located [here](https://github.com/paarnes/GNSS/blob/master/Multipath_analysis/Geodetic_functions.py).
 
 ## The steps are:
 1. Reads in the RINEX observation file 
