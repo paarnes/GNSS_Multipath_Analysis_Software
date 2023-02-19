@@ -1291,7 +1291,7 @@ def rinexReadObsFileHeader304(filename, includeAllGNSSsystems, includeAllObsCode
        
          ## GLOANSS SLOTS
         if 'GLONASS SLOT / FRQ #' in line:
-            line = line[0:60]     #  deletes 'TIME OF LAST OBS'
+            line = line[0:60]     #  deletes 'GLONASS SLOT / FRQ #'
             line_ = [el for el in line.split(" ") if el != ""]
             nGLOSat = int(line_.pop(0))
             slotNumbers = np.array([])
@@ -1302,12 +1302,15 @@ def rinexReadObsFileHeader304(filename, includeAllGNSSsystems, includeAllObsCode
                 slotNumbers = np.append(slotNumbers,slotNumber)
                 channels = np.append(channels,channel)
      
-                if np.mod(k+1, 8) == 0:
+                # if np.mod(k+1, 8) == 0:
+                if np.mod(k+1, 8) == 0 and k+1 != 24: # add test if  k ==24 to prevnet skip extra line
                     # line = fgetl(fid); # end of line is reached so read next line
                     line = fid.readline().rstrip()
                     numHeaderLines = numHeaderLines + 1
                     line = line[0:60]     #  deletes 'TIME OF LAST OBS'
                     line_ = [el for el in line.split(" ") if el != ""]
+                elif np.mod(k+1, 8) == 0 and k+1 == 24:
+                    break
      
             GLO_Slot2ChannelMap = dict(zip(slotNumbers.astype(int),channels.astype(int)))
            
@@ -1668,9 +1671,9 @@ def rinexReadObsBlockHead304(fid):
     return success, epochflag, clockOffset, date, numSV, eof
 
 
-#---------------------------------------------------
-##----------- RINEX 2.11 ---------------------------
-
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------- RINEX 2.11 ---------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 def readRinexObs211(filename, readSS=None, readLLI=None, includeAllGNSSsystems=None,includeAllObsCodes=None, \
                     desiredGNSSsystems=None, desiredObsCodes=None, desiredObsBands=None):
@@ -2954,12 +2957,14 @@ def rinexReadObsFileHeader211(filename, includeAllGNSSsystems, includeAllObsCode
                 slotNumbers = np.append(slotNumbers,slotNumber)
                 channels = np.append(channels,channel)
      
-                if np.mod(k+1, 8) == 0:
+                if np.mod(k+1, 8) == 0 and k+1 != 24:
                     # line = fgetl(fid); # end of line is reached so read next line
                     line = fid.readline().rstrip()
                     numHeaderLines = numHeaderLines + 1
                     line = line[0:60]     #  deletes 'TIME OF LAST OBS'
                     line_ = [el for el in line.split(" ") if el != ""]
+                elif np.mod(k+1, 8) == 0 and k+1 == 24:
+                    break
      
             GLO_Slot2ChannelMap = dict(zip(slotNumbers.astype(int),channels.astype(int)))
            
