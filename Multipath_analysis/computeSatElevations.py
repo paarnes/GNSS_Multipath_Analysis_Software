@@ -137,7 +137,8 @@ def computeSatElevations(GNSS_SVs, GNSSsystems, approxPosition,\
               FirstLastObsEpochOverview[i][:, PRN] = 0
      
     satMissingData = []
-    for k in tqdm(range(0,nGNSSsystems),desc='Looping through the systems',position=0,leave=True):
+    bar_format = '{desc}: {percentage:3.0f}%|{bar}| ({n_fmt}/{total_fmt})'
+    for k in tqdm(range(0,nGNSSsystems),desc='Looping through the systems',position=0,leave=True,bar_format=bar_format):
        n_ep = int(nepochs)
        nSat = int(max_sat[k]) + 1
        # Initialize data matrix for current GNSSsystem
@@ -154,7 +155,7 @@ def computeSatElevations(GNSS_SVs, GNSSsystems, approxPosition,\
        sat_coordinates[sys] = {} # added this 27.01.2023
        if sys in navGNSSsystems: # lat til tqdm
            curr_pos = {}  # dict for storing data   
-           for epoch in tqdm(range(0,nepochs),desc='Satellite elevation angles are being calculated for system %s of %s' %(k+1, nGNSSsystems),position=0, leave=False):             
+           for epoch in tqdm(range(0,nepochs),desc='Satellite elevation angles are being calculated for system %s of %s' %(k+1, nGNSSsystems),position=0, leave=False, bar_format=bar_format):             
                ##-- GPS Week and time of week of current epoch
                week = time_epochs[epoch,0]
                tow  = time_epochs[epoch,1]
