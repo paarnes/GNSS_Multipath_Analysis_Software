@@ -249,7 +249,7 @@ def readRinexObs211(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
     if readLLI is None:
         readLLI = 1
     if includeAllGNSSsystems is None:
-        includeAllGNSSsystems = 1
+        includeAllGNSSsystems = 0
     if includeAllObsCodes is None:
         includeAllObsCodes = 1
     if desiredGNSSsystems is None:
@@ -320,13 +320,13 @@ def readRinexObs211(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
     max_GLONASS_PRN = 36 # Max number of GLONASS PRN in constellation
     max_Galileo_PRN = 36 # Max number of Galileo PRN in constellation
     max_Beidou_PRN  = 60 # Max number of BeiDou PRN in constellation
-    
+
     ## -- Read header of observation file
     [success, rinexVersion, gnssType, markerName, recType, antDelta,\
     GNSSsystems,numOfObsCodes, obsCodes, obsCodeIndex,tFirstObs, tLastObs, tInterval, \
     timeSystem, _, clockOffsetsON, rinexProgr, rinexDate,leapSec, approxPosition, GLO_Slot2ChannelMap, _, fid] = \
     rinexReadObsFileHeader211(filename, includeAllGNSSsystems, includeAllObsCodes,desiredGNSSsystems, desiredObsCodes, desiredObsBands)
-    
+
     if success==0:
         return
     
@@ -1286,12 +1286,14 @@ def rinexReadObsFileHeader211(filename, includeAllGNSSsystems, includeAllObsCode
                 slotNumbers = np.append(slotNumbers,slotNumber)
                 channels = np.append(channels,channel)
      
-                if np.mod(k+1, 8) == 0:
+                if np.mod(k+1, 8) == 0 and k+1 != 24:
                     # line = fgetl(fid); # end of line is reached so read next line
                     line = fid.readline().rstrip()
                     numHeaderLines = numHeaderLines + 1
                     line = line[0:60]     #  deletes 'TIME OF LAST OBS'
                     line_ = [el for el in line.split(" ") if el != ""]
+                elif np.mod(k+1, 8) == 0 and k+1 == 24:
+                    break
      
             GLO_Slot2ChannelMap = dict(zip(slotNumbers.astype(int),channels.astype(int)))
            
@@ -1308,6 +1310,7 @@ def rinexReadObsFileHeader211(filename, includeAllGNSSsystems, includeAllObsCode
                 print('INFO: (rinexReadsObsHeader211)\nNone of the GPS satellites had any of the desired obsCodes\n\n')
             elif GNSSsystems[k] == 'R':
                 print('INFO: (rinexReadsObsHeader211)\nNone of the GLONASS satellites had any of the desired obsCodes\n\n')
+
 
     ## store rinex header info
     rinexHeader['rinexVersion'] =rinexVersion 
@@ -1715,8 +1718,8 @@ rinObsFilename = r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\Tes
 # rinObsFilename = r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles/opec0010_2.10o'
 
 GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems,\
-     obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType,\
-     rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, success = \
-     readRinexObs211(rinObsFilename)
+      obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType,\
+      rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, success = \
+      readRinexObs211(rinObsFilename,desiredGNSSsystems=['G'])
      
      
