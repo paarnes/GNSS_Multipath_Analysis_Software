@@ -1,13 +1,14 @@
 # GNSS Multipath Analysis
 GNSS_MultipathAnalysis is a software for analyzing the multipath effect on Global Navigation Satellite Systems (GNSS). This software is largely based on the MATLAB software "GNSS_Receiver_QC_2020" made by Bjørn-Eirik Roald. Mainly it follows the same logic, just with Python syntax. However, there are added some other features like for instance:
 * Possible to use broadcasted ephemerides (not only SP3 files)
+* Also support RINEX v2.xx observation files
 * Makes polar plot of each satellite for each system
 * Makes polar plot that shows the multipath effect as function of azimuth and elevation angle.
 * Possible to choose which navigation system to run analysis on (not hardcoded anymore)
 * Summary of the number of cycle slips detected in total (both ionospheric residuals and code- phase difference)
 
 The main function is called "GNSS_MultipathAnalysis.py" and takes in different arguments. Two arguments are mandatory:
-* A RINEX 3 Observation file
+* A RINEX Observation file
 * A sp3/eph file containing precise satellite coordinates or a RINEX 3 navigation file 
 
 The rest of the arguments are optional. Their default values are described in the function description. By default, this software will provide the results in forms of plots and an analysis report as a text file. In addition, it exports the results as a pickle file which can be imported as a dictionary in python for instance.
