@@ -13,8 +13,8 @@ The main function is called "GNSS_MultipathAnalysis.py" and takes in different a
 The rest of the arguments are optional. Their default values are described in the function description. By default, this software will provide the results in forms of plots and an analysis report as a text file. In addition, it exports the results as a pickle file which can be imported as a dictionary in python for instance.
 
 ## Installation 
-To install the required packages, run: 
-`pip install -r requirements.txt`
+To install the required packages, run:     
+`pip install -r requirements.txt`   
 where the *requirements.txt* is located [here](https://github.com/paarnes/GNSS/blob/master/Multipath_analysis/Geodetic_functions.py).
 
 ## The steps are:
