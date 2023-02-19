@@ -15,7 +15,7 @@ The rest of the arguments are optional. Their default values are described in th
 ## Installation 
 To install the required packages, run:     
 `pip install -r requirements.txt`   
-where the *requirements.txt* is located [here](https://github.com/paarnes/GNSS/blob/master/Multipath_analysis/Geodetic_functions.py).
+where the *requirements.txt* is located [here](https://github.com/paarnes/GNSS/blob/master/Multipath_analysis/requirements.txt).
 
 ## The steps are:
 1. Reads in the RINEX observation file 
