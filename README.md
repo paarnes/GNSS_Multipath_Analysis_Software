@@ -49,7 +49,7 @@ For the weighted RMS value, the satellite elevation angle is used in a weighting
 		</p>
     * Polar plot of the multipath effect as function of elevation angle and azimuth
 		<p align="center">
-			<img src="https://github.com/paarnes/GNSS/blob/master/Results_example/Graphs/MP_GPS_L1_GPS_C1C.png" width="630"/>
+			<img src="https://github.com/paarnes/GNSS/blob/master/Results_example/Graphs/MP_GPS_C1C.png" width="630"/>
 		</p>
     * Polar plot of each observed satellite in the system
 		<p align="center">
@@ -65,9 +65,10 @@ An example file on how to call the program is located [here](https://github.com/
 on how to run the analysis with different user defined arguments, how to read in the resultfile (pickle file), and in addition it shows how to use only the RINEX
 reading routine. The most simple example on how to run the code is:
 
-from GNSS_MultipathAnalysis import GNSS_MultipathAnalysis
-rinex_obs_file = r'C:\Users\XXXXXXXXXXX\TestData\ObservationFiles\OPEC00NOR_S_20220010000_01D_30S_MO_3.04' #set the actual path on your computer
-SP3_file = r'C:\Users\XXXXXXXXXXX\TestData\SP3\test1.eph' #set the actual path on your computer
-analysisResults = GNSS_MultipathAnalysis(rinex_obs_file, sp3NavFilename_1 = SP3_file)
+```
+from GNSS_MultipathAnalysis import GNSS_MultipathAnalysis  
+rinex_obs_file = r'C:\Users\XXXXXXXXXXX\TestData\ObservationFiles\OPEC00NOR_S_20220010000_01D_30S_MO_3.04' #set the actual path on your computer  
+SP3_file = r'C:\Users\XXXXXXXXXXX\TestData\SP3\test1.eph' #set the actual path on your computer  
+analysisResults = GNSS_MultipathAnalysis(rinex_obs_file, sp3NavFilename_1=SP3_file)```
 
 
