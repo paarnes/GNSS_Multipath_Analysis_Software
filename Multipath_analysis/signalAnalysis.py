@@ -147,7 +147,8 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
                 if cutoff_elevation_mask[current_sat_slip_periods[slip_period - n_slips_removed, 0], sat] == 0 \
                     or cutoff_elevation_mask[current_sat_slip_periods[slip_period - n_slips_removed, 1], sat] == 0:
                       
-                    current_sat_slip_periods[slip_period - n_slips_removed, :] = []
+                    # current_sat_slip_periods[slip_period - n_slips_removed, :] = []
+                    current_sat_slip_periods = np.delete(current_sat_slip_periods, slip_period - n_slips_removed, axis=0) # add 21.02.2023
                     n_slips_removed = n_slips_removed + 1
                   
             range1_slip_periods[sat+1] = current_sat_slip_periods
@@ -162,7 +163,8 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
                 if cutoff_elevation_mask[current_sat_slip_periods[slip_period - n_slips_removed, 0], sat] == 0 \
                     or cutoff_elevation_mask[current_sat_slip_periods[slip_period - n_slips_removed, 1], sat] == 0:
                       
-                    current_sat_slip_periods[slip_period - n_slips_removed, :] = []
+                    # current_sat_slip_periods[slip_period - n_slips_removed, :] = []
+                    current_sat_slip_periods = np.delete(current_sat_slip_periods, slip_period - n_slips_removed, axis=0) # add 21.02.2023
                     n_slips_removed = n_slips_removed + 1
                   
             ambiguity_slip_periods[sat+1] = current_sat_slip_periods
