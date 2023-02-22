@@ -619,6 +619,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         analysisResults['ExtraOutputInfo']['tInterval']           = tInterval
         analysisResults['ExtraOutputInfo']['GLO_Slot2ChannelMap'] = GLO_Slot2ChannelMap
         analysisResults['ExtraOutputInfo']['nEpochs']             = nepochs
+        analysisResults['ExtraOutputInfo']['elevation_cutoff']    = cutoff_elevation_angle
         
         ## -- Store default limits or user set limits in dict
         if phaseCodeLimit == 0:
@@ -631,6 +632,16 @@ def GNSS_MultipathAnalysis(rinObsFilename,
             analysisResults['ExtraOutputInfo']['ionLimit']  = 4/60
         else:
             analysisResults['ExtraOutputInfo']['ionLimit']  = ionLimit
+            
+        if sp3NavFilename_1 != "":
+            sp3_list = [sp3NavFilename_1,sp3NavFilename_2,sp3NavFilename_3]
+            analysisResults['ExtraOutputInfo']['SP3_filename'] = [sp3.split('/')[-1] for sp3 in sp3_list if sp3 !=""]
+            
+        if broadcastNav1 != "":
+            nav_list = [broadcastNav1,broadcastNav2,broadcastNav3,broadcastNav4]
+            analysisResults['ExtraOutputInfo']['rinex_nav_filename'] = [nav.split('/')[-1] for nav in nav_list if nav !=""] #added 19.02.2023
+            
+            
         
         
         
