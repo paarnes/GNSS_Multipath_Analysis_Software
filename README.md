@@ -69,6 +69,7 @@ reading routine. The most simple example on how to run the code is:
 from GNSS_MultipathAnalysis import GNSS_MultipathAnalysis  
 rinex_obs_file = r'C:\Users\XXXXXXXXXXX\TestData\ObservationFiles\OPEC00NOR_S_20220010000_01D_30S_MO_3.04' #set the actual path on your computer  
 SP3_file = r'C:\Users\XXXXXXXXXXX\TestData\SP3\test1.eph' #set the actual path on your computer  
-analysisResults = GNSS_MultipathAnalysis(rinex_obs_file, sp3NavFilename_1=SP3_file)```
+analysisResults = GNSS_MultipathAnalysis(rinex_obs_file, sp3NavFilename_1=SP3_file)
+```
 
 
