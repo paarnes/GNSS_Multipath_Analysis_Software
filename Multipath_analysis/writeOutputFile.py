@@ -20,6 +20,8 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
     
     ## -- Extracting data
     rinex_obs_filename      = analysisResults['ExtraOutputInfo']['rinex_obs_filename']
+    sp3_filename            = analysisResults['ExtraOutputInfo'].get('SP3_filename',None) # added 23.02.2023
+    broad_filename          = analysisResults['ExtraOutputInfo'].get('rinex_nav_filename',None) # added 23.02.2023
     markerName              = analysisResults['ExtraOutputInfo']['markerName']
     rinexVersion            = analysisResults['ExtraOutputInfo']['rinexVersion']
     rinexProgr              = analysisResults['ExtraOutputInfo']['rinexProgr']
@@ -33,6 +35,9 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
     meanClockJumpInterval   = analysisResults['ExtraOutputInfo']['meanClockJumpInterval']
     ionLimit                = analysisResults['ExtraOutputInfo']['ionLimit']
     phaseCodeLimit          = analysisResults['ExtraOutputInfo']['phaseCodeLimit']
+    elevation_cutoff        = analysisResults['ExtraOutputInfo']['elevation_cutoff'] # added 23.02.2023
+    
+   
     
     # meanClockJumpInterval   = seconds(meanClockJumpInterval) # vet ikke hva som bør brukes her
     # meanClockJumpInterval.Format = 'hh:mm:ss';
@@ -100,9 +105,13 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
      
     fid.write('GNSS_MultipathAnalysis\n')
     fid.write('Software version: 1.00\n');
-    fid.write('Last software version release: 01/12/2022\n\n');
-    fid.write('Software developed by Per Helge Aarnes. Based on the Matlab-software made by Bjørn-Eirik Roald (NMBU) \n\n');
+    fid.write('Last software version release: 19/02/2023\n\n');
+    fid.write('Software developed by Per Helge Aarnes (per.helge.aarnes@gmail.com) \n\n');
     fid.write('RINEX observation filename:\t\t %s\n' % (rinex_obs_filename))
+    if sp3_filename is not None:
+        fid.write('SP3 filename:\t\t\t\t\t %s\n' % (sp3_filename))
+    else:
+        fid.write('Broadcast navigation filename:\t\t\t\t\t %s\n' % (broad_filename))   
     fid.write('RINEX version:\t\t\t\t\t %s\n' % (rinexVersion.strip()))
     fid.write('RINEX converting program:\t\t %s\n' % (rinexProgr))
     fid.write('Marker name:\t\t\t\t\t %s\n' % (markerName))
@@ -110,6 +119,7 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
     fid.write('Date of observation start:\t\t %4d/%d/%d %d:%d:%.2f \n' % (tFirstObs[0],tFirstObs[1],tFirstObs[2],tFirstObs[3],tFirstObs[4],tFirstObs[5]))
     fid.write('Date of observation end:\t\t %4d/%d/%d %d:%d:%.2f \n'   % (tLastObs[0],tLastObs[1],tLastObs[2],tLastObs[3],tLastObs[4],tLastObs[5]))
     fid.write('Observation interval [seconds]:\t %d\n' % (tInterval))
+    fid.write('Elevation angle cutoff [degree]: %d\n' % (elevation_cutoff))
     fid.write('Number of receiver clock jumps:\t %d\n' % (nClockJumps))
     fid.write('Average clock jumps interval:\t %s (std: %.2f seconds)\n\n' % (str(meanClockJumpInterval), stdClockJumpInterval))
     
