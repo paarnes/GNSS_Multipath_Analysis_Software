@@ -1,8 +1,8 @@
 GNSS_MultipathAnalysis
 Software version: 1.00
-Last software version release: 01/12/2022
+Last software version release: 19/02/2023
 
-Software developed by Per Helge Aarnes. Based on the Matlab-software made by Bjørn-Eirik Roald (NMBU) 
+Software developed by Per Helge Aarnes (per.helge.aarnes@gmail.com) 
 
 RINEX observation filename:		 OPEC00NOR_S_20220010000_01D_30S_MO_3.04.rnx
 RINEX version:					 3.04
