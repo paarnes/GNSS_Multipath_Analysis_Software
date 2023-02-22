@@ -60,4 +60,14 @@ For the weighted RMS value, the satellite elevation angle is used in a weighting
 10. The results in form of a report get written to a text file with the same name as the RINEX observation file. 
 
 
+## How to run it
+An example file on how to call the program is located [here](https://github.com/paarnes/GNSS_Multipath_Analysis_Software/blob/master/Multipath_analysis/Running_multipath_analysis_example.py). This will show some examples
+on how to run the analysis with different user defined arguments, how to read in the resultfile (pickle file), and in addition it shows how to use only the RINEX
+reading routine. The most simple example on how to run the code is:
+
+from GNSS_MultipathAnalysis import GNSS_MultipathAnalysis
+rinex_obs_file = r'C:\Users\XXXXXXXXXXX\TestData\ObservationFiles\OPEC00NOR_S_20220010000_01D_30S_MO_3.04' #set the actual path on your computer
+SP3_file = r'C:\Users\XXXXXXXXXXX\TestData\SP3\test1.eph' #set the actual path on your computer
+analysisResults = GNSS_MultipathAnalysis(rinex_obs_file, sp3NavFilename_1 = SP3_file)
+
 
