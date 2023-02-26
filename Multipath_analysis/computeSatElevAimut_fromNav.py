@@ -2,7 +2,6 @@ import numpy as np
 from readRinexNav import read_rinex3_nav
 from Geodetic_functions import *
 import pandas as pd, re, os
-# from datetime import datetime
 
 def computeSatElevAimut_fromNav(navigationFile,approxPosition,GNSS_SVs,GNSS_obs,time_epochs, tLim_GEC=None,tLim_R=None):
     """
@@ -17,7 +16,7 @@ def computeSatElevAimut_fromNav(navigationFile,approxPosition,GNSS_SVs,GNSS_obs,
     ##--- Read rinex navigation file/files. If several files defined, the will
     ## be added to the same data array for further analysis
     
-    nav_list = [i for i in navigationFile if i is not None] #remove "NONE" if exist in list
+    nav_list = [i for i in navigationFile if i !=""] #remove "NONE" if exist in list
     for idx, nav_file in enumerate(nav_list):
         shorten_navigation_file(nav_file) # removes system 'S','J' and 'I' and ephermerids of same TOC to increase speed
         base_path = os.path.split(nav_file)[0]

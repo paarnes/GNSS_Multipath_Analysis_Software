@@ -121,7 +121,6 @@ def read_rinex3_nav(filename, dataframe = None):
 
     import numpy as np
     from pandas import DataFrame
-
     
     try:
         filnr = open(filename, 'r')
@@ -136,16 +135,12 @@ def read_rinex3_nav(filename, dataframe = None):
     while 'END OF HEADER' not in line:
         line = filnr.readline().rstrip()
         header.append(line)
-        
+
     data  = np.zeros((1,36))
     while line != '':
         block_arr = np.array([])
         ## -- Read first line of navigation message
         line = filnr.readline().rstrip()
-        # ## --- Replace "E" with "e" i academic notation
-        # line.replace('E+', 'e+')
-        # line.replace('E-', 'e-')
-        
         sys_PRN = line[0:3]            
         while 'S' in sys_PRN or 'I' in sys_PRN or 'J' in sys_PRN: ## trying to add GLONASS #PH
             line = filnr.readline().rstrip()
@@ -153,8 +148,7 @@ def read_rinex3_nav(filename, dataframe = None):
             while sys_PRN == '   ':
                 line = filnr.readline().rstrip()
                 sys_PRN = line[0:3]
-            
-        
+                   
         ## -- Have to add space between datacolums where theres no whitespace
         for idx, val in enumerate(line):
             if line[0:2] != ' ' and line[23] != ' ':
@@ -179,9 +173,7 @@ def read_rinex3_nav(filename, dataframe = None):
                 ## --Reads the line vector nl from the text string line and adds navigation 
                 # message for the relevant satellite n_sat. It becomes a long line vector 
                 # for the relevant message and satellite.
-            
                 nl = [el for el in line.split(" ") if el != ""]
-        
                 block_arr = np.append(block_arr,np.array([nl]))
                 block_arr = block_arr.reshape(1,len(block_arr))
         else:   
@@ -225,20 +217,13 @@ def read_rinex3_nav(filename, dataframe = None):
                     if i == 6 and 'E' in sys_PRN: #only one object in last line for Galileo, but add nan to get 36 in total
                         line = line + 'nan'
                         
-                    
-                    # if i == 6 and line.lower().count('e') == 1:
-                    #     line = line + 'nan'
-                        
-                    # if i == 4 and 'E' in sys_PRN and line.lower().count('e') < 4:
-                    #     line = line + 'nan'
             
                     nl = [el for el in line.split(" ") if el != ""]
             
                     block_arr = np.append(block_arr,np.array([nl]))
                     block_arr = block_arr.reshape(1,len(block_arr))
         
-    
-    
+             
         ## -- Collecting all data into common variable
         if block_arr.shape[1] > 36:
             block_arr = block_arr[:,0:36]
@@ -259,6 +244,7 @@ def read_rinex3_nav(filename, dataframe = None):
             break
             
 
+         
     filnr.close()
     n_eph = len(data)
     if dataframe == 'yes' or dataframe == 'YES':
