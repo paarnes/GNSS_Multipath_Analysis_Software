@@ -781,10 +781,10 @@ def date2gpstime(year,month,day,hour,minute,seconds):
     
     t0=date.toordinal(date(1980,1,6))+366
     t1=date.toordinal(date(year,month,day))+366 
-    week_flt = (t1-t0)/7;
-    week = fix(week_flt);
-    tow_0 = (week_flt-week)*604800;
-    tow = tow_0 + hour*3600 + minute*60 + seconds;
+    week_flt = (t1-t0)/7
+    week = fix(week_flt)
+    tow_0 = (week_flt-week)*604800
+    tow = tow_0 + hour*3600 + minute*60 + seconds
     
     return week, tow
 
@@ -1152,12 +1152,12 @@ def rinexReadObsFileHeader304(filename, includeAllGNSSsystems, includeAllObsCode
                     obsCode = line_.pop(0)
                     # Checking if obsCode is valid
                     if len(obsCode) != 3 or obsCode[0] not in ['C', 'L', 'D','S', 'I', 'X'] or  \
-                              obsCode[1] not in ['0', '1', '2', '4', '5', '6', '7', '8', '9'] or \
+                              obsCode[1] not in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'] or \
                                obsCode[2] not in ['A', 'B', 'C', 'D', 'I', 'L', 'M', 'N', 'P', 'Q', 'S', 'W', 'X', 'Y', 'Z']:
-                        print('ERROR (rinexReadsObsHeader304):  obsCode %s is a not a standard RINEX 3.04 observation type!' %(obsCode))     
-                        success = 0
-                        fid.close()
-                        return success
+                        print('ERROR (rinexReadsObsHeader304):  obsCode %s is a not a standard RINEX 3.04 observation type!' %(obsCode))
+                        # success = 0 #PH commented out 22.02.2023
+                        # fid.close()
+                        # return success
             
                     ## is obsCode amoung desired obscodes and frequency bands
                     if includeAllObsCodes or obsCode[0] in desiredObsCodes and int(obsCode[1]) in desiredObsBands:
@@ -1185,11 +1185,7 @@ def rinexReadObsFileHeader304(filename, includeAllGNSSsystems, includeAllObsCode
             line = line[0:60]     #  deletes 'TIME OF FIRST OBS'
             line_ = [el for el in line.split(" ") if el != ""]             
             for k in np.arange(0,6):
-                tok = line_.pop(0)  # finds the substrings containing the components of the time of the first observation
-                                      #(YYYY; MM; DD; hh; mm; ss.sssssss) and specifies
-                                      # the Time System used in the
-                                      # observations file (GPST, GLOT or
-                                      # GALT)
+                tok = line_.pop(0) 
                 if k ==0:
                     yyyy = int(tok)
                 elif k ==1:
@@ -1204,12 +1200,10 @@ def rinexReadObsFileHeader304(filename, includeAllGNSSsystems, includeAllObsCode
                     ss = float(tok)
      
           
-            #tFirstObs = [yyyy; mm; dd; hh; mnt; ss];
             tFirstObs = np.array([[yyyy],[mm],[dd],[hh],[mnt],[ss]])
           
             # Get Time system
             aux = line_.pop(0)
-            # aux = strtok(line);
             if aux == 'GPS':
                 timeSystem = 'GPS'
             elif aux == 'GLO':
@@ -1449,16 +1443,7 @@ def rinexReadObsBlock304(fid, numSV, nObsCodes, GNSSsystems, obsCodeIndex, readS
     removed_sat                 = np.nan
     desiredGNSSsystems          = np.nan
     
-    ## -- Testing input arguments
-    ## Test type of GNSS systems
-    # if ~isa(GNSSsystems, 'cell')
-    #    sprintf(['INPUT ERROR(rinexReadObsBlock304): The input argument GNSSsystems',...
-    #         ' is of type #s.\n Must be of type cell'],class(GNSSsystems))
-    #     success = 0;
-    #     return;  
-    # end
-    
-    ## Test type of numSV
+    ## -- Testing input arguments    
     if type(numSV) != int: 
        print('INPUT ERROR(rinexReadObsBlock304): The input argument numSV is of type %s.\n Must be of type double' % (type(numSV)))
        success = 0
@@ -1547,7 +1532,7 @@ def rinexReadObsBlock304(fid, numSV, nObsCodes, GNSSsystems, obsCodeIndex, readS
                    if charPos+14<len(line): ## endret til < (kun mindre enn) 13.11
                        newSS = line[charPos+14] # signal strength endret fra 15 til 14 den 13.11.2022
                    else:
-                       newSS = ' ';
+                       newSS = ' '
                     
                 
                     # if no SS set to -999
@@ -3147,7 +3132,7 @@ def rinexReadObsBlock211(fid, numSV, nObsCodes, GNSSsystems, obsCodeIndex, readS
     # Gobble up observation block
     for sat in np.arange(0,numSV):
         line = fid.readline().rstrip()  
-        if not re.match(pattern,line) or not re.match(pattern2,line) or re.match(pattern4,line):
+        if not re.match(pattern,line) or not re.match(pattern2,line) or re.match(pattern4,line): ## BØR NOK BRUKE WHILE HER 25.02.2023
             sat_overview = line.split(" ")[-1]
             pattern3 = re.compile(r'[A-Z][0-9]{2}')
             sat_list = re.findall(pattern3, sat_overview)
