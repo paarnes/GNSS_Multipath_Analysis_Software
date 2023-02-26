@@ -1,9 +1,8 @@
-# from math import sqrt,sin,cos,tan,pi,atan,atan2,asin
 from numpy import fix,array,log,fmod,arctan,arctan2,arcsin,sqrt,sin,cos,pi,arange
-# import datetime
 import numpy as np
 import pandas as pd
 from datetime import datetime,timedelta
+from datetime import date
 
 
 def ECEF2geodb(a,b,X,Y,Z):
@@ -41,16 +40,16 @@ def ECEF2enu(lat,lon,dX,dY,dZ): ## added this new function 28.01.2023
     """
     Convert from ECEF to a local toposentric coordinate system (ENU)
     """
+    ## -- Add 180 degrees (pi) if longitude is less than 0 (to get correct values)
+    lon = lon + pi if lon < 0 else lon
     ## -- Compute sin and cos before putting in to matrix to gain speed
     sin_lon = np.sin(lon)
     cos_lon = np.cos(lon)
     sin_lat = np.sin(lat)
     cos_lat = np.cos(lat)
     
-    # dP_ECEF = np.array([dX, dY, dZ]).reshape((3,1))
     dP_ECEF = np.array([[dX, dY, dZ]]).T
-
-    
+    ## -- Propagate through rotation matrix    
     M = np.array([[-sin_lon, cos_lon, 0], 
         [-sin_lat*cos_lon, -sin_lat*sin_lon, cos_lat], 
         [cos_lat*cos_lon, cos_lat*sin_lon, sin_lat]])
@@ -61,6 +60,8 @@ def ECEF2enu(lat,lon,dX,dY,dZ): ## added this new function 28.01.2023
     n = float(dP_ENU[1])
     u = float(dP_ENU[2])
     return e, n, u
+
+
 
 
 
@@ -127,7 +128,6 @@ def compute_azimut_elev(X,Y,Z,xm,ym,zm):
     dZ = (Z - zm)
     
     ## -- Transformerer koordinatene over til lokalttoposentrisk system:
-    # east = []; north = []; up = []
     if X.shape == (): # if only float put in, not list or array
         east,north,up = ECEF2enu(lat,lon,dX,dY,dZ)
         ## -- Computes the azimut angle and elevation angel for current coordinates (in degrees)
@@ -173,10 +173,7 @@ def date2gpstime(year,month,day,hour,minute,seconds):
     """
     Computing GPS-week nr.(integer) and "time-of-week" from year,month,day,hour,min,sec
     Origin for GPS-time is 06.01.1980 00:00:00 UTC
-    """
-    from datetime import date
-    from numpy import fix
-    
+    """    
     t0=date.toordinal(date(1980,1,6))+366
     t1=date.toordinal(date(year,month,day))+366 
     week_flt = (t1-t0)/7;
@@ -185,21 +182,6 @@ def date2gpstime(year,month,day,hour,minute,seconds):
     tow = tow_0 + hour*3600 + minute*60 + seconds;
     
     return week, tow
-
-
-
-# def date2gpstime(year, month, day, hour, minute, seconds):
-#     """
-#     Computing GPS-week nr.(integer) and "time-of-week" from year,month,day,hour,min,sec
-#     Origin for GPS-time is 06.01.1980 00:00:00 UTC
-#     """
-#     origin = datetime(1980, 1, 6, 0, 0, 0)
-#     current_time = datetime(year, month, day, hour, minute, seconds)
-#     time_diff = current_time - origin
-#     weeks, tow = divmod(time_diff.days * 86400 + time_diff.seconds, 604800)
-#     return weeks, tow
-
-# week, tow = date2gpstime(2022,11,5,9,45,00)
 
 
 def extract_nav_message(data,PRN,tidspunkt):
@@ -216,7 +198,6 @@ def gathering_sat_by_PRN(data,PRN):
     """
     Funksjonen bruker rinex-data i form av array ordnet ved funksjonen read_rinex2_nav eller read_rines3_nav
     """
-    j = 0
     m = len(data) 
     Sat_data  = np.zeros((1,36))
     for k in np.arange(0,m):
@@ -228,7 +209,6 @@ def gathering_sat_by_PRN(data,PRN):
             sat = data[k,0]
         
         if int(sat) == PRN:
-            # Sat_data[j,:] = data[k,:]
             PRN_ =np.append(PRN_,data[k,:])
             PRN_ = PRN_.reshape(1,len(PRN_))
         if np.size(PRN_) != 0:
@@ -493,18 +473,18 @@ def glonass_diff_eq(state, acc):
     omega = 7.292115e-5     # Earth rotation rate    [rad/sek]
     ae = 6378136.0          # Semi major axis PZ-90   [m]
     r = np.sqrt(state[0]**2 + state[1]**2 + state[2]**2)
-    ders = np.zeros(6)
+    der_state = np.zeros(6)
     if r**2 < 0:
-        return ders
+        return der_state
     a = 1.5 * J2 * mu * (ae**2)/ (r**5)
     b = 5 * (state[2]**2) / (r**2)
     c = -mu/(r**3) - a*(1-b)
     
-    ders[0:3] = state[3:6]
-    ders[3] = (c + omega**2)*state[0] + 2*omega*state[4] + acc[0]
-    ders[4] = (c + omega**2)*state[1] - 2*omega*state[3] + acc[1]
-    ders[5] = (c - 2*a)*state[2] + acc[2]
-    return ders
+    der_state[0:3] = state[3:6]
+    der_state[3] = (c + omega**2)*state[0] + 2*omega*state[4] + acc[0]
+    der_state[4] = (c + omega**2)*state[1] - 2*omega*state[3] + acc[1]
+    der_state[5] = (c - 2*a)*state[2] + acc[2]
+    return der_state
 
 
 
