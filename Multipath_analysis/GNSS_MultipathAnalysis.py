@@ -136,10 +136,15 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     if broadcastNav1 !=None and sp3NavFilename_1 != None:
         raise RuntimeError("You defined both a navigation file and a SP3 file. Please\
                            choose between using broadcast ephemerides or precise.")
-        
-    
+         
     if broadcastNav1 == None:    
-        broadcastNav1 = ""      
+        broadcastNav1 = ""    
+    if broadcastNav2 == None:    
+        broadcastNav2 = "" 
+    if broadcastNav3 == None:    
+        broadcastNav3 = "" 
+    if broadcastNav4 == None:    
+        broadcastNav4 = ""         
     if sp3NavFilename_1 == None:    
         sp3NavFilename_1 = ""  
     if sp3NavFilename_2 == None:    
@@ -575,18 +580,18 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                           current_code_dict['range1_Code'], current_code_dict['range2_Code'], \
                           current_code_dict['phase1_Code'], current_code_dict['phase2_Code'], graphDir)
                       
-    
                  
                       ## -- Place the current code dict in its original place in current band dict
                       current_band_dict[range1_Code] = current_code_dict
                   
-                    else:
-                        ## If phase1 observation is not read from RINEX observation file
-                        print('\nINFO(GNSS_MultipathAnalysis): %s code exists in RINEX observation file, but not %s\n',\
-                                        'Linear combination using this signal is not used.\n\n' % (range1_Code, phase1_Code))
+                else:
+                    ## If phase1 observation is not read from RINEX observation file
+                    print('\nINFO(GNSS_MultipathAnalysis): %s code exists in RINEX observation file, but not %s\n'\
+                                    'Linear combination using this signal is not used.\n\n' % (range1_Code, phase1_Code))
 
-                        current_band_dict['Codes'][ismember(current_band_dict['Codes'], range1_Code)] = []
-                        current_band_dict['nCodes'] = current_band_dict['nCodes'] - 1 
+
+                    current_band_dict['Codes'][ismember(current_band_dict['Codes'], range1_Code)] = []
+                    current_band_dict['nCodes'] = current_band_dict['nCodes'] - 1 
                         
                          
             ## -- Replace the, now altered, hard copy of current band dict in its original place in system dict
@@ -635,11 +640,11 @@ def GNSS_MultipathAnalysis(rinObsFilename,
             
         if sp3NavFilename_1 != "":
             sp3_list = [sp3NavFilename_1,sp3NavFilename_2,sp3NavFilename_3]
-            analysisResults['ExtraOutputInfo']['SP3_filename'] = [sp3.split('/')[-1] for sp3 in sp3_list if sp3 !=""]
+            analysisResults['ExtraOutputInfo']['SP3_filename'] = [os.path.basename(sp3) for sp3 in sp3_list if sp3 !=""]
             
         if broadcastNav1 != "":
             nav_list = [broadcastNav1,broadcastNav2,broadcastNav3,broadcastNav4]
-            analysisResults['ExtraOutputInfo']['rinex_nav_filename'] = [nav.split('/')[-1] for nav in nav_list if nav !=""] #added 19.02.2023
+            analysisResults['ExtraOutputInfo']['rinex_nav_filename'] = [os.path.basename(nav) for nav in nav_list if nav !=""] #added 19.02.2023
             
             
         
