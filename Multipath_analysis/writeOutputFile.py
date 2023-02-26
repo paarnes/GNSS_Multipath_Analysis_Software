@@ -109,9 +109,9 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
     fid.write('Software developed by Per Helge Aarnes (per.helge.aarnes@gmail.com) \n\n');
     fid.write('RINEX observation filename:\t\t %s\n' % (rinex_obs_filename))
     if sp3_filename is not None:
-        fid.write('SP3 filename:\t\t\t\t\t %s\n' % (sp3_filename))
+        fid.write('SP3 filename:\t\t\t\t\t %s\n' % (','.join(sp3_filename)))
     else:
-        fid.write('Broadcast navigation filename:\t\t\t\t\t %s\n' % (broad_filename))   
+        fid.write('Broadcast navigation filename:\t %s\n' % (','.join(broad_filename)))   
     fid.write('RINEX version:\t\t\t\t\t %s\n' % (rinexVersion.strip()))
     fid.write('RINEX converting program:\t\t %s\n' % (rinexProgr))
     fid.write('Marker name:\t\t\t\t\t %s\n' % (markerName))
