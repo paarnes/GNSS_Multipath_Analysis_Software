@@ -77,23 +77,16 @@ def get_elevation_angle(sys, PRN, week, tow, sat_positions, nEpochs, epoch_dates
     if all([Xs,Ys,Zs]) == 0:
          missing_nav_data = 1
          elevation_angle = 0
-         azimut_angle = 0 # added 05.01.2023
+         azimut_angle = 0 
     else:
         ##-- Define vector from receiver to satellite
-        dx_e = np.array([Xs,Ys,Zs]).reshape(len(np.array([Xs,Ys,Zs])),1) -  x_e.reshape(1,len(x_e))
-    
+        dx_e = np.array([Xs,Ys,Zs]) -  x_e
+
         ## -- Get geodetic coordinates of receiver
-        station_x_g = ECEF2geodb(a,b,x_e[0][0],x_e[1][0],x_e[2][0])
-    
+        lat,lon,h = ECEF2geodb(a,b,x_e[0][0],x_e[1][0],x_e[2][0])
+            
         ##-- Transform dx_e vector to local reference frame
-        lat = station_x_g[0]
-        lon = station_x_g[1]
-        dx_l = ECEF2enu(lat,lon, dx_e[0][0],dx_e[1][0],dx_e[2][0])
-        ## -- Local vector components
-        e = dx_l[0]
-        n = dx_l[1]
-        u = dx_l[2]
-    
+        e,n,u = ECEF2enu(lat,lon, dx_e[0][0],dx_e[1][0],dx_e[2][0])    
         ## -- Calculate elevation and azimut angle from receiver to satellite
         if not np.isnan(u) and not np.isnan(e) and not np.isnan(n):
             elevation_angle = np.rad2deg(atanc(u, sqrt(e**2 + n**2)))
