@@ -1,7 +1,8 @@
 from datetime import date,timedelta,datetime
 from barylag import barylag
 import numpy as np
-from scipy.interpolate import lagrange
+from scipy.interpolate import BarycentricInterpolator
+from Geodetic_functions import date2gpstime
 
 
 
@@ -77,13 +78,6 @@ def preciseOrbits2ECEF(sys, PRN, date_, dates, epochInterval, nEpochs, sat_posit
 
     ## --Date of first epoch
     tFirstEpoch = np.array(dates[0, :]).astype(float)
-    # tFirstEpoch = np.array(dates[0]).astype(float)
-    # tFirstEpoch = datetime(int(tFirstEpoch[0]),int(tFirstEpoch[1]),int(tFirstEpoch[2]),int(tFirstEpoch[3]),int(tFirstEpoch[4]),int(tFirstEpoch[5]))
-    # time from first epoch to desired epoch
-    # tk = etime(date, tFirstEpoch)
-    ## --Converting to string 
-    # tFirstEpoch = ' '.join(str(e) for e in list(tFirstEpoch))
-    
     tFirstEpoch = str(int(tFirstEpoch[0])) + "/" + str(int(tFirstEpoch[1])) + "/" + str(int(tFirstEpoch[2])) + " " + str(int(tFirstEpoch[3])) \
         + ":" + str(int(tFirstEpoch[4])) + ":" + str(tFirstEpoch[5])[0:9] 
         
