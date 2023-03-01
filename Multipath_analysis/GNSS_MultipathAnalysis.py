@@ -2,7 +2,7 @@ import os, numpy as np, pickle
 from readRinexObs import *
 from Geodetic_functions import *
 from computeSatElevations import computeSatElevations
-from computeSatElevAimut_fromNav import computeSatElevAimut_fromNav
+from computeSatElevAzimuth_fromNav import computeSatElevAzimuth_fromNav
 from readFrequencyOverview import readFrequencyOverview
 from signalAnalysis import signalAnalysis
 from plotResults import plotResults
@@ -275,7 +275,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
             nepochs, time_epochs, max_sat, sp3NavFilename_1, sp3NavFilename_2, sp3NavFilename_3)
     else:
         nav_files = [broadcastNav1,broadcastNav2,broadcastNav3,broadcastNav4]
-        sat_pos = computeSatElevAimut_fromNav(nav_files,approxPosition,GNSS_SVs,GNSS_obs,time_epochs,tLim_GEC,tLim_R)
+        sat_pos = computeSatElevAzimuth_fromNav(nav_files,approxPosition,GNSS_SVs,GNSS_obs,time_epochs,tLim_GEC,tLim_R)
         
         ## -- Build same struture for satellit elevation angles if broadcast nav defined
         sat_elevation_angles = {}
