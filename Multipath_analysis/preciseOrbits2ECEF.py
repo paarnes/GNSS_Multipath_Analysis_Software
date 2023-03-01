@@ -5,7 +5,6 @@ from scipy.interpolate import BarycentricInterpolator
 from Geodetic_functions import date2gpstime
 
 
-
 def preciseOrbits2ECEF(sys, PRN, date_, dates, epochInterval, nEpochs, sat_positions, navGNSSsystems):
     """
       Function that finds positions of speficied satelite at nearest epochs.
@@ -13,12 +12,12 @@ def preciseOrbits2ECEF(sys, PRN, date_, dates, epochInterval, nEpochs, sat_posit
     --------------------------------------------------------------------------------------------------------------------------
       INPUTS
     
-      sys:            Satellite system, string, 
-                        ex. "E" or "G"
+      sys:              Satellite system, string, 
+                          ex. "E" or "G"
     
-      PRN:            Satellite identification number, integer
+      PRN:              Satellite identification number, integer
     
-      date_:             array, date of specified epoch in form of [year, month, day, hour, min, sec]
+      date_:            array, date of specified epoch in form of [year, month, day, hour, min, sec]
     
       dates:            matrix. Each row contains date of one of the epochs in 
                         the SP3 orbit file. 
