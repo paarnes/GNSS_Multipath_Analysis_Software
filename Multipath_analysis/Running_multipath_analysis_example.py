@@ -9,7 +9,7 @@ relpath_to_testdata = 'TestData'
 full_path_testdata = os.path.join(base_path, relpath_to_testdata) 
 
 #Path to outputdir 
-relpath_to_outputdir = 'Results_OPEC_broad_3'
+relpath_to_outputdir = 'Results'
 full_path_ouputdir = os.path.join(base_path, relpath_to_outputdir) 
 
 ## -----  Defining input data --------
@@ -33,7 +33,9 @@ broadcastNav4 =  full_path_testdata  + '/NavigationFiles/' + 'BRDC00IGS_R_202200
 #%% #####-- Simple examples for running analysis (few userdefined settings) 
 # Using SP3  OPEC
 
-analysisResults = GNSS_MultipathAnalysis(rinObsFilename1,sp3NavFilename_1 = sp3NavFilename_1_opec)
+analysisResults = GNSS_MultipathAnalysis(rinObsFilename1,
+                                         desiredGNSSsystems=["G"],
+                                         sp3NavFilename_1 = sp3NavFilename_1_opec)
 
 
 #%% Using broadcasted eph OPEC
@@ -53,7 +55,17 @@ analysisResults = GNSS_MultipathAnalysis(rinObsFilename2,
 analysisResults = GNSS_MultipathAnalysis(rinObsFilename2,
                                          desiredGNSSsystems=['G'],
                                          outputDir = full_path_ouputdir,
-                                         sp3NavFilename_1=sp3NavFilename_1
+                                         sp3NavFilename_1=sp3NavFilename_1,
+                                         plotEstimates=True
+                                         )
+
+#%% Using SP3  NMBUS without plotting
+analysisResults = GNSS_MultipathAnalysis(rinObsFilename2,
+                                         desiredGNSSsystems=['G'],
+                                         outputDir = full_path_ouputdir,
+                                         broadcastNav1=broadcastNav3,
+                                         plotEstimates=False,
+                                         plot_polarplot=False
                                          )
 
 #%% -- Advanced example (more user defined settings)
@@ -97,7 +109,6 @@ loaded_dictionary = pickle.load(file_to_read)
 
 
 #%% ----------- Examplecode for using readrinex to read in GPS and Galielo observation
-
 rinObsFilename = r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles\OPEC00NOR_S_20220010000_01D_30S_MO_3.04.rnx'
 desiredGNSSsystems = ["G","E"]          # GPS and Galileo
 desiredObsCodes = ["C", "L"]       # code and phase observations
