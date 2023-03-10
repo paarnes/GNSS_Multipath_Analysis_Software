@@ -422,7 +422,10 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                 current_band_struct = current_sys_struct[bandName]
                 nCodes_current_band = current_band_struct['nCodes']
                 fid.write( '\n\n======================================================================================================================================================================================================================================================================================================================================================\n\n')
-                fid.write( '%s (%s)\n\n' % (analysisResults[GNSSsystems[i]]['Bands'][j], current_BandNameMap[int(bandName[-1])]))
+                if int(bandName[-1]) in current_BandNameMap.keys():
+                    fid.write( '%s (%s)\n\n' % (analysisResults[GNSSsystems[i]]['Bands'][j], current_BandNameMap[int(bandName[-1])]))
+                else:
+                    continue
                 fid.write( 'Frequency of carrier band [MHz]:\t\t\t\t\t %s\n' % (current_BandFreqMap[int(bandName[-1])]))
                 fid.write( 'Amount of code signals analysed in current band:\t %d \n' % (nCodes_current_band))
                 for k in range(0,nCodes_current_band):
@@ -588,7 +591,8 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                                if current_code_struct['nEstimates_per_sat'][PRN] > 0: ##added 21.01.2023 to prevent sat with only nan in resultfile
                                    fid.write(   '|______|___________|____________|_______________|_________|______________|_______________|_______________|__________|_________________|_________________|_________________|_________________|_________________|_________________|_________________|\n')
                                    fid.write(   '|%6s|%11d|%12d|%15d|%9.3f|%14.3f|%15.3f|%15d|%10.3f|%17d|%17d|%17d|%17d|%17d|%17d|%17d|\n' % (\
-                                      GNSS_Name2Code[analysisResults[GNSSsystems[i]]] + str(PRN),\
+                                      # GNSS_Name2Code[analysisResults[GNSSsystems[i]]] + str(PRN),\
+                                      GNSS_Name2Code[GNSSsystems[i]] + str(PRN),\
                                       GLO_Slot2ChannelMap[PRN],\
                                       current_code_struct['n_range1_obs_per_sat'][:,PRN],\
                                       current_code_struct['nEstimates_per_sat'][PRN],\
