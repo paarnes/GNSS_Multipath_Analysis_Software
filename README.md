@@ -1,5 +1,5 @@
 # GNSS Multipath Analysis
-GNSS_MultipathAnalysis is a software for analyzing the multipath effect on Global Navigation Satellite Systems (GNSS). This software is largely based on the MATLAB software "GNSS_Receiver_QC_2020" made by Bjørn-Eirik Roald. Mainly it follows the same logic, just with Python syntax. However, there are added some other features like for instance:
+GNSS_MultipathAnalysis is a software for analyzing the multipath effect on Global Navigation Satellite Systems (GNSS). This software is largely based on the MATLAB software [GNSS_Receiver_QC_2020](https://gitlab.com/bjro/GNSS_reading_protocol/-/tree/main/GNSS_Receiver_QC_2020) made by Bjørn-Eirik Roald. Mainly it follows the same logic, just with Python syntax. However, there are added some other features like for instance:
 * Possible to use broadcasted ephemerides (not only SP3 files)
 * Also support RINEX v2.xx observation files (error prone, still under development. Recommend to use RINEX v3.xx for now)
 * Makes polar plot of each satellite for each system
@@ -69,8 +69,9 @@ reading routine. The most simple example on how to run the code is:
 
 ```
 from GNSS_MultipathAnalysis import GNSS_MultipathAnalysis  
-rinex_obs_file = r'C:\Users\XXXXXXXXXXX\TestData\ObservationFiles\OPEC00NOR_S_20220010000_01D_30S_MO_3.04' #set the actual path on your computer  
-SP3_file = r'C:\Users\XXXXXXXXXXX\TestData\SP3\test1.eph' #set the actual path on your computer  
+
+rinObs_file = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04' 
+SP3_file    = 'SP3_20220010000.eph'   
 analysisResults = GNSS_MultipathAnalysis(rinex_obs_file, sp3NavFilename_1=SP3_file)
 ```
 
