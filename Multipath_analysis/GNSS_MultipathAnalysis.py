@@ -5,11 +5,11 @@ from computeSatElevations import computeSatElevations
 from computeSatElevAzimuth_fromNav import computeSatElevAzimuth_fromNav
 from readFrequencyOverview import readFrequencyOverview
 from signalAnalysis import signalAnalysis
-from plotResults import plotResults
 from detectClockJumps import detectClockJumps
 from tqdm import tqdm, trange
 from writeOutputFile import writeOutputFile
-from make_polarplot import make_polarplot,make_skyplot
+from make_polarplot import make_polarplot,make_skyplot, make_polarplot_SNR, plot_SNR_wrt_elev
+from make_polarplot_dont_use_TEX import make_polarplot_dont_use_TEX, make_skyplot_dont_use_TEX, make_polarplot_SNR_dont_use_TEX, plot_SNR_wrt_elev_dont_use_TEX
 from plotResults import *
 
 def GNSS_MultipathAnalysis(rinObsFilename,
@@ -27,13 +27,14 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                           outputDir=None,
                           plotEstimates= None,
                           plot_polarplot=None,
-                          # include_SNR=None,
+                          include_SNR=None,
                           tLim_R   = None,
                           tLim_GEC = None,
                           includeResultSummary= None,
                           includeCompactSummary=None,
                           includeObservationOverview=None,
-                          includeLLIOverview= None
+                          includeLLIOverview= None,
+                          use_LaTex =None
                           ):
     
     """
@@ -108,7 +109,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     plot_polarplot:           boolean. True or False. If not defined polarplots will be made (optional)
     
     
-    include_SNR:              boolean. (NOT IMPLEMENTED YET) If not defined SNR from Rinex obs file will NOT be used (optional)
+    include_SNR:              boolean. If not defined, SNR from Rinex obs file will NOT be used (optional)
     
     
     includeResultSummary:     boolean. 1 if user desires output file to
@@ -170,12 +171,6 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     if plot_polarplot == None:
         plot_polarplot = 1
         
-    # if include_SNR == None:
-    #     desiredObsCodes = ["C", "L"] # only code and phase observations
-    # elif include_SNR == True:
-    #     desiredObsCodes = ["C", "L", "S"]
-    # else:
-    #    return print("include_SNR should be either None or True")
     if tLim_R == None:
         tLim_R = 1800 # 30 min
     if tLim_GEC == None:
@@ -199,6 +194,8 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     else:
         includeAllGNSSsystems   = 0
     
+    if use_LaTex == None:
+        use_LaTex == True
     
     ## ---  Control of the user input arguments 
     if type(sp3NavFilename_1) != str:
@@ -254,8 +251,14 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     
     ## --- Read observation file
     includeAllObsCodes  = 0
-    desiredObsCodes = ["C", "L"] # only code and phase observations
+    
+    if include_SNR == None:
+        desiredObsCodes = ["C", "L"] # only code and phase observations
+    elif include_SNR == True:
+        desiredObsCodes = ["C", "L", "S"]
+    # desiredObsCodes = ["C", "L"] # only code and phase observations
     desiredObsBands = list(np.arange(1,10)) # all carrier bands. Tot 9, but arange stops at 8 -> 10
+    
     
     readSS = 1
     readLLI = 1
@@ -323,7 +326,6 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     
     ## -- Observation header
     if "R" in list(GNSSsystems.values()):
-       # GNSSsystemIndex = find([GNSSsystems{:}] == "R"); 
        GNSSsystemIndex = [k for k in GNSSsystems if GNSSsystems[k] == 'R'][0]
        try:
            GLOSatID = list(GLO_Slot2ChannelMap.keys())
@@ -486,10 +488,8 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                         # Disregard observation code in same carrier band as current range1 observation
                         if secondBandnum != bandNumInd:
                             ## Make HARD copy of the other band dict
-                            # other_band_dict = current_sys_dict.(current_sys_dict.Bands{secondBandnum});
                             other_band_dict = current_sys_dict[current_sys_dict['Bands'][secondBandnum]]
                             ## Get number of codes in other band dict
-                            # nCodesOtherBand = other_band_dict.nCodes; 
                             nCodesOtherBand = other_band_dict['nCodes'] 
                          
                             # Itterate through codes in other band
@@ -575,11 +575,23 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                       
                      
                       ## -- Plot and save graphs
-                      plotResults(current_code_dict['ion_delay_phase1'], current_code_dict['multipath_range1'], \
-                          current_code_dict['sat_elevation_angles'], tInterval, currentGNSSsystem, \
-                          current_code_dict['range1_Code'], current_code_dict['range2_Code'], \
-                          current_code_dict['phase1_Code'], current_code_dict['phase2_Code'], graphDir)
-                      
+                      if use_LaTex: #check if use TEX. Adding try/except to handle if user dont have TEX installed
+                          try:
+                              plotResults(current_code_dict['ion_delay_phase1'], current_code_dict['multipath_range1'], \
+                                  current_code_dict['sat_elevation_angles'], tInterval, currentGNSSsystem, \
+                                  current_code_dict['range1_Code'], current_code_dict['range2_Code'], \
+                                  current_code_dict['phase1_Code'], current_code_dict['phase2_Code'], graphDir)
+                          except:
+                              print("TEX not installed on your computer! Install that to get prettier text formatting in plots.")
+                              plotResults_dont_use_TEX(current_code_dict['ion_delay_phase1'], current_code_dict['multipath_range1'], \
+                                  current_code_dict['sat_elevation_angles'], tInterval, currentGNSSsystem, \
+                                  current_code_dict['range1_Code'], current_code_dict['range2_Code'], \
+                                  current_code_dict['phase1_Code'], current_code_dict['phase2_Code'], graphDir)
+                      else:                          
+                          plotResults_dont_use_TEX(current_code_dict['ion_delay_phase1'], current_code_dict['multipath_range1'], \
+                                current_code_dict['sat_elevation_angles'], tInterval, currentGNSSsystem, \
+                                current_code_dict['range1_Code'], current_code_dict['range2_Code'], \
+                                current_code_dict['phase1_Code'], current_code_dict['phase2_Code'], graphDir)
                  
                       ## -- Place the current code dict in its original place in current band dict
                       current_band_dict[range1_Code] = current_code_dict
@@ -684,7 +696,15 @@ def GNSS_MultipathAnalysis(rinObsFilename,
 
     if plotEstimates:
         print('INFO: Making bar plot. Please wait...\n')
-        make_barplot(analysisResults,graphDir)
+        if use_LaTex:
+            try:
+                make_barplot(analysisResults,graphDir)
+            except:
+                make_barplot_dont_use_TEX(analysisResults,graphDir)
+        else:
+            make_barplot_dont_use_TEX(analysisResults,graphDir)
+            
+            
         ## -- Make skyplot of all systems        
         GNSS_Name2Code =  dict(zip(['GPS', 'GLONASS', 'Galileo', 'BeiDou'], ['G', 'R', 'E', 'C'])) #mmaoung from name to code
         for sys in analysisResults['GNSSsystems']:
@@ -693,14 +713,46 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                 azimut_currentSys = analysisResults['Sat_position'][curr_sys]['Azimut']
                 elevation_currentSys = analysisResults['Sat_position'][curr_sys]['Elevation'] 
                 print('INFO: Making a regular polar plot for showing azimut and elevation angle for each satellite. Please wait...\n')
-                make_skyplot(azimut_currentSys,elevation_currentSys,sys,graphDir)
+                if use_LaTex:
+                    try:
+                        make_skyplot(azimut_currentSys,elevation_currentSys,sys,graphDir)
+                    except:
+                        make_skyplot_dont_use_TEX(azimut_currentSys,elevation_currentSys,sys,graphDir)
+                else:
+                    make_skyplot_dont_use_TEX(azimut_currentSys,elevation_currentSys,sys,graphDir)
+                
             except:
                 print('Skyplot is not possible for %s! Missing data.' % (sys))
                 pass
     
-    if plot_polarplot:
-        print('INFO: Making a polar plot of the multipath effect. Please wait ...\n')
-        make_polarplot(analysisResults, graphDir)
+        if plot_polarplot:
+            print('INFO: Making a polar plot of the multipath effect. Please wait ...\n')
+            if use_LaTex:
+                try:
+                    make_polarplot(analysisResults, graphDir)
+                except:
+                    make_polarplot_dont_use_TEX(analysisResults, graphDir)  
+            else:
+                make_polarplot_dont_use_TEX(analysisResults, graphDir)  
+            
+        if include_SNR:
+            print('INFO: Making a plot of the Signal To Noise Ration (SNR). Please wait ...\n')
+            if use_LaTex:
+                try:
+                    make_polarplot_SNR(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir)
+                    plot_SNR_wrt_elev(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir,tInterval)
+                except:
+                    make_polarplot_SNR_dont_use_TEX(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir)
+                    plot_SNR_wrt_elev_dont_use_TEX(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir,tInterval)
+            else:
+                make_polarplot_SNR_dont_use_TEX(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir)
+                plot_SNR_wrt_elev_dont_use_TEX(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir,tInterval)
+                
+                    
+
+            
+            
+            
     ## -- Saving the workspace as a binary pickle file ---
     results_name = os.path.join(outputDir, 'analysisResults.pkl')
     f = open(results_name,"wb")
