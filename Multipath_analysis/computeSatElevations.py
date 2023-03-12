@@ -118,38 +118,6 @@ def computeSatElevations(GNSS_SVs, GNSSsystems, approxPosition,\
         nEpochs = nEpochs_1;
         epochInterval = epochInterval_1;
     
-    
-    """
-     creating a modified version of GNSS_SVs. Instead of only giving
-     satellites with observations for each epoch, FirstLastObsEpochOverview
-     gives every satellite who's first and last observations are before and
-     after current epoch. Hence if a temporary period of time where a
-     satellite does not have observations occurs the elevation angle of that
-     satellite will still be computed.
-    """
-    FirstLastObsEpochOverview = {}
-    
-    
-    
-    for i in np.arange(0,nGNSSsystems):
-       curr_sys = GNSSsystems[i+1]
-       nepochs_current_sys, max_sat_current_sys = GNSS_SVs[curr_sys].shape
-       FirstLastObsEpochOverview[i] = np.zeros([nepochs_current_sys, max_sat_current_sys])
-       
-       for PRN_ in np.arange(0,max_sat_current_sys-1):
-          PRN = PRN_ + 1 # add 1 because of python null-indexed
-          # logical, 1 for every epoch with observation for this PRN
-          dumm = GNSS_SVs[curr_sys][:, 1::] ==PRN
-          dummy = np.sum(dumm.astype(np.int8),axis=1).reshape(len(dumm.astype(np.int8)),1)
-          if not all(dummy ==0):
-              firstObsEpoch_current_sys = np.where(dummy == 1)[0][0]
-              lastObsEpoch_current_sys = np.where(dummy == 1)[0][-1]
-              FirstLastObsEpochOverview[i][firstObsEpoch_current_sys:lastObsEpoch_current_sys, PRN] = PRN
-          else:
-              firstObsEpoch_current_sys = np.nan
-              lastObsEpoch_current_sys = np.nan
-              FirstLastObsEpochOverview[i][:, PRN] = 0
-     
     satMissingData = []
     bar_format = '{desc}: {percentage:3.0f}%|{bar}| ({n_fmt}/{total_fmt})'
     for k in tqdm(range(0,nGNSSsystems),desc='Looping through the systems',position=0,leave=True,bar_format=bar_format):
@@ -170,8 +138,9 @@ def computeSatElevations(GNSS_SVs, GNSSsystems, approxPosition,\
                ##-- GPS Week and time of week of current epoch
                week = time_epochs[epoch,0]
                tow  = time_epochs[epoch,1]
-               # Satellites in current epoch that should have elevation computed
-               SVs = np.nonzero(FirstLastObsEpochOverview[k][epoch, :])[0]
+               ## -- Satellites in current epoch that should have elevation computed
+               # SVs = np.nonzero(FirstLastObsEpochOverview[k][epoch, :])[0] # COMMENTED OUT 11.03.2023 to prevent computing elevation angles for satellites not visalble in the current epoc
+               SVs  = GNSS_SVs[sys][epoch,1::][GNSS_SVs[sys][epoch,1::] != 0].astype(int) #extract only nonzero and convert to integer
                n_sat = len(SVs)
                for sat in np.arange(0,n_sat):
                    # Get satellite elevation angle of current sat at current epoch
