@@ -39,25 +39,34 @@ For the weighted RMS value, the satellite elevation angle is used in a weighting
 8. Several plot will be generated (if not set to FALSE): 
     * Ionospheric delay wrt time and zenith mapped ionospheric delay (combined)
 		<p align="center">
-			<img src="https://github.com/paarnes/GNSS/blob/master/Results_example/Graphs/Galileo_ionospheric_delay_combined.png" width="630"/>
+			<img src="https://github.com/paarnes/GNSS/blob/master/Results_example/2022_30sec/Graphs/Galileo_ionospheric_delay_combined.png" width="630"/>
 		</p>	
     * The Multipath effect plotted wrt time and elevation angle (combined)
 		<p align="center">
-			<img src="https://github.com/paarnes/GNSS/blob/master/Results_example/Graphs/GPS_C1C_C2W_MP_combined.png" width="630"/>
+			<img src="https://github.com/paarnes/GNSS/blob/master/Results_example/2018_1sec/Graphs/GLONASS_C1C_C2P_MP_combined.png" width="630"/>
 		</p>	
     * Barplot showing RMS values for each signal and system
 		<p align="center">
-			<img src="https://github.com/paarnes/GNSS/blob/master/Results_example/Graphs/Barplot_RMS_all.png" width="630"/>
+			<img src="https://github.com/paarnes/GNSS/blob/master/Results_example/2022_30sec/Graphs/Barplot_RMS_all.png" width="630"/>
 		</p>
     * Polar plot of the multipath effect as function of elevation angle and azimuth
 		<p align="center">
-			<img src="https://github.com/paarnes/GNSS/blob/master/Results_example/Graphs/MP_GPS_C1C.png" width="630"/>
+			<img src="https://github.com/paarnes/GNSS/blob/master/Results_example/2022_30sec/Graphs/MP_GPS_C1C.png" width="630"/>
 		</p>
     * Polar plot of each observed satellite in the system
 		<p align="center">
-			<img src="https://github.com/paarnes/GNSS/blob/master/Results_example/Graphs/Skyplot_GLONASS.png" width="630"/>
+			<img src="https://github.com/paarnes/GNSS/blob/master/Results_example/2022_30sec/Graphs/Skyplot_GLONASS.png" width="630"/>
 		</p>
-	
+
+    * Signal-To-Noise Ratio (SNR) plotted wrt time and elevation angle (combine) 
+		<p align="center">
+			<img src="https://github.com/paarnes/GNSS/blob/master/Results_example/2022_30sec/Graphs/SNR_GPS_S1C.png" width="630"/>
+		</p>
+
+    * Polar plot of Signal-To-Noise Ratio (SNR)
+		<p align="center">
+			<img src="https://github.com/paarnes/GNSS/blob/master/Results_example/2018_1sec/Graphs/SNR_Polar_GPS_S2W.png" width="630"/>
+		</p>
 9. Exporting the results as a pickle file which easily can be imported into python as a dictionary
 10. The results in form of a report get written to a text file with the same name as the RINEX observation file. 
 
