@@ -38,13 +38,10 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
     elevation_cutoff        = analysisResults['ExtraOutputInfo']['elevation_cutoff'] # added 23.02.2023
     
    
-    
-    # meanClockJumpInterval   = seconds(meanClockJumpInterval) # vet ikke hva som bør brukes her
-    # meanClockJumpInterval.Format = 'hh:mm:ss';
+
     ## Extract systems in current analysis
     GNSSsystems = analysisResults['GNSSsystems']
     GNSS_Name2Code =  dict(zip(['GPS', 'GLONASS', 'Galileo', 'BeiDou'], ['G', 'R', 'E', 'C']))
-    # GNSS_Name2Code = {key:val for key, val in GNSS_Name2Code.items() if val in [i for i in GNSSsystems.values()]} # only the systems for current analysis
     GNSS_Name2Code = {key:val for key, val in GNSS_Name2Code.items() if val in GNSSsystems} # only the systems for current analysis
     ## Replace letter with whole system name 
     if 'G' in GNSSsystems:
@@ -99,13 +96,11 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
         includeLLIOverview = 0
     
     ## -- HEADER
-    # fid = fopen(outputFilename, 'wt');
     fid = open(outputFilename, 'w+')
-    # fid = open('test.txt', 'w+')
      
     fid.write('GNSS_MultipathAnalysis\n')
-    fid.write('Software version: 1.00\n');
-    fid.write('Last software version release: 19/02/2023\n\n');
+    fid.write('Software version: 1.2.0\n');
+    fid.write('Last software version release: 12/03/2023\n\n');
     fid.write('Software developed by Per Helge Aarnes (per.helge.aarnes@gmail.com) \n\n');
     fid.write('RINEX observation filename:\t\t %s\n' % (rinex_obs_filename))
     if sp3_filename is not None:
@@ -154,7 +149,6 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
         fid.write( '\n======================================================================================================================================================================================================================================================================================================================================================\n\n')
         fid.write( 'OBSERVATION COMPLETENESS OVERVIEW\n\n\n')
         for i in range(0,nGNSSsystems):
-            # if strcmp(GNSSsystems{i}, 'GPS')
             if GNSSsystems[i] == 'GPS':
                 fid.write( 'GPS Observation overview\n')
                 nSat = len(analysisResults['GPS']['observationOverview'])
@@ -182,9 +176,7 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                 nSat =  len(analysisResults['GLONASS']['observationOverview'])
                 fid.write(  ' ________________________________________________________________________________________________________________________\n')
                 fid.write(  '| Sat ID | Frequency Channel | G1 Observations | G2 Observations | G3 Observations | G1a Observations | G2a Observations |\n')
-                # for PRN in range(0,nSat):
                 for PRN in list(GLO_Slot2ChannelMap.keys()):
-                    # PRN = PRN + 1
                     if not all([analysisResults['GLONASS']['observationOverview']['Sat_' + str(PRN)]['Band_1'],\
                            analysisResults['GLONASS']['observationOverview']['Sat_' + str(PRN)]['Band_2'],\
                             analysisResults['GLONASS']['observationOverview']['Sat_' + str(PRN)]['Band_3'],\
@@ -558,7 +550,6 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                             fid.write(   '|   |            |   Estimates   |[meters] |   [meters]   |   [degrees]   |    Periods    |   [%]    |  0-10 degrees   |  10-20 degrees  |  20-30 degrees  |  30-40 degrees  |  40-50 degrees  |   >50 degrees   |   NaN degrees   |\n');
                             
                             for PRN in range(0,nSat):
-                               # if current_code_struct['n_range1_obs_per_sat'][:,PRN] > 0:
                                if current_code_struct['nEstimates_per_sat'][PRN] > 0: ##added 21.01.2023 to prevent sat with only nan in resultfile
                                    fid.write( '|___|____________|_______________|_________|______________|_______________|_______________|__________|_________________|_________________|_________________|_________________|_________________|_________________|_________________|\n');
                                    fid.write(  '|%3s|%12d|%15d|%9.3f|%14.3f|%15.3f|%15d|%10.3f|%17d|%17d|%17d|%17d|%17d|%17d|%17d|\n' % (\
@@ -587,7 +578,6 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                             fid.write(  '|      |           |            |   Estimates   |[meters] |   [meters]   |   [degrees]   |    Periods    |   [%]    |  0-10 degrees   |  10-20 degrees  |  20-30 degrees  |  30-40 degrees  |  40-50 degrees  |   >50 degrees   |   NaN degrees   |\n')
                             
                             for PRN in list(GLO_Slot2ChannelMap.keys()):
-                               # if current_code_struct['n_range1_obs_per_sat'][:,PRN] > 0:
                                if current_code_struct['nEstimates_per_sat'][PRN] > 0: ##added 21.01.2023 to prevent sat with only nan in resultfile
                                    fid.write(   '|______|___________|____________|_______________|_________|______________|_______________|_______________|__________|_________________|_________________|_________________|_________________|_________________|_________________|_________________|\n')
                                    fid.write(   '|%6s|%11d|%12d|%15d|%9.3f|%14.3f|%15.3f|%15d|%10.3f|%17d|%17d|%17d|%17d|%17d|%17d|%17d|\n' % (\
