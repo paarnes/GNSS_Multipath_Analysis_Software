@@ -195,7 +195,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         includeAllGNSSsystems   = 0
     
     if use_LaTex == None:
-        use_LaTex == True
+        use_LaTex = True
     
     ## ---  Control of the user input arguments 
     if type(sp3NavFilename_1) != str:
