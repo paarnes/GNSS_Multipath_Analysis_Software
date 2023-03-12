@@ -1,7 +1,6 @@
 from datetime import date,timedelta,datetime
 from barylag import barylag
 import numpy as np
-from scipy.interpolate import BarycentricInterpolator
 from Geodetic_functions import date2gpstime
 
 
