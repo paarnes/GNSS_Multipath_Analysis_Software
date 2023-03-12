@@ -316,10 +316,6 @@ def plotResults(ion_delay_phase1, multipath_range1, sat_elevation_angles,\
     plt.close()
     
     
-       
-    
-
-    
     ## ----------- Combine ionospheric delay plots together ------------------
 
     fig6, ax6 = plt.subplots(nrows=2, ncols=1,sharex=True, squeeze=True,figsize=(16,11),dpi=160)
@@ -364,7 +360,8 @@ def plotResults(ion_delay_phase1, multipath_range1, sat_elevation_angles,\
     
     # fig6_name  = GNSSsystemName + "_" + 'ionospheric_delay_Zenith_mapped' + '.png'
     # fig6.savefig(graphDir + "/" +  fig6_name, dpi=300)
-    fig6_name  = GNSSsystemName + "_" + 'ionospheric_delay_combined' + '.pdf'
+    # fig6_name  = GNSSsystemName + "_" + 'ionospheric_delay_combined' + '.pdf'
+    fig6_name =  GNSSsystemName + '_ionospheric_delay_combined_' + f"{phase1_Code}_{phase2_Code}" + '.pdf'
     # fig6.savefig(graphDir + "/" +  fig6_name)
     fig6.savefig(graphDir + "/" +  fig6_name,bbox_inches='tight')
     plt.close()
@@ -738,7 +735,8 @@ def plotResults_dont_use_TEX(ion_delay_phase1, multipath_range1, sat_elevation_a
     
     # fig6_name  = GNSSsystemName + "_" + 'ionospheric_delay_Zenith_mapped' + '.png'
     # fig6.savefig(graphDir + "/" +  fig6_name, dpi=300)
-    fig6_name  = GNSSsystemName + "_" + 'ionospheric_delay_combined' + '.pdf'
+    # fig6_name  = GNSSsystemName + "_" + 'ionospheric_delay_combined' + '.pdf'
+    fig6_name =  GNSSsystemName + '_ionospheric_delay_combined_' + f"{phase1_Code}_{phase2_Code}" + '.pdf'
     # fig6.savefig(graphDir + "/" +  fig6_name)
     fig6.savefig(graphDir + "/" +  fig6_name,bbox_inches='tight')
     plt.close()
