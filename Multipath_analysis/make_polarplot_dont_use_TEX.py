@@ -284,7 +284,7 @@ def plot_SNR_wrt_elev_dont_use_TEX(analysisResults,GNSS_obs, GNSSsystems, obsCod
             ax[0].set_xlim([0,t[-1]])
             ax[0].set_ylim(0,np.nanmax(SNR)+10)
             ax[0].set_title("Signal to noise ratio (SNR) as funtion of time for \n Signal: %s (%s)" % (range1_code, system), va='bottom',fontsize=22)
-            ax[0].set_xlabel('Time $[h]$',fontsize=18,labelpad=10)
+            ax[0].set_xlabel('Time [h]',fontsize=18,labelpad=10)
             ax[0].set_ylabel('[dB-Hz]',fontsize=18,labelpad=10)
             ax[0].tick_params(axis='both', labelsize=16)
             legend = ax[0].legend(loc='center right',fontsize=12,bbox_to_anchor=(1.25, 0.5), fancybox=True, shadow=True,ncol=2) # frame = legend.get_frame(); frame.set_facecolor((0.89701,0.79902,0.68137)); frame.set_edgecolor('black') #legend
@@ -297,7 +297,7 @@ def plot_SNR_wrt_elev_dont_use_TEX(analysisResults,GNSS_obs, GNSSsystems, obsCod
             ax[1].set_xlim([0,90])
             ax[1].set_title("Signal to noise ratio (SNR) as funtion elevation angle for \n Signal: %s (%s)" % (range1_code, system), va='bottom',fontsize=22)
             ax[1].set_ylim(0,np.nanmax(SNR)+10)
-            ax[1].set_xlabel('Elevation angle $[^{\circ}]$',fontsize=18,labelpad=10)
+            ax[1].set_xlabel('Elevation angle [degree]',fontsize=18,labelpad=10)
             ax[1].set_ylabel('[dB-Hz]',fontsize=18,labelpad=10)
             ax[1].tick_params(axis='both', labelsize=16)
             for PRN in range(0,num_sat):
