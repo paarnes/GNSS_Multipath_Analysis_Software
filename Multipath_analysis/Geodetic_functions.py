@@ -1,6 +1,5 @@
 from numpy import fix,array,log,fmod,arctan,arctan2,arcsin,sqrt,sin,cos,pi,arange
 import numpy as np
-import pandas as pd
 from datetime import datetime,timedelta
 from datetime import date
 
@@ -111,9 +110,6 @@ def compute_azimut_elev(X,Y,Z,xm,ym,zm):
     az: Azimut in degrees
     elev: Elevation angel in degrees
     """
-    # from math import sin,cos,tan,asin,acos,atan,pi
-    # import numpy as np
-    # from numpy import arctan,arcsin,pi,sqrt
 
     ## -- WGS 84 datumsparametre:
     a   =  6378137.0         # store halvakse
@@ -176,10 +172,10 @@ def date2gpstime(year,month,day,hour,minute,seconds):
     """    
     t0=date.toordinal(date(1980,1,6))+366
     t1=date.toordinal(date(year,month,day))+366 
-    week_flt = (t1-t0)/7;
-    week = fix(week_flt);
-    tow_0 = (week_flt-week)*604800;
-    tow = tow_0 + hour*3600 + minute*60 + seconds;
+    week_flt = (t1-t0)/7
+    week = fix(week_flt)
+    tow_0 = (week_flt-week)*604800
+    tow = tow_0 + hour*3600 + minute*60 + seconds
     
     return week, tow
 
@@ -244,11 +240,7 @@ def Satkoord2(efemerider,tow_mot,xm,ym,zm):
     """
     Funksjonen beregner satellittkordinater og korrigerer for jordrotasjonen. Fra keplerelemtenter til ECEF.
     """
-    
-    # from numpy import sqrt,pi, fmod,cos, sin, tan, arctan, arange
-    # from math import atan
-    
-    
+        
     GM         = 3.986005e14      # Produktet av jordas masse og gravitasjonskonstanten
     omega_e    = 7.2921151467e-5  # [rad/sek]
     c          = 299792458        # Lyshastigheten [m/s]
@@ -280,17 +272,17 @@ def Satkoord2(efemerider,tow_mot,xm,ym,zm):
     
     
     #Beregner eksentrisk anomali
-    E_old = M_k;
+    E_old = M_k
     for i in arange(0,10):
-        E = M_k+ e*sin(E_old);
+        E = M_k+ e*sin(E_old)
         dE = fmod(E - E_old, 2*pi)
         if abs(dE) < 1.e-12:
            break
         E_old = E
         
-    E = fmod(E+2*pi,2*pi);
+    E = fmod(E+2*pi,2*pi)
     
-    cosv = (cos(E) - e)/(1 - e*cos(E));
+    cosv = (cos(E) - e)/(1 - e*cos(E))
     sinv = (sqrt(1 - e**2)*sin(E))/(1-e*cos(E))
     tanv = sinv/cosv
     
@@ -511,9 +503,6 @@ def gpstime2date(week, tow):
     
     """
     
-    # import numpy as np
-    # from datetime import datetime, timedelta
-
     hour = np.floor(tow/3600)
     res = tow/3600 - hour
     min_ = np.floor(res*60)
@@ -529,12 +518,8 @@ def gpstime2date(week, tow):
     days_to_start_of_week = week*7
     
     # Origo of GPS-time: 06/01/1980 
-    # t0 = date.toordinal(date(1980,1,6))+366
     t0 = datetime(1980,1,6)
-    # t0 = t0.strftime("%Y %m %d")
-    # t1 = t0 + days(days_to_start_of_week + days_from_hours); 
     t1 = t0 + timedelta(days=(days_to_start_of_week + days_from_hours))
-    
     
     ## --  Formating the date to "year-month- day"
     t1 = t1.strftime("%Y %m %d")
