@@ -1,5 +1,4 @@
 matplotlib
 numpy
 pandas
-scipy
 tqdm
