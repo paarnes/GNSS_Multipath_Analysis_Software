@@ -1,13 +1,15 @@
 # GNSS Multipath Analysis
 GNSS_MultipathAnalysis is a software for analyzing the multipath effect on Global Navigation Satellite Systems (GNSS). This software is largely based on the MATLAB software [GNSS_Receiver_QC_2020](https://gitlab.com/bjro/GNSS_reading_protocol/-/tree/main/GNSS_Receiver_QC_2020) made by Bjørn-Eirik Roald. Mainly it follows the same logic, just with Python syntax. However, there are added some other features like for instance:
 * Possible to use broadcasted ephemerides (not only SP3 files)
-* Also support RINEX v2.xx observation files (error prone, still under development. Recommend to use RINEX v3.xx for now)
+* Also support RINEX v2.xx observation files 
 * Makes polar plot of each satellite for each system
 * Makes polar plot that shows the multipath effect as function of azimuth and elevation angle.
+* Plots the Signal-To-Noise Ratio (SNR) wrt to time and elevation angle
+* Makes polar plot that shows the Signal-To-Noise Ratio (SNR) as function of azimuth and elevation angle
 * Possible to choose which navigation system to run analysis on (not hardcoded anymore)
 * Summary of the number of cycle slips detected in total (both ionospheric residuals and code- phase difference)
 
-This software will be further developed, and feedback and suggestions are therefore gratefully received. Don't hesitate to report if you find bugs or missing functionality. Either by e-mail or by raising an issue here in GitHub.
+A considerable part of the results has been validated by comparing the results with estimates from RTKLIB. This software will be further developed, and feedback and suggestions are therefore gratefully received. Don't hesitate to report if you find bugs or missing functionality. Either by e-mail or by raising an issue here in GitHub.
 
 The main function is called "GNSS_MultipathAnalysis.py" and takes in different arguments. Two arguments are mandatory:
 * A RINEX Observation file
@@ -19,6 +21,8 @@ The rest of the arguments are optional. Their default values are described in th
 To install the required packages, run:     
 `pip install -r requirements.txt`   
 where the *requirements.txt* is located [here](https://github.com/paarnes/GNSS/blob/master/Multipath_analysis/requirements.txt).
+
+Note: In the example plots, TEX is used to get prettier text formatting. However, this requires TEX/LaTex to be installed on your computer. The program will first try to use TEX, and if it's not possible, standard text formatting will be used. So TEX/LaTex is not required to run the program and make plots anymore. The software will just not use TEX as a interpreter. In the previous release, the software required TEX to be installed to successfully create plots.
 
 ## The steps are:
 1. Reads in the RINEX observation file 
