@@ -1,87 +1,49 @@
 def readSP3Nav(filename, desiredGNSSsystems=None):
        
    import numpy as np
-   import copy
+
    """
-    Function that reads the GNSS satellite position data from a SP3 position
-    #file. The function has been tested with sp3c and sp3d. NOTE: It is
-    #advised that any use of this function is made through the parent function
-    #"read_multiple_SP3Nav.m", as it has more functionality. 
-    #--------------------------------------------------------------------------------------------------------------------------
-    #INPUTS
+    Function that reads the GNSS satellite position data from a SP3 position file. 
+    --------------------------------------------------------------------------------------------------------------------------
+    INPUTS
     
-    #filename:             path and filename of sp3 position file, string
+    filename:             path and filename of sp3 position file, string
     
-    #desiredGNSSsystems:   array. Contains string. Each string is a code for a
-    #                      GNSS system that should have its position data stored 
-    #                      in sat_positions. Must be one of: "G", "R", "E",
-    #                      "C". If left undefined, it is automatically set to
-    #                      ["G", "R", "E", "C"]
-    #--------------------------------------------------------------------------------------------------------------------------
-    #OUTPUTS
+    desiredGNSSsystems:   List of strings. Each string is a code for a
+                          GNSS system that should have its position data stored 
+                          in sat_pos. Must be one of: "G", "R", "E",
+                          "C". If left undefined, it is automatically set to
+                          ["G", "R", "E", "C"]
+    --------------------------------------------------------------------------------------------------------------------------
+    OUTPUTS
     
-    #sat_positions:    cell. Each cell elements contains position data for a
-    #                  specific GNSS system. Order is defined by order of 
-    #                  navGNSSsystems. Each cell element is another cell that 
-    #                  stores position data of specific satellites of that 
-    #                  GNSS system. Each of these cell elements is a matrix 
-    #                  with [X, Y, Z] position of a epoch in each row.
+    sat_pos:          dict. Each elements contains position data for a
+                      specific GNSS system. Order is defined by order of 
+                      navGNSSsystems. Each key element is another dict that 
+                      stores position data of specific epoch of that 
+                      GNSS system. Each of these dict  is a array 
+                      with [X, Y, Z] position for each satellites. Each satellite
+                      have their PRN number as a key.
     
-    #                  sat_positions{GNSSsystemIndex}{PRN}(epoch, :) = [X, Y, Z]
+                      sat_pos[GNSSsystem][epoch][PNR] = [X, Y, Z]
+                      Ex:
+                          sat_pos['G'][100][24] = [X, Y, Z]
+                      This command will extract the coordinates for GPS at epoch
+                      100 for satellite PRN 24.
     
-    #epoch_dates:      matrix. Each row contains date of one of the epochs. 
-    #                  [nEpochs x 6]
+    epoch_dates:      matrix. Each row contains date of one of the epochs. 
+                      [nEpochs x 6]
     
-    #navGNSSsystems:   array. Contains string. Each string is a code for a
-    #                  GNSS system with position data stored in sat_positions.
-    #                  Must be one of: "G", "R", "E", "C"
+    navGNSSsystems:   list of strings. Each string is a code for a
+                      GNSS system with position data stored in sat_pos.
+                      Must be one of: "G", "R", "E", "C"
     
-    #nEpochs:          number of position epochs, integer
+    nEpochs:          number of position epochs, integer
     
-    #epochInterval:    interval of position epochs, seconds
+    epochInterval:    interval of position epochs, seconds
     
-    #success:          boolean, 1 if no error occurs, 0 otherwise
-    #--------------------------------------------------------------------------------------------------------------------------
-
-   #Function that reads the GNSS satellite position data from a SP3 position
-   #file. The function has been tested with sp3c and sp3d. NOTE: It is
-   #advised that any use of this function is made through the parent function
-   #"read_multiple_SP3Nav.m", as it has more functionality. 
-   #--------------------------------------------------------------------------------------------------------------------------
-   #INPUTS
-
-   #filename:             path and filename of sp3 position file, string
-
-   #desiredGNSSsystems:   array. Contains string. Each string is a code for a
-   #                      GNSS system that should have its position data stored 
-   #                      in sat_positions. Must be one of: "G", "R", "E",
-   #                      "C". If left undefined, it is automatically set to
-   #                      ["G", "R", "E", "C"]
-   #--------------------------------------------------------------------------------------------------------------------------
-   #OUTPUTS
-
-   #sat_positions:    cell. Each cell elements contains position data for a
-   #                  specific GNSS system. Order is defined by order of 
-   #                  navGNSSsystems. Each cell element is another cell that 
-   #                  stores position data of specific satellites of that 
-   #                  GNSS system. Each of these cell elements is a matrix 
-   #                  with [X, Y, Z] position of a epoch in each row.
-
-   #                  sat_positions{GNSSsystemIndex}{PRN}(epoch, :) = [X, Y, Z]
-
-   #epoch_dates:      matrix. Each row contains date of one of the epochs. 
-   #                  [nEpochs x 6]
-
-   #navGNSSsystems:   array. Contains string. Each string is a code for a
-   #                  GNSS system with position data stored in sat_positions.
-   #                  Must be one of: "G", "R", "E", "C"
-
-   #nEpochs:          number of position epochs, integer
-
-   #epochInterval:    interval of position epochs, seconds
-
-   #success:          boolean, 1 if no error occurs, 0 otherwise
-   #--------------------------------------------------------------------------------------------------------------------------
+    success:          boolean, 1 if no error occurs, 0 otherwise
+   --------------------------------------------------------------------------------------------------------------------------
    """
 
 
@@ -98,7 +60,6 @@ def readSP3Nav(filename, desiredGNSSsystems=None):
    success = 1
 
    ## --- Open nav file
-
    try:
        fid = open(filename,'r')
    except:
@@ -110,8 +71,7 @@ def readSP3Nav(filename, desiredGNSSsystems=None):
 
    #GNSS system order
    navGNSSsystems = ["G", "R", "E", "C"];
-   #Map mapping GNSS system code to GNSS system index
-   # GNSSsystem_map = containers.Map(navGNSSsystems, [1, 2, 3, 4]);
+   # Mapping GNSS system code to GNSS system index
    GNSSsystem_map = dict(zip(navGNSSsystems,[1, 2, 3, 4]))
 
    sat_pos = {}
@@ -216,7 +176,6 @@ def readSP3Nav(filename, desiredGNSSsystems=None):
 
    # Initialize matrix for epoch dates
    epoch_dates = []
-   test = []
    sys_dict = {}
    PRN_dict = {}
 
@@ -238,7 +197,6 @@ def readSP3Nav(filename, desiredGNSSsystems=None):
        epoch_dates.append(epochs)
        
        # Store positions of all satellites for current epoch
-       obs_dict = {}
        obs_dict_GPS = {}
        obs_dict_Glonass = {}
        obs_dict_Galileo = {}
@@ -263,25 +221,10 @@ def readSP3Nav(filename, desiredGNSSsystems=None):
               
                
                if sys != ini_sys:
-                   ini_sys = sys
-
-               # obs_dict[str(PRN)]  = obs[:]
-               
-               # obs_dict[str(PRN)]  = np.array([obs]) 
-               # PRN_dict[int(k)] = obs_dict
-               
+                   ini_sys = sys            
                
                if sys == 'G':
-                   obs_G = [x for x in obs if x != "" ]
-                   # obs_dict_GPS[PRN]  = obs_G.copy()
-                   # PRN_dict_GPS[k] = obs_dict.copy()
-
-                   # test.append(obs_G[:])
-                   # obs_dict_GPS[PRN]  = test[:][:]
-                   
-                   # obs_dict_GPS[PRN]  = np.array([obs_G])
-                   # PRN_dict_GPS[k] = obs_dict_GPS
-                   
+                   obs_G = [x for x in obs if x != "" ]                   
                    obs_dict_GPS[PRN]  = np.array([obs_G])
                    PRN_dict_GPS[k] = obs_dict_GPS
                elif sys =='R':
@@ -324,7 +267,7 @@ def readSP3Nav(filename, desiredGNSSsystems=None):
    #remove NaN values
    GNSSsystemIndexOrder = [x for x in GNSSsystemIndexOrder if x != 'nan']
    PRNOrder = [x for x in GNSSsystemIndexOrder if x != 'nan']
-   epoch_dates = np.array(epoch_dates) # Added this 27.11.2022 (to make it possible to use only one file i Multipath analysis!)
+   epoch_dates = np.array(epoch_dates) 
 
    print('SP3 Navigation file "%s" has been read successfully.' %(filename))
    ## Remove GNSS systems not present in navigation file
@@ -338,106 +281,107 @@ def combineSP3Nav(three_sp3_files,sat_positions_1, epoch_dates_1, navGNSSsystems
                   nEpochs_3, epochInterval_3,GNSSsystems):
     
     """
-    # Function that combines the precise orbital data of two or three SP3
-    # files. Note that the SP3 files should first be read by the function
-    # readSP3Nav.m. 
-    #--------------------------------------------------------------------------------------------------------------------------
-    # INPUTS:
+     Function that combines the precise orbital data of two or three SP3
+     files. Note that the SP3 files should first be read by the function
+     readSP3Nav.m. 
+    --------------------------------------------------------------------------------------------------------------------------
+     INPUTS:
     
-    # three_sp3_files:      boolean. 1 if there are three SP3 files to be
-    #                       combined, 0 otherwise
+     three_sp3_files:      boolean. 1 if there are three SP3 files to be
+                           combined, 0 otherwise
     
-    # sat_positions_1:      cell. Conatains data from first SP3 file. Each cell 
-    #                       elements contains position data for a specific GNSS 
-    #                       system. Order is defined by order of navGNSSsystems_1. 
-    #                       Each cell element is another cell that stores 
-    #                       position data of specific satellites of that 
-    #                       GNSS system. Each of these cell elements is a matrix 
-    #                       with [X, Y, Z] position of a epoch in each row.
+     sat_positions_1:      dict. Each elements contains position data for a
+                           specific GNSS system. Order is defined by order of 
+                           navGNSSsystems. Each key element is another dict that 
+                           stores position data of specific epoch of that 
+                           GNSS system. Each of these dict  is a array 
+                           with [X, Y, Z] position for each satellites. Each satellite
+                           have their PRN number as a key.
     
-    #                       sat_positions_1{GNSSsystemIndex}{PRN}(epoch, :) = [X, Y, Z]
+                           sat_positions_1[GNSSsystem][epoch][PNR] = [X, Y, Z]
     
-    # epoch_dates_1:        matrix. Each row contains date of one of the epochs 
-    #                       from the first SP3 file
-    #                       [nEpochs_1 x 6]
+     epoch_dates_1:        matrix. Each row contains date of one of the epochs 
+                           from the first SP3 file
+                           [nEpochs_1 x 6]
     
-    # navGNSSsystems_1:     array. Contains string. Each string is a code for a
-    #                       GNSS system with position data stored in sat_positions.
-    #                       Must be one of: "G", "R", "E", "C"
+     navGNSSsystems_1:     array. Contains string. Each string is a code for a
+                           GNSS system with position data stored in sat_positions.
+                           Must be one of: "G", "R", "E", "C"
     
-    # nEpochs_1:            number of position epochs in first SP3 file, integer
+     nEpochs_1:            number of position epochs in first SP3 file, integer
     
-    # epochInterval_1:      interval of position epochs in first SP3 file, seconds
+     epochInterval_1:      interval of position epochs in first SP3 file, seconds
     
-    # sat_positions_2:      cell. Conatains data from second SP3 file. Each cell 
-    #                       elements contains position data for a specific GNSS 
-    #                       system. Order is defined by order of navGNSSsystems_2. 
-    #                       Each cell element is another cell that stores 
-    #                       position data of specific satellites of that 
-    #                       GNSS system. Each of these cell elements is a matrix 
-    #                       with [X, Y, Z] position of a epoch in each row.
+     sat_positions_2:      dict. Each elements contains position data for a
+                           specific GNSS system. Order is defined by order of 
+                           navGNSSsystems. Each key element is another dict that 
+                           stores position data of specific epoch of that 
+                           GNSS system. Each of these dict  is a array 
+                           with [X, Y, Z] position for each satellites. Each satellite
+                           have their PRN number as a key.
     
-    #                       sat_positions_2{GNSSsystemIndex}{PRN}(epoch, :) = [X, Y, Z]
+                           sat_positions_2[GNSSsystem][epoch][PNR] = [X, Y, Z]
     
-    # epoch_dates_2:        matrix. Each row contains date of one of the epochs 
-    #                       from the second SP3 file
-    #                       [nEpochs_1 x 6]
+     epoch_dates_2:        matrix. Each row contains date of one of the epochs 
+                           from the second SP3 file
+                           [nEpochs_1 x 6]
     
-    # navGNSSsystems_2:     array. Contains string. Each string is a code for a
-    #                       GNSS system with position data stored in sat_positions.
-    #                       Must be one of: "G", "R", "E", "C"
+     navGNSSsystems_2:     array. Contains string. Each string is a code for a
+                           GNSS system with position data stored in sat_positions.
+                           Must be one of: "G", "R", "E", "C"
     
-    # nEpochs_2:            number of position epochs in first SP3 file, integer
+     nEpochs_2:            number of position epochs in first SP3 file, integer
     
-    # epochInterval_2:      interval of position epochs in second SP3 file, seconds
+     epochInterval_2:      interval of position epochs in second SP3 file, seconds
     
-    # sat_positions_3:      cell. Conatains data from third SP3 file. Each cell 
-    #                       elements contains position data for a specific GNSS 
-    #                       system. Order is defined by order of navGNSSsystems_3. 
-    #                       Each cell element is another cell that stores 
-    #                       position data of specific satellites of that 
-    #                       GNSS system. Each of these cell elements is a matrix 
-    #                       with [X, Y, Z] position of a epoch in each row.
+     sat_positions_3:      dict. Each elements contains position data for a
+                           specific GNSS system. Order is defined by order of 
+                           navGNSSsystems. Each key element is another dict that 
+                           stores position data of specific epoch of that 
+                           GNSS system. Each of these dict  is a array 
+                           with [X, Y, Z] position for each satellites. Each satellite
+                           have their PRN number as a key.
     
-    #                       sat_positions_3{GNSSsystemIndex}{PRN}(epoch, :) = [X, Y, Z]
+
+                           sat_positions_3[GNSSsystem][epoch][PNR] = [X, Y, Z]
     
-    # epoch_dates_3:        matrix. Each row contains date of one of the epochs 
-    #                       from the third SP3 file
-    #                       [nEpochs_1 x 6]
+     epoch_dates_3:        matrix. Each row contains date of one of the epochs 
+                           from the third SP3 file
+                           [nEpochs_1 x 6]
     
-    # navGNSSsystems_3 :    array. Contains string. Each string is a code for a
-    #                       GNSS system with position data stored in sat_positions.
-    #                       Must be one of: "G", "R", "E", "C"
+     navGNSSsystems_3 :    array. Contains string. Each string is a code for a
+                           GNSS system with position data stored in sat_positions.
+                           Must be one of: "G", "R", "E", "C"
     
-    # nEpochs_3:            number of position epochs in third SP3 file, integer
+     nEpochs_3:            number of position epochs in third SP3 file, integer
     
-    # epochInterval_3:      interval of position epochs in third SP3 file, seconds
-    #--------------------------------------------------------------------------------------------------------------------------
-    # OUTPUTS:
+     epochInterval_3:      interval of position epochs in third SP3 file, seconds
+    --------------------------------------------------------------------------------------------------------------------------
+     OUTPUTS:
     
-    # sat_positions:        cell. Conatains data from all two/three SP3 file. Each cell 
-    #                       elements contains position data for a specific GNSS 
-    #                       system. Order is defined by order of navGNSSsystems_1. 
-    #                       Each cell element is another cell that stores 
-    #                       position data of specific satellites of that 
-    #                       GNSS system. Each of these cell elements is a matrix 
-    #                       with [X, Y, Z] position of a epoch in each row.
+     sat_positions:        dict. Conatains data from all two/three SP3 file. Each cell 
+                           elements contains position data for a specific GNSS 
+                           system. Order is defined by order of navGNSSsystems_1. 
+                           Each cell element is another cell that stores 
+                           position data of specific satellites of that 
+                           GNSS system. Each of these cell elements is a matrix 
+                           with [X, Y, Z] position of a epoch in each row.
     
-    # epoch_dates:          matrix. Each row contains date of one of the epochs 
-    #                       from all two/three SP3 file
-    #                       [nEpochs_1 x 6]
+     epoch_dates:          matrix. Each row contains date of one of the epochs 
+                           from all two/three SP3 file
+                           [nEpochs_1 x 6]
     
-    # navGNSSsystems:       array. Contains string. Each string is a code for a
-    #                       GNSS system with position data stored in sat_positions.
-    #                       Must be one of: "G", "R", "E", "C"
+     navGNSSsystems:       array. Contains string. Each string is a code for a
+                           GNSS system with position data stored in sat_positions.
+                           Must be one of: "G", "R", "E", "C"
     
-    # nEpochs:              number of position epochs in all two/three SP3 file, integer
+     nEpochs:              number of position epochs in all two/three SP3 file, integer
     
-    # epochInterval:        interval of position epochs in all SP3 file, seconds
+     epochInterval:        interval of position epochs in all SP3 file, seconds
     
     
-    # success:              boolean, 1 if no error occurs, 0 otherwise
-    #--------------------------------------------------------------------------------------------------------------------------
+     success:              boolean, 1 if no error occurs, 0 otherwise
+    --------------------------------------------------------------------------------------------------------------------------
     
     """
     
@@ -455,7 +399,6 @@ def combineSP3Nav(three_sp3_files,sat_positions_1, epoch_dates_1, navGNSSsystems
     
     
     ## -- Check that first two SP3 files have same GNSS systems
-    # if ~isempty(setdiff(navGNSSsystems_1, navGNSSsystems_2)):
     if list(set(navGNSSsystems_1) - set(navGNSSsystems_2)):
         print('ERROR(CombineSP3Nav): SP3 file 1 and 2 do not contain the same GNSS systems')
         sat_positions, epoch_dates, navGNSSsystems, nEpochs, epochInterval = np.nan,np.nan,np.nan,np.nan,np.nan
@@ -471,16 +414,6 @@ def combineSP3Nav(three_sp3_files,sat_positions_1, epoch_dates_1, navGNSSsystems
             success = 0
             return success
 
-    
-    
-    
-    nGNSSsystems = len(navGNSSsystems_1)
-    max_GPS_PRN     = 36 # Max number of GPS PRN in constellation
-    max_GLONASS_PRN = 36 # Max number of GLONASS PRN in constellation
-    max_Galileo_PRN = 36 # Max number of Galileo PRN in constellation
-    max_Beidou_PRN  = 60 # Max number of BeiDou PRN in constellation
-    max_sat = np.array([max_GPS_PRN, max_GLONASS_PRN, max_Galileo_PRN, max_Beidou_PRN])
-    
     navGNSSsystems = navGNSSsystems_1
     epochInterval = epochInterval_1
     
@@ -494,8 +427,7 @@ def combineSP3Nav(three_sp3_files,sat_positions_1, epoch_dates_1, navGNSSsystems
     sat_positions = copy.deepcopy(sat_positions_1)
     
     # Combine satellite positions from first and second SP3 file
-    # for k in range(0,nGNSSsystems):
-    for k in range(0,len(GNSSsystems)): ## added 07.01.2023 len(GNSSsystems) to prevent problem when running analysis on one system only
+    for k in range(0,len(GNSSsystems)): 
        curr_sys = GNSSsystems[k+1]
        len_sat = len(sat_positions_1[curr_sys])
        for ep in range(0,len(sat_positions_2[curr_sys].keys())):
@@ -519,14 +451,12 @@ def combineSP3Nav(three_sp3_files,sat_positions_1, epoch_dates_1, navGNSSsystems
         
         # check that last SP3 file has same GNSS systems as the others
         if list(set(navGNSSsystems_2) - set(navGNSSsystems_3)):
-        # if ~isempty(setdiff(navGNSSsystems_2, navGNSSsystems_3))
             print('Warning (CombineSP3Nav): SP3 file 2 and 3 do not contain the same amount of GNSS systems') 
         
         
         # Combine satellite positions from first, second and third SP3 files           
         sat_positions_dum = copy.deepcopy(sat_positions)
-        # for k in range(0,nGNSSsystems):
-        for k in range(0,len(GNSSsystems)):  ## added 07.01.2023 len(GNSSsystems) to prevent problem when running analysis on one system only
+        for k in range(0,len(GNSSsystems)):  
            curr_sys = GNSSsystems[k+1]
            len_sat = len(sat_positions_dum[curr_sys])
            for ep in range(0,len(sat_positions_3[curr_sys].keys())):

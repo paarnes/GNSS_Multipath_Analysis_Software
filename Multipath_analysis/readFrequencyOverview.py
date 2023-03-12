@@ -1,40 +1,37 @@
 def readFrequencyOverview(filename):
     """
-    # Function that reads current frequencies of GNSS satellite carrier bands,
-    # from a text file.
-    # The band numbers follow the conventions of RINEX 3.
-    #--------------------------------------------------------------------------------------------------------------------------
-    # INPUTS:
+     Function that reads current frequencies of GNSS satellite carrier bands,
+     from the text file "Rinex_Frequency_Overview.txt". The band numbers follow the conventions of RINEX 3.
+    --------------------------------------------------------------------------------------------------------------------------
+     INPUTS:
     
-    # filename:             string, path and filename of frequency overview file             
-    #--------------------------------------------------------------------------------------------------------------------------
-    # OUTPUTS:
+     filename:             string, path and filename of frequency overview file             
+    --------------------------------------------------------------------------------------------------------------------------
+     OUTPUTS:
     
-    # frequencyOverview:    cell. Each elements conatins frequencies of one
-    #                       GNSS system. The order is decided by GNSSsystems.
-    #                       If the cell is for any system but GLONASS, the cell
-    #                       cotains an array with the frequency of band i at
-    #                       index i.
+     frequencyOverview:    dict. Each key conatins frequencies of one
+                           GNSS system. The order is decided by GNSSsystems.
+                           If the cell is for any system but GLONASS, the cell
+                           cotains an array with the frequency of band i at
+                           index i.
     
-    #                       frequencyOverview{GNSSsystemIndex}(bandnumber)
-    #                       unless GLONASS
+                           frequencyOverview[GNSSsystemIndex][bandnumber]
+                           if not GLONASS
     
-    #                       for GLONASS, the cell a matrix with two columns.
-    #                       First column gives core frequency of that band.
-    #                       Second column gives increment frequency of that
-    #                       band. 
+                           For GLONASS, the value for the key is a array with two columns.
+                           First column gives core frequency of that band.
+                           Second column gives increment frequency of that
+                           band. 
     
-    # gnssSystems:          cell. Contains codes for each GNSS system. Must be
-    #                       either 'G', 'R', 'E', 'C'
+     GNSSsystems:          dict. Contains codes for each GNSS system. Must be
+                           either 'G', 'R', 'E', 'C'
     
-    # success:              boolean, 0 if error is thrown, 1 otherwise
-    #--------------------------------------------------------------------------------------------------------------------------
+     success:              boolean, 0 if error is thrown, 1 otherwise
+    --------------------------------------------------------------------------------------------------------------------------
     """
-    import os, sys,numpy as np
-    # sys.path.append(r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS\Read_RINEX_OBS')
-    # filename = 'Rinex_Frequency_Overview.txt' ##################################jklfsodjfolø jssdpfjosdfj 
-    
-    success = 1;
+    import numpy as np
+
+    success = 1
     fid = open(filename, 'r')
     
     ## -- Initialize variables
@@ -42,26 +39,21 @@ def readFrequencyOverview(filename):
     GNSSsystems = {}
     frequencyOverview = {}
     
-    line = fid.readline().rstrip()
-    
+    line = fid.readline().rstrip()    
     ## Continue until end of file marker reached
     while 'eof' not in line:
         ## read past header. first line after header has >
         while '>' not in line:    
-            # line = fgetl(fid);
             line = fid.readline().rstrip()
-            # if line==-1:
             if 'eof' in line:
                 print('ERROR(readFrequencyOverview): End of file reached unexpectedly!')
                 success = 0
                 return success
     
-        
         # increment number of GNSS systems
         nGNSSsystems = nGNSSsystems + 1;
         # Store current GNSS system
         GNSSsystems[nGNSSsystems] = str(line[1])
-        
         ## -- Current GNSS system 
         currentGNSSsystem = GNSSsystems[nGNSSsystems]
        
@@ -77,7 +69,6 @@ def readFrequencyOverview(filename):
             else: # Reading in GLONASS frequency
                 frequencyOverview[nGNSSsystems] = np.zeros([9,2]);
     
-                # for k = 1:9
                 for k in range(0,9):
                     line = fid.readline().rstrip()
                     line = line[2::]
@@ -96,8 +87,5 @@ def readFrequencyOverview(filename):
     
     print('INFO(readFrequencyOverview): Frequency overview file has been read')
 
-
     return frequencyOverview, GNSSsystems, success
 
-# frequencyOverviewFilename = 'Rinex_Frequency_Overview.txt'
-# frequencyOverview, GNSSsystems, success = readFrequencyOverview(frequencyOverviewFilename)

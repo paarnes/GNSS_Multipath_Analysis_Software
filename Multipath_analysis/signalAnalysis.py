@@ -3,7 +3,7 @@ def signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, fre
     phaseCodeLimit, ionLimit, cutoff_elevation_angle):
     """
      Function that executes a signal analysis on a specific GNSS code range
-     signal for a specific GNSS system. Function computes statistics on
+     signal for a specific GNSS system. 
     
     --------------------------------------------------------------------------------------------------------------------------
      INPUTS:

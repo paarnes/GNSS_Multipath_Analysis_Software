@@ -13,7 +13,7 @@ def gpstime2date(week, tow):
     Parameters
     ----------
     week : GPS-week  
-    tow : "Time of week" 
+    tow  : "Time of week" 
     
     Returns
     -------
@@ -51,23 +51,3 @@ def gpstime2date(week, tow):
     date_ = [year, month, day, hour, min_, sec]
     return date_
 
-# ## TESTING OUT NEW FUNTION
-# from datetime import datetime, timedelta
-
-# def gpstime2date(week, time_of_week):
-#     # GPS epoch (January 6, 1980)
-#     gps_epoch = datetime(1980, 1, 6)
-    
-#     # Calculate time in seconds
-#     time_in_seconds = (week * 7 * 24 * 60 * 60) + time_of_week
-#     # Round to nearest second
-#     time_in_seconds = round(time_in_seconds, 0)
-#     # Add seconds to GPS epoch
-#     date = gps_epoch + timedelta(seconds=time_in_seconds)
-#     # return date in the format of a list
-#     return [date.year, date.month, date.day, date.hour, date.minute, date.second]
-
-# week = 2190
-# tow = 518399
-# gpstime2date(week, tow)
-# gps_to_date(week, tow)

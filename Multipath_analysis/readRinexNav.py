@@ -97,7 +97,8 @@ def read_rinex2_nav(filename, dataframe = None):
 
 def read_rinex3_nav(filename, dataframe = None):    
     """
-    Reads the navigation message from GPS broadcast efemerids in RINEX v.3 format. (NOT GLONASS!)
+    Reads the navigation message from broadcast efemerids in RINEX v.3 format.
+    Support all global systems: GPS,GLONASS,Galileo and BeiDou
   
     Reads one navigation message at a time until the end of the row. Accumulate in
     in a common matrix, "data", where there is a line for each message. 
