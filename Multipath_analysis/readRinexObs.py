@@ -21,7 +21,7 @@ def readRinexObs(filename, readSS=None, readLLI=None, includeAllGNSSsystems=None
         GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems,\
             obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType,\
             rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, success=  readRinexObs211(filename, readSS=None, readLLI=None, includeAllGNSSsystems=None,includeAllObsCodes=None, \
-                            desiredGNSSsystems=None, desiredObsCodes=None, desiredObsBands=None) ## WHEN A SOUTION IS FOUND ON desiredGNSSsystems, =None must be removed. 
+                            desiredGNSSsystems=desiredGNSSsystems, desiredObsCodes=None, desiredObsBands=None) ## WHEN A SOUTION IS FOUND ON desiredGNSSsystems, =None must be removed. 
     else:
        GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems,\
            obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType,\
@@ -278,9 +278,9 @@ def readRinexObs304(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
         readSS = 1
     if readLLI is None:
         readLLI = 1
-    if includeAllGNSSsystems is None:
+    if includeAllGNSSsystems is None and desiredGNSSsystems is None:
         includeAllGNSSsystems = 1
-    if includeAllObsCodes is None:
+    if includeAllObsCodes is None and desiredObsCodes is None:
         includeAllObsCodes = 1
     if desiredGNSSsystems is None:
         desiredGNSSsystems = ['G','R','E','C']
@@ -1905,9 +1905,9 @@ def readRinexObs211(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
         readSS = 1
     if readLLI is None:
         readLLI = 1
-    if includeAllGNSSsystems is None:
+    if includeAllGNSSsystems is None and desiredGNSSsystems is None:
         includeAllGNSSsystems = 1
-    if includeAllObsCodes is None:
+    if includeAllObsCodes is None and desiredObsCodes is None:
         includeAllObsCodes = 1
     if desiredGNSSsystems is None:
         desiredGNSSsystems = ['G','R','E','C']
@@ -2187,28 +2187,62 @@ def readRinexObs211(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
             if not GNSS_obs[sys]:
                 del GNSS_obs[sys]
         
+        ## -- Removing system not in desiredGNSSsystems
+        del_GNSS_LLI = [k for k,v in GNSS_LLI.items() if k not in desiredGNSSsystems]
+        del_GNSS_SS  = [k for k,v in GNSS_SS.items() if k not in desiredGNSSsystems]
+        del_GNSS_obs = [k for k,v in GNSS_obs.items() if k not in desiredGNSSsystems]  
+        del_GNSS_names = [k for k,v in GNSS_names.items() if k not in desiredGNSSsystems]  
+        del_GNSSsystems = [k for k,v in GNSSsystems.items() if v not in desiredGNSSsystems]   
+        del_GNSS_SVs = [k for k,v in GNSS_SVs.items() if k not in desiredGNSSsystems]  
+        
+        keep_idx = []
+        for k, v in GNSSsystems.items():
+            if v in desiredGNSSsystems:
+                keep_idx.append(k-1)
+        
+        max_sat = max_sat[keep_idx]
+        
+        for k in del_GNSS_LLI:
+            del GNSS_LLI[k]
+        for k in del_GNSS_SS:
+            del GNSS_SS[k]
+        for k in del_GNSS_obs:
+            del GNSS_obs[k]
+        for k in del_GNSS_names:
+            del GNSS_names[k]
+        for k in del_GNSSsystems:
+            del GNSSsystems[k]
+        for k in del_GNSS_SVs:
+            del GNSS_SVs[k]        
+
+        
+        GNSSsystems = {i+1: v for i, v in enumerate(GNSSsystems.values())} #update keys
+        
         if current_epoch!= nepochs and success == 1:
             print('ERROR(readRinexObs211): The amount of epochs calculated in advance(nepochs = %d) does not equal number og epochs prossesed(current_epoch = %d).\nCheck that header information concerning TIME OF FIRST OBS and TIME OF LAST OBS is correct.\n' %(nepochs, current_epoch))
              
+        
         messages = {}  
         if success == 1:
-           messages[0]= 'INFO(readRinexObs211): The following GNSS systems have been read into the data:'          
-           for k in np.arange(0,nGNSSsystems):
-               messages[k+1]= 'INFO(readRinexObs211): The following %s observation types have been registered:' % (GNSS_names[GNSSsystems[k+1]])
-               curr_sys = GNSSsystems[k+1]
-               for obs in np.arange(0, len(obsCodes[k+1][curr_sys])):
-                   if obs == 0:
-                       messages[k+1]= messages[k+1] + ' %s' % (obsCodes[k+1][curr_sys][obs])
-                   else:
-                       messages[k+1]= messages[k+1] + ', %s' % (obsCodes[k+1][curr_sys][obs])
+            messages[0]= 'INFO(readRinexObs211): The following GNSS systems have been read into the data:'          
+            for curr_sys in list(GNSSsystems.values()):
+                k = list(GNSSsystems.values()).index(curr_sys)
+                messages[k+1]= 'INFO(readRinexObs211): The following %s observation types have been registered:' % (GNSS_names[curr_sys])
+                for obs in np.arange(0, len(obsCodes[k+1][curr_sys])):
+                    if obs == 0:
+                        messages[k+1]= messages[k+1] + ' %s' % (obsCodes[k+1][curr_sys][obs])
+                    else:
+                        messages[k+1]= messages[k+1] + ', %s' % (obsCodes[k+1][curr_sys][obs])
                 
-               if k == 0:
-                   messages[0]= messages[0] + ' %s' % GNSS_names[GNSSsystems[1]]
-               else:
-                   messages[0]= messages[0] + ', %s' % GNSS_names[GNSSsystems[k+1]]
+                if k == 0:
+                    messages[0]= messages[0] + ' %s' % GNSS_names[GNSSsystems[1]]
+                else:
+                    messages[0]= messages[0] + ', %s' % GNSS_names[GNSSsystems[k+1]]
              
-           for msg in np.arange(0,len(messages)):
-               print(messages[msg])
+            for msg in np.arange(0,len(messages)):
+                print(messages[msg])
+        
+            
         
         if readLLI:
            print('INFO(readRinexObs211): LLI have been read (if present in observation file)')
@@ -2413,6 +2447,36 @@ def find_match_in_file(file_path, pattern):
     # No match was found
     return None
 
+
+
+def find_match_in_file_FWD(file_path, pattern):
+    """
+    Function that reads in a file and looks for pattern from the bottom and up.
+    Is used for finding tLastObs when not defined in header. Uses binary mode
+    to save processing time. Returns current line and next 5 lines after match.
+    """
+    with open(file_path, "rb") as f:
+        # Go to the end of the file
+        f.seek(0, 2)
+        file_size = f.tell()
+        # Read the file backwards
+        while file_size > 0:
+            # Read a chunk of the file
+            chunk_size = min(1024, file_size)
+            f.seek(file_size - chunk_size)
+            chunk = f.read(chunk_size)
+            # Split the chunk into lines
+            lines = chunk.split(b"\n")
+            # Process the lines in reverse order
+            for i in range(len(lines)-1, -1, -1):
+                line = lines[i].decode("utf-8").rstrip()
+                match = re.match(pattern, line)
+                if match:
+                    return [line] + [lines[j].decode("utf-8").rstrip() for j in range(i+1, min(i+6, len(lines)))]
+            # Repeat until the entire file has been processed
+            file_size -= chunk_size
+    # No match was found
+    return None
 
 
 def find_first_two_epochs(file_path, pattern):
@@ -2643,8 +2707,7 @@ def rinexReadObsFileHeader211(filename, includeAllGNSSsystems, includeAllObsCode
     ------------------------------------------------------------------------------------------------------------------------- 
     """
     eof         = 0                     
-    success     = 1                     
-    warnings    = 0                     
+    success     = 1                                      
     antDelta    = []             
     timeSystem  = ''                    
     tFirstObs   = []    
@@ -2717,10 +2780,6 @@ def rinexReadObsFileHeader211(filename, includeAllGNSSsystems, includeAllObsCode
             if gnssType == ' ':
                 gnssType = 'G'
             
-            if gnssType == 'M':
-                GNSSsystems[1] = 'G'
-                GNSSsystems[2] = 'R'
-                numGNSSsystems = 2
                 
         if 'PGM / RUN BY / DATE' in line:
             rinexProgr = line[0:20] # rinex program
@@ -2741,6 +2800,15 @@ def rinexReadObsFileHeader211(filename, includeAllGNSSsystems, includeAllObsCode
 
             
         if '# / TYPES OF OBSERV' in line:
+            pattern_ep1 = r"\s*(\d{2})\s+(\d{1,2})\s+(\d{1,2})\s+(\d{1,2})\s+(\d{1,2})\s+(\d{1,2}\.\d+)\s*"
+            pattern_ep2 = r'\s+([A-Z]\d{2})' #pattern for next line in block header
+            first_block_lines = find_match_in_file_FWD(filename, pattern_ep1)
+            sat_lines = [line for line in first_block_lines if re.match(pattern_ep1, line) or re.match(pattern_ep2, line)] 
+            sat_lines = ''.join([line.strip() for line in sat_lines if re.match(pattern_ep1, line) or re.match(pattern_ep2, line)])[29:] #[29:] is remove the first part of the string
+            GNSSsystems = list(set(re.findall(r"[a-zA-Z]", sat_lines)))
+            GNSSsystems = {i+1: GNSSsystems[i] for i in range(len(GNSSsystems))} # make dict there index in list becomes key in dict
+            numGNSSsystems = len(GNSSsystems)
+
             line_dum = []
             while '# / TYPES OF OBSERV' in line:
                 line = line[0:60]     # deletes 'SYS / # / OBS TYPES'
@@ -2758,40 +2826,30 @@ def rinexReadObsFileHeader211(filename, includeAllGNSSsystems, includeAllObsCode
                 obsCode = line_.pop(0)
                 # Checking if obsCode is valid
                 if len(obsCode) != 2 or obsCode[0] not in ['C', 'L', 'D','S', 'I', 'X','P'] or  \
-                          obsCode[1] not in ['0', '1', '2', '4', '5', '6', '7', '8', '9']:
+                          obsCode[1] not in ['0', '1', '2','3', '4', '5', '6', '7', '8', '9']:
                     print('ERROR (rinexReadsObsHeader211):  obsCode %s is a not a standard RINEX 2.11 observation type!' %(obsCode))     
-                    success = 0
-                    fid.close()
-                    return success
                 
                 ## is obsCode amoung desired obscodes and frequency bands
                 if includeAllObsCodes or obsCode[0] in desiredObsCodes and int(obsCode[1]) in desiredObsBands:
                      ## store obsCode if amoung desire obsCodes
-                    obsCode_list.append(obsCode) 
-                    GNSSSystemObsCodes['G'] =  obsCode_list
-                    GNSSSystemObsCodes['R'] =  obsCode_list
+                    obsCode_list.append(obsCode)
+                    for sys in GNSSsystems.values():
+                        GNSSSystemObsCodes[sys] =  obsCode_list
+                        GNSSSystemObsCodes[sys] =  obsCode_list
                     
                     desiredObsCodeIndex.append(k)
                 else:
                     # store index of discareded obsCode
                     undesiredobsCodeIndex.append(k)
-            # line = fid.readline().rstrip()
-        
-                # ## Every 5 obsCodes is at end of line. In this case read next line and continue
-                # if np.mod(k+1, 5) == 0:
-                #     # numHeaderLines = numHeaderLines + 1
-                #     line = fid.readline().rstrip()
-                #     line = line[0:60]     # deletes 'SYS / # / OBS TYPES'
-                #     line_ = [el for el in line.split(" ") if el != ""]
                     
-            numOfObsCodes.append(len(GNSSSystemObsCodes['G']))
-            numOfObsCodes.append(len(GNSSSystemObsCodes['R']))
-            obsCodes[1] = GNSSSystemObsCodes
-            obsCodes[2] = GNSSSystemObsCodes
-            # obsCodes[numGNSSsystems] = GNSSSystemObsCodes
-            obsCodeIndex[numGNSSsystems] = desiredObsCodeIndex # Store indices of desired obsCodes
- 
-         
+            for sys_indx in GNSSsystems.keys():
+                sys = GNSSsystems[sys_indx]
+                numOfObsCodes.append(len(GNSSSystemObsCodes[sys]))
+                obsCodes[sys_indx] = GNSSSystemObsCodes
+                obsCodes[sys_indx] = GNSSSystemObsCodes
+                
+            obsCodeIndex[numGNSSsystems] = desiredObsCodeIndex # Store indices of desired obsCodes    
+            
         if 'PRN / # OF OBS' in line:
             system_list = []
             while 'PRN / # OF OBS' in line:
@@ -2815,7 +2873,7 @@ def rinexReadObsFileHeader211(filename, includeAllGNSSsystems, includeAllObsCode
                     obsCodes[numGNSSsystems] = GNSSSystemObsCodes
                     obsCodeIndex[numGNSSsystems] = desiredObsCodeIndex # Store indices of desired obsCodes
                     GNSSSystemObsCodes[Sys] =  obsCode_list
-                numHeaderLines = numHeaderLines + 1;
+                numHeaderLines = numHeaderLines + 1
                 line = fid.readline().rstrip()
                 line_ = [el for el in line.split(" ") if el != ""]
 
@@ -2844,7 +2902,6 @@ def rinexReadObsFileHeader211(filename, includeAllGNSSsystems, includeAllObsCode
                     ss = float(tok)
      
           
-            #tFirstObs = [yyyy; mm; dd; hh; mnt; ss];
             tFirstObs = np.array([[yyyy],[mm],[dd],[hh],[mnt],[ss]])
           
             # Get Time system
@@ -3080,7 +3137,6 @@ def rinexReadObsBlock211(fid, numSV, nObsCodes, GNSSsystems, obsCodeIndex, readS
     Obs                         = np.nan
     LLI                         = np.nan
     SS                          = np.nan
-    # SVlist                      = np.nan
     removed_sat                 = np.nan
     desiredGNSSsystems          = np.nan
     obsCodeIndex = obsCodeIndex[list(obsCodeIndex.keys())[0]]
@@ -3092,7 +3148,6 @@ def rinexReadObsBlock211(fid, numSV, nObsCodes, GNSSsystems, obsCodeIndex, readS
        success = 0
        return success
     
-    # nObsCodes = [int(x) for x in nObsCodes]
     nObsCodes = int(nObsCodes[0]) 
 
           
@@ -3111,7 +3166,6 @@ def rinexReadObsBlock211(fid, numSV, nObsCodes, GNSSsystems, obsCodeIndex, readS
         factor = 1
         nLines = factor*numSV
         
-    # SVlist = [np.nan]*numSV
     if readLLI:
        LLI = np.empty([numSV, max_n_obs_Types]) 
     
@@ -3120,19 +3174,14 @@ def rinexReadObsBlock211(fid, numSV, nObsCodes, GNSSsystems, obsCodeIndex, readS
                   
     # number of satellites excluded so far
     removed_sat = 0                                 
-    desiredGNSSsystems = list(GNSSsystems.values())
-    # for sys in list(SVlist.keys()): #removes system if not in desiredGNSSsystem
-    #     if sys not in desiredGNSSsystems:
-    #         del SVlist[sys]
-            
+    desiredGNSSsystems = list(GNSSsystems.values())            
     pattern = r"^\s*[0-9]+\.[0-9]+\s*"
     pattern2 = r'\s*\d+\.\d+'
     pattern4 = r'^\s*[A-Za-z]+[A-Za-z0-9]*(?:[\s]+[A-Za-z]+[A-Za-z0-9]*)*\s*$'
-    # sat_list = [f"{key}{item}" for key, values in SVlist.items() for item in values]
-    # Gobble up observation block
+    ## -- Gobble up observation block
     for sat in np.arange(0,numSV):
-        line = fid.readline().rstrip()  
-        if not re.match(pattern,line) or not re.match(pattern2,line) or re.match(pattern4,line): ## BØR NOK BRUKE WHILE HER 25.02.2023
+        line = fid.readline().rstrip() 
+        while (not re.match(pattern,line) or not re.match(pattern2,line) or re.match(pattern4,line)) and line !="": ## BØR NOK BRUKE WHILE HER 25.02.2023
             sat_overview = line.split(" ")[-1]
             pattern3 = re.compile(r'[A-Z][0-9]{2}')
             sat_list = re.findall(pattern3, sat_overview)
@@ -3140,17 +3189,9 @@ def rinexReadObsBlock211(fid, numSV, nObsCodes, GNSSsystems, obsCodeIndex, readS
                 sys = s[0]
                 if sys not in desiredGNSSsystems:
                     continue
-                # PRN = s[1::]
-                # SVlist[sys].append(PRN)
                 SVlist.append(s)
-            # sat_list = [f"{key}{item}" for key, values in SVlist.items() for item in values]
             line = fid.readline().rstrip()
 
-        if not line:
-            return
-        # if 'R' or 'G' in line:
-        #     pass
-        # SV = line[0:3].strip() # Satellite code, ex. 'G11' or 'E03'
         SV = SVlist[sat]
         if SV[0] not in desiredGNSSsystems:
             removed_sat +=1
@@ -3207,23 +3248,18 @@ def rinexReadObsBlock211(fid, numSV, nObsCodes, GNSSsystems, obsCodeIndex, readS
                     else:
                         newSS = int(newSS)
     
-                     #Store SS
+                    ## Store SS
                     SS[sat - removed_sat, obs_num]  = newSS    
                     
                     # if np.mod(obs_num+1, 5) == 0 and nObsCodes > 5 and factor*sat < factor*numSV:
                     if np.mod(obs_num+1, 5) == 0 and nObsCodes>5 and nNew_line < factor:
                         nNew_line += 1
                         line = fid.readline().rstrip()
-                        # pattern5 = r'\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+([\d.]+)\s+(\d+)\s+([A-Z\dG]+)'
-                        # if re.match(pattern5,line):
-                        #     break
-                    # elif factor*sat == factor*numSV:
-                    #     break
+
     
     ## -- Update number og satellites after satellites have been excluded
     numSV = numSV - removed_sat
     ## --Remove empty arrays
-    # SVlist = list(filter(None,SVlist))
     idx_keep = len(Obs) -1 -removed_sat + 1 # removing sats
     Obs = Obs[:idx_keep,:]
     return success, Obs, SVlist, numSV, LLI, SS, eof
@@ -3297,7 +3333,6 @@ def rinexReadObsBlockHead211(fid):
     clockOffset = 0
     noFlag = 1
     SVlist = np.nan
-    lines = []
     line = fid.readline().rstrip()
     if not line:
         eof = 1
@@ -3347,14 +3382,4 @@ def rinexReadObsBlockHead211(fid):
 
     return success, epochflag, clockOffset, date, numSV, SVlist, eof
 
-# rinObsFilename = r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles/gmgd31000_v2_11.20o'
-# # rinObsFilename = r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles/testfil_2_11.10o'
-# # rinObsFilename = r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles/opec0010.10o'
-# rinObsFilename = r'C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles/opec0010_2.10o'
-
-# GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems,\
-#       obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType,\
-#       rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, success = \
-#       readRinexObs211(rinObsFilename)
-     
      
