@@ -142,14 +142,15 @@ def read_rinex3_nav(filename, dataframe = None):
         block_arr = np.array([])
         ## -- Read first line of navigation message
         line = filnr.readline().rstrip()
-        sys_PRN = line[0:3]            
+        sys_PRN = line[0:3]
+        line = line.replace('D','E') # Replacing 'D' with 'E' ('D' is fortran syntax for exponentiall form)          
         while 'S' in sys_PRN or 'I' in sys_PRN or 'J' in sys_PRN: ## trying to add GLONASS #PH
             line = filnr.readline().rstrip()
             sys_PRN = line[0:3]
             while sys_PRN == '   ':
                 line = filnr.readline().rstrip()
                 sys_PRN = line[0:3]
-                   
+                line = line.replace('D','E') # Replacing 'D' with 'E' ('D' is fortran syntax for exponentiall form)               
         ## -- Have to add space between datacolums where theres no whitespace
         for idx, val in enumerate(line):
             if line[0:2] != ' ' and line[23] != ' ':
@@ -163,9 +164,10 @@ def read_rinex3_nav(filename, dataframe = None):
         
         
         ## Looping throug the next 3-lines for current message (satellitte) (GLONASS)
-        if 'R' in sys_PRN:  #PH added if test to add GLONASS 12.12.2022
+        if 'R' in sys_PRN:
             for i in np.arange(0,3):
                 line = filnr.readline().rstrip()
+                line = line.replace('D','E') # Replacing 'D' with 'E' ('D' is fortran syntax for exponentiall form)               
                 ## -- Have to add space between datacolums where theres no whitespace
                 for idx, val in enumerate(line):
                     if line[idx] == 'e' or line[idx] == 'E':
@@ -181,7 +183,8 @@ def read_rinex3_nav(filename, dataframe = None):
             ## Looping throug the next 7-lines for current message (satellitte) (GPS,Galileo,BeiDou)
             for i in np.arange(0,7):
                 line = filnr.readline().rstrip()
-                if line == '': #PH 07.01.2023
+                line = line.replace('D','E') # Replacing 'D' with 'E' ('D' is fortran syntax for exponentiall form)               
+                if line == '': 
                     continue
                 else:
                     ## -- Have to add space between datacolums where theres no whitespace

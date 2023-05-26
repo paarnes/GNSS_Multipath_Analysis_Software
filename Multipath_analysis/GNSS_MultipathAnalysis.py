@@ -736,6 +736,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                 make_polarplot_dont_use_TEX(analysisResults, graphDir)  
             
         if include_SNR:
+            
             print('INFO: Making a plot of the Signal To Noise Ration (SNR). Please wait ...\n')
             if use_LaTex:
                 try:
@@ -748,8 +749,18 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                 make_polarplot_SNR_dont_use_TEX(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir)
                 plot_SNR_wrt_elev_dont_use_TEX(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir,tInterval)
                 
-                    
-
+            for syst in GNSSsystems.keys():
+                curr_syst =GNSSsystemCode2Fullname[GNSSsystems[syst]]
+                analysisResults[curr_syst]['SNR']  = {}
+                curr_obscodes = obsCodes[syst][GNSSsystems[syst]]
+                snr_codes_idx =  [n for n, l in enumerate(curr_obscodes) if l.startswith('S')]
+                for code_idx in snr_codes_idx:
+                    signal = curr_obscodes[code_idx]
+                    curr_ban = [element for element in analysisResults[curr_syst].keys() if element.endswith(signal[1])][0]
+                    curr_signal = np.stack(list(GNSS_obs[GNSSsystems[syst]].values()))[:, :, code_idx]
+                    curr_signal = np.squeeze(curr_signal)
+                    # AS_copy[curr_syst][curr_ban][signal] = curr_signal
+                    analysisResults[curr_syst]['SNR'][signal] = curr_signal
             
             
             
