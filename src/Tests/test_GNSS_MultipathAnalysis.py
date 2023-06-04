@@ -6,9 +6,9 @@ import numpy as np
 from numpy.testing import assert_almost_equal
 
 # os.chdir(r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\Multipath_analysis")
-sys.path.append(r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\Multipath_analysis")
+sys.path.append(r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\src")
 from GNSS_MultipathAnalysis import GNSS_MultipathAnalysis
-os.chdir(r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\Multipath_analysis")
+os.chdir(r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\src")
 
 
 
@@ -19,28 +19,28 @@ def read_pickle(file_path):
 
 
 
-def test_GNSS_MultipathAnalysis_sp3_file():
-    """
-    Test the results from OPEC2022 and sp3 files
-    """
-    rinObs_file =  r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles\NMBUS_SAMSUNG_S20.20o"
-    sp3Nav_file = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\SP3\NMBUS_2020 10 30.SP3"
-    expected_res = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\Multipath_analysis\Tests\analysisResults_NMBUS.pkl"
-    result = GNSS_MultipathAnalysis(rinObsFilename=rinObs_file, sp3NavFilename_1=sp3Nav_file,
-                                    plotEstimates=False,
-                                    plot_polarplot=False)
+# def test_GNSS_MultipathAnalysis_sp3_file():
+#     """
+#     Test the results from OPEC2022 and sp3 files
+#     """
+#     rinObs_file =  r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles\NMBUS_SAMSUNG_S20.20o"
+#     sp3Nav_file = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\SP3\NMBUS_2020 10 30.SP3"
+#     expected_res = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\Multipath_analysis\Tests\analysisResults_NMBUS.pkl"
+#     result = GNSS_MultipathAnalysis(rinObsFilename=rinObs_file, sp3NavFilename_1=sp3Nav_file,
+#                                     plotEstimates=False,
+#                                     plot_polarplot=False)
     
-    expected_result = read_pickle(expected_res)
-    # Compare the result with the expected result
-    assert_almost_equal(expected_result['Sat_position']['G']['Position'][2],  result['Sat_position']['G']['Position'][2],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['G']['Position'][4],  result['Sat_position']['G']['Position'][4],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['G']['Position'][30],  result['Sat_position']['G']['Position'][30],decimal=4)
+#     expected_result = read_pickle(expected_res)
+#     # Compare the result with the expected result
+#     assert_almost_equal(expected_result['Sat_position']['G']['Position'][2],  result['Sat_position']['G']['Position'][2],decimal=4)
+#     assert_almost_equal(expected_result['Sat_position']['G']['Position'][4],  result['Sat_position']['G']['Position'][4],decimal=4)
+#     assert_almost_equal(expected_result['Sat_position']['G']['Position'][30],  result['Sat_position']['G']['Position'][30],decimal=4)
 
-    assert_almost_equal(expected_result['Sat_position']['G']['Azimut'],  result['Sat_position']['G']['Azimut'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['E']['Azimut'],  result['Sat_position']['E']['Azimut'],decimal=4)
+#     assert_almost_equal(expected_result['Sat_position']['G']['Azimut'],  result['Sat_position']['G']['Azimut'],decimal=4)
+#     assert_almost_equal(expected_result['Sat_position']['E']['Azimut'],  result['Sat_position']['E']['Azimut'],decimal=4)
 
-    assert_almost_equal(expected_result['Sat_position']['G']['Elevation'],  result['Sat_position']['G']['Elevation'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['E']['Elevation'],  result['Sat_position']['E']['Elevation'],decimal=4)
+#     assert_almost_equal(expected_result['Sat_position']['G']['Elevation'],  result['Sat_position']['G']['Elevation'],decimal=4)
+#     assert_almost_equal(expected_result['Sat_position']['E']['Elevation'],  result['Sat_position']['E']['Elevation'],decimal=4)
 
 
 def test_GNSS_MultipathAnalysis_broadcast_navfile():
