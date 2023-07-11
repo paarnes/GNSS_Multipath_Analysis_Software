@@ -22,7 +22,7 @@ To install the required packages, run:
 `pip install -r requirements.txt`   
 where the *requirements.txt* is located [here](https://github.com/paarnes/GNSS/blob/master/Multipath_analysis/requirements.txt).
 
-Note: In the example plots, TEX is used to get prettier text formatting. However, this requires TEX/LaTex to be installed on your computer. The program will first try to use TEX, and if it's not possible, standard text formatting will be used. So TEX/LaTex is not required to run the program and make plots anymore. The software will just not use TEX as a interpreter. In the previous release, the software required TEX to be installed to successfully create plots.
+Note: In the example plots, TEX is used to get prettier text formatting. However, this requires TEX/LaTex to be installed on your computer. The program will first try to use TEX, and if it's not possible, standard text formatting will be used. So TEX/LaTex is not required to run the program and make plots.
 
 ## The steps are:
 1. Reads in the RINEX observation file 
