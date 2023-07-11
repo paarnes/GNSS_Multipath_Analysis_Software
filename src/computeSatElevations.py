@@ -255,6 +255,8 @@ def get_elevation_angle(sys, PRN, week, tow, sat_positions, nEpochs, epoch_dates
         ## -- Calculate elevation and azimut angle from receiver to satellite
         if not np.isnan(u) and not np.isnan(e) and not np.isnan(n):
             elevation_angle = np.rad2deg(atanc(u, sqrt(e**2 + n**2)))
+            if not 0 < elevation_angle < 90: # if the satellite is below the horizon (elevation angle is below zero)
+                elevation_angle = np.nan
             
             # Azimut computation and quadrant correction 
             if (e> 0 and n< 0) or (e < 0 and n < 0):
