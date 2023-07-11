@@ -3372,13 +3372,14 @@ def rinexReadObsBlockHead211(fid):
         print(msg2)
 
 
-    SVlist = []
-    sat_overview = line.split(" ")[-1][len(str(numSV))::]
-    pattern = re.compile(r'[A-Z][0-9]{2}')
-    sat_list = re.findall(pattern, sat_overview)
-    for sat in sat_list: ## droppe denne forloopen ?? SVlist og sat_list inneholder det samme??
-        SVlist.append(sat)
-    
+    # SVlist = []
+    # sat_overview = line.split(" ")[-1][len(str(numSV))::]
+    # pattern = re.compile(r'[A-Z][0-9]{2}')
+    # sat_list = re.findall(pattern, sat_overview)
+    # for sat in sat_list: ## droppe denne forloopen ?? SVlist og sat_list inneholder det samme??
+    #     SVlist.append(sat)    
+
+    SVlist = re.findall(r'[A-Z][0-9]{2}', line)   
 
     return success, epochflag, clockOffset, date, numSV, SVlist, eof
 
