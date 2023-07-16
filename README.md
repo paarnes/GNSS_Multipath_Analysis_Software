@@ -20,7 +20,7 @@ The rest of the arguments are optional. Their default values are described in th
 ## Installation 
 To install the required packages, run:     
 `pip install -r requirements.txt`   
-where the *requirements.txt* is located [here](https://github.com/paarnes/GNSS/blob/master/Multipath_analysis/requirements.txt).
+where the *requirements.txt* is located [here](https://github.com/paarnes/GNSS/blob/master/src/requirements.txt).
 
 Note: In the example plots, TEX is used to get prettier text formatting. However, this requires TEX/LaTex to be installed on your computer. The program will first try to use TEX, and if it's not possible, standard text formatting will be used. So TEX/LaTex is not required to run the program and make plots.
 
@@ -76,7 +76,7 @@ For the weighted RMS value, the satellite elevation angle is used in a weighting
 
 
 ## How to run it
-An example file on how to call the program is located [here](https://github.com/paarnes/GNSS_Multipath_Analysis_Software/blob/master/Multipath_analysis/Running_multipath_analysis_example.py). This will show some examples
+An example file on how to call the program is located [here](https://github.com/paarnes/GNSS_Multipath_Analysis_Software/blob/master/src/Examples_on_how_to_run_it.ipynb). This will show some examples
 on how to run the analysis with different user defined arguments, how to read in the resultfile (pickle file), and in addition it shows how to use only the RINEX
 reading routine. The most simple example on how to run the code is:
 
