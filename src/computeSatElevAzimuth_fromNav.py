@@ -201,10 +201,8 @@ def shorten_navigation_file(navigationFile):
         ## -- Checking for GLONASS (less lines in file)     
         if pass_header==True and idx+4 < len(lines):
             if re.match(r'R\d+',lines[idx]):
-                # line_curr = lines[idx][0:24] 
                 line_curr = lines[idx][0:23] # change 29.01.2023  to remove "-" in end of seconds
                 line_curr = [el for el in line_curr.split(" ") if el != ""]
-                # line_next = lines[idx+4][0:24] 
                 line_next = lines[idx+4][0:23] # change 29.01.2023  to remove "-" in end of seconds
                 line_next = [el for el in line_next.split(" ") if el != ""]
                 if line_curr == line_next:
@@ -222,67 +220,6 @@ def shorten_navigation_file(navigationFile):
         del lines[idx_start:idx_end]
         
         
-    # ## -- Removing epoch that are within the time limit. This step is only for increasing speed.
-    # del_start_indx = []
-    # del_end_indx = []
-    # dum_del = []
-    # for idx in np.arange(0,len(lines)):
-    #     ## -- Test if passed header
-    #     if 'END OF HEADER' in lines[idx]:
-    #         pass_header = True
-    #     ## -- Checking for GPS, Galileo and BeiDou
-    #     if pass_header==True and idx+8 < len(lines):
-    #         if re.match(r'G\d+',lines[idx]) or re.match(r'E\d+',lines[idx]) or re.match(r'C\d+',lines[idx]):
-    #             # line_curr = lines[idx][0:24] 
-    #             line_curr = lines[idx][0:23] # change 29.01.2023 to remove "-" in end of seconds
-    #             line_curr = [el for el in line_curr.split(" ") if el != ""]
-    #             # line_next = lines[idx+8][0:24] 
-    #             line_next = lines[idx+8][0:23] # change 29.01.2023 to remove "-" in end of seconds
-    #             line_next = [el for el in line_next.split(" ") if el != ""]
-    #             if abs(time_difference(line_curr, line_next)) < tLim_GEC and line_curr[0] == line_next[0]: # check if time differnce is less than 1 hour
-    #                 dum = ['']    
-    #                 for PRN_line in dum_del:
-    #                     dum.append(PRN_line)
-    #                 dum_del.append(line_next)
-    #                 PRN_line = dum[-1]   
-    #                 if line_next[0] in PRN_line:
-    #                     if abs(time_difference(PRN_line, line_next)) < tLim_GEC:
-    #                         # dum = ['']  
-    #                         # dum_del = []
-    #                         # dum_del.append(line_next)
-    #                         IDX_start = idx + 8
-    #                         IDX_end = IDX_start + 8
-    #                         del_start_indx.append(IDX_start)
-    #                         del_end_indx.append(IDX_end)
-    #                 else:                              
-    #                     IDX_start = idx + 8
-    #                     IDX_end = IDX_start + 8
-    #                     del_start_indx.append(IDX_start)
-    #                     del_end_indx.append(IDX_end)
-    
-    #     ## -- Checking for GLONASS (less lines in file)     
-    #     if pass_header==True and idx+4 < len(lines):
-    #         if re.match(r'R\d+',lines[idx]):
-    #             # line_curr = lines[idx][0:24] 
-    #             line_curr = lines[idx][0:23] # change 29.01.2023  to remove "-" in end of seconds
-    #             line_curr = [el for el in line_curr.split(" ") if el != ""]
-    #             # line_next = lines[idx+4][0:24] 
-    #             line_next = lines[idx+4][0:23] # change 29.01.2023  to remove "-" in end of seconds
-    #             line_next = [el for el in line_next.split(" ") if el != ""]
-    #             if time_difference(line_curr, line_next) < tLim_R and line_curr[0] == line_next[0]: # check if time differnce is less than 1 hour
-    #                 IDX_start = idx + 4
-    #                 IDX_end = IDX_start + 4
-    #                 del_start_indx.append(IDX_start)
-    #                 del_end_indx.append(IDX_end)
-              
-    # ## -- Deleting the indencies that have equal TOC       
-    # del_start_indx.sort(reverse=True)
-    # del_end_indx.sort(reverse=True)
-    # for index,val in enumerate(del_start_indx):
-    #     idx_start = del_start_indx[index]
-    #     idx_end = del_end_indx[index]
-    #     del lines[idx_start:idx_end]
-    
 
     ## -- Write to file 
     base_path = os.path.split(navigationFile)[0]

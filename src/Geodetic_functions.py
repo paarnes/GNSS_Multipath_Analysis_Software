@@ -39,8 +39,12 @@ def ECEF2enu(lat,lon,dX,dY,dZ): ## added this new function 28.01.2023
     """
     Convert from ECEF to a local toposentric coordinate system (ENU)
     """
-    ## -- Add 180 degrees (pi) if longitude is less than 0 (to get correct values)
-    lon = lon + pi if lon < 0 else lon
+    ## -- Ensure that longitude is bewtween -180 and 180
+    if -2*pi < lon < - pi:
+        lon = lon + 2*pi
+    elif pi < lon < 2*pi:
+        lon = lon - 2*pi
+        
     ## -- Compute sin and cos before putting in to matrix to gain speed
     sin_lon = np.sin(lon)
     cos_lon = np.cos(lon)
@@ -135,6 +139,8 @@ def compute_azimut_elev(X,Y,Z,xm,ym,zm):
             az = np.rad2deg(arctan(east/north))
         # elev = arcsin(up/(sqrt(east**2 + north**2 + up**2)))*(180/pi)
         elev = np.rad2deg(atanc(up, sqrt(east**2 + north**2)))
+        if not 0 < elev < 90: # if the satellite is below the horizon (elevation angle is below zero)
+            elevation_angle = np.nan
     else:
         east = np.array([]); north = np.array([]); up = np.array([])
         for i in np.arange(0,len(dX)):    
