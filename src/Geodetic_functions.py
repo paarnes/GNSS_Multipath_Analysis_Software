@@ -139,6 +139,8 @@ def compute_azimut_elev(X,Y,Z,xm,ym,zm):
             az = np.rad2deg(arctan(east/north))
         # elev = arcsin(up/(sqrt(east**2 + north**2 + up**2)))*(180/pi)
         elev = np.rad2deg(atanc(up, sqrt(east**2 + north**2)))
+        if not 0 < elev < 90: # if the satellite is below the horizon (elevation angle is below zero)
+            elevation_angle = np.nan
     else:
         east = np.array([]); north = np.array([]); up = np.array([])
         for i in np.arange(0,len(dX)):    
