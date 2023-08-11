@@ -28,7 +28,7 @@ def ECEF2geodb(a,b,X,Y,Z):
     rho = sqrt(X**2 +Y**2)
     my  = arctan((Z*a)/(rho*b))
     lat = arctan(( Z +e2m*b*(sin(my))**3)/(rho - e2*a*(cos(my))**3))
-    lon = arctan(Y/X)
+    lon = arctan2(Y,X)
     N   = Nrad(a,b,lat)
     h   = rho*cos(lat) + Z*sin(lat) - N*( 1 - e2*(sin(lat))**2)
     return lat, lon, h
