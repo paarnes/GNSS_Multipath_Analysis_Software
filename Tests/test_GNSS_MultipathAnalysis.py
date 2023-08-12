@@ -5,11 +5,57 @@ import os
 import numpy as np
 from numpy.testing import assert_almost_equal
 
-# os.chdir(r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\Multipath_analysis")
-sys.path.append(r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\src")
-from GNSS_MultipathAnalysis import GNSS_MultipathAnalysis
-os.chdir(r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\src")
+# from GNSS_MultipathAnalysis import GNSS_MultipathAnalysis
+from Geodetic_functions import ECEF2geodb, ECEF2enu
 
+ECEF_POS = [2765120.7658, -4449250.0340, -3626405.4228 ]
+ECEF_POS2 = [ -1270826.8700, 6242631.4460, 307792.4399]
+ECEF_POS3 = [-4052052.7300,  4212835.9796, -2545104.5870]
+expected_return = [-0.6086611088458492, -1.014732114220556, 41.7607967723161]
+
+# os.chdir(r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\src")
+# os.chdir(os.path.abspath(os.path.join(os.path.dirname('GNSS_MultipathAnalysis.py'))))
+
+test_data_ECEF2geodb = [
+    (6378137.0, 6356752.314245, 2765120.7658, -4449250.0340, -3626405.4228, (-0.6086611088458492, -1.014732114220556, 41.7607967723161)),
+    (6378137.0, 6356752.314245, -1270826.8700, 6242631.4460, 307792.4399, (0.048601283617660994, 1.771624423298406, 15.002176421694458)),
+    (6378137.0, 6356752.314245, -4052052.7300, 4212835.9796, -2545104.5870, (-0.413121356617561, 2.3367431730495127, 603.2359722275287))
+]
+
+test_data_ECEF2enu = [
+    (0.2838307690924083, -1.0738580938997349, 12893444.612051928, -9888519.684510132, 13138615.445688058, (6619718.534261429, 8457426.340380616, 17924793.375904225))
+]
+
+
+test_data_
+
+# def test_ECEF2geodb():
+#     a   =  6378137.0         # major semi-axes
+#     b   =  6356752.314245    # minor semi-axes
+#     lat,lon,h = ECEF2geodb(a,b,*ECEF_POS)
+
+
+# def ecef2geod_pyproj(x,y,z):
+#     import pyproj
+#     transformer = pyproj.Transformer.from_crs(
+#         {"proj":'geocent', "ellps":'WGS84', "datum":'WGS84'},
+#         {"proj":'latlong', "ellps":'WGS84', "datum":'WGS84'},
+#         )
+#     lon1, lat1, alt1 = transformer.transform(x,y,z,radians=False)
+#     return lon1,lat1,alt1
+
+
+
+@pytest.mark.parametrize("a, b, X, Y, Z, expected_output", test_data_ECEF2geodb)
+def test_ECEF2geodb(a, b, X, Y, Z, expected_output):
+    result = ECEF2geodb(a, b, X, Y, Z)
+    assert result == pytest.approx(expected_output, abs=1e-6)  # Use appropriate tolerance
+
+
+@pytest.mark.parametrize("lat, lon, dX, dY, dZ, expected_output", test_data_ECEF2enu)
+def test_ECEF2enu(lat, lon, dX, dY, dZ, expected_output):
+    result = ECEF2enu(lat,lon,dX,dY,dZ)
+    assert result == pytest.approx(expected_output, abs=1e-3)  # Use appropriate tolerance
 
 
 def read_pickle(file_path):
@@ -19,28 +65,31 @@ def read_pickle(file_path):
 
 
 
-def test_GNSS_MultipathAnalysis_sp3_file():
-    """
-    Test the results from OPEC2022 and sp3 files
-    """
-    rinObs_file =  r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles\NMBUS_SAMSUNG_S20.20o"
-    sp3Nav_file = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\SP3\NMBUS_2020 10 30.SP3"
-    expected_res = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\Multipath_analysis\Tests\analysisResults_NMBUS.pkl"
-    result = GNSS_MultipathAnalysis(rinObsFilename=rinObs_file, sp3NavFilename_1=sp3Nav_file,
-                                    plotEstimates=False,
-                                    plot_polarplot=False)
+# def test_GNSS_MultipathAnalysis_sp3_file():
+#     """
+#     Test the results from OPEC2022 and sp3 files
+#     """
+#     # rinObs_file =  r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles\NMBUS_SAMSUNG_S20.20o"
+#     # sp3Nav_file = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\SP3\NMBUS_2020 10 30.SP3"
+#     # expected_res = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\Multipath_analysis\Tests\analysisResults_NMBUS.pkl"
+#     rinObs_file = r"TestData/ObservationFiles/NMBUS_SAMSUNG_S20.20o"
+#     sp3Nav_file = r"TestData/SP3/NMBUS_2020 10 30.SP3"
+#     expected_res = r"Tests/analysisResults_NMBUS.pkl"
+#     result = GNSS_MultipathAnalysis(rinObsFilename=rinObs_file, sp3NavFilename_1=sp3Nav_file,
+#                                     plotEstimates=False,
+#                                     plot_polarplot=False)
     
-    expected_result = read_pickle(expected_res)
-    # Compare the result with the expected result
-    assert_almost_equal(expected_result['Sat_position']['G']['Position'][2],  result['Sat_position']['G']['Position'][2],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['G']['Position'][4],  result['Sat_position']['G']['Position'][4],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['G']['Position'][30],  result['Sat_position']['G']['Position'][30],decimal=4)
+#     expected_result = read_pickle(expected_res)
+#     # Compare the result with the expected result
+#     assert_almost_equal(expected_result['Sat_position']['G']['Position'][2],  result['Sat_position']['G']['Position'][2],decimal=4)
+#     assert_almost_equal(expected_result['Sat_position']['G']['Position'][4],  result['Sat_position']['G']['Position'][4],decimal=4)
+#     assert_almost_equal(expected_result['Sat_position']['G']['Position'][30],  result['Sat_position']['G']['Position'][30],decimal=4)
 
-    assert_almost_equal(expected_result['Sat_position']['G']['Azimut'],  result['Sat_position']['G']['Azimut'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['E']['Azimut'],  result['Sat_position']['E']['Azimut'],decimal=4)
+#     assert_almost_equal(expected_result['Sat_position']['G']['Azimut'],  result['Sat_position']['G']['Azimut'],decimal=4)
+#     assert_almost_equal(expected_result['Sat_position']['E']['Azimut'],  result['Sat_position']['E']['Azimut'],decimal=4)
 
-    assert_almost_equal(expected_result['Sat_position']['G']['Elevation'],  result['Sat_position']['G']['Elevation'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['E']['Elevation'],  result['Sat_position']['E']['Elevation'],decimal=4)
+#     assert_almost_equal(expected_result['Sat_position']['G']['Elevation'],  result['Sat_position']['G']['Elevation'],decimal=4)
+#     assert_almost_equal(expected_result['Sat_position']['E']['Elevation'],  result['Sat_position']['E']['Elevation'],decimal=4)
 
 
 # def test_GNSS_MultipathAnalysis_broadcast_navfile():

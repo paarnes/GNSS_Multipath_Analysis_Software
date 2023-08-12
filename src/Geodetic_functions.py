@@ -59,9 +59,10 @@ def ECEF2enu(lat,lon,dX,dY,dZ): ## added this new function 28.01.2023
     
     dP_ENU = np.dot(M, dP_ECEF)
     
-    e = float(dP_ENU[0]) 
-    n = float(dP_ENU[1])
-    u = float(dP_ENU[2])
+    e = dP_ENU[0, 0]
+    n = dP_ENU[1, 0]
+    u = dP_ENU[2, 0]
+
     return e, n, u
 
 
