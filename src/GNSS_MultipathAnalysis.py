@@ -597,7 +597,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                                 current_code_dict['phase1_Code'], current_code_dict['phase2_Code'], graphDir)
                  
                       ## -- Place the current code dict in its original place in current band dict
-                      current_band_dict[range1_Code] = current_code_dict
+                    current_band_dict[range1_Code] = current_code_dict
                   
                 else:
                     ## If phase1 observation is not read from RINEX observation file
