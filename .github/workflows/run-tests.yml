@@ -24,10 +24,6 @@ jobs:
         pip install pytest
         pip install -r .devcontainer/requirements.txt
 
-    - name: Set working directory
-      run: |
-        echo "Setting working directory to 'src'"
-        cd src
     - name: Test with pytest
       run: |
         pytest tests/test_GNSS_MultipathAnalysis.py
