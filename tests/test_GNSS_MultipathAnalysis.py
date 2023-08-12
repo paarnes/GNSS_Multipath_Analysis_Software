@@ -5,8 +5,8 @@ import os
 import numpy as np
 from numpy.testing import assert_almost_equal
 
-# from GNSS_MultipathAnalysis import GNSS_MultipathAnalysis
-from Geodetic_functions import ECEF2geodb, ECEF2enu
+from GNSS_MultipathAnalysis import GNSS_MultipathAnalysis
+from Geodetic_functions import ECEF2geodb, ECEF2enu, compute_azimut_elev
 
 ECEF_POS = [2765120.7658, -4449250.0340, -3626405.4228 ]
 ECEF_POS2 = [ -1270826.8700, 6242631.4460, 307792.4399]
@@ -27,23 +27,8 @@ test_data_ECEF2enu = [
 ]
 
 
-test_data_
-
-# def test_ECEF2geodb():
-#     a   =  6378137.0         # major semi-axes
-#     b   =  6356752.314245    # minor semi-axes
-#     lat,lon,h = ECEF2geodb(a,b,*ECEF_POS)
-
-
-# def ecef2geod_pyproj(x,y,z):
-#     import pyproj
-#     transformer = pyproj.Transformer.from_crs(
-#         {"proj":'geocent', "ellps":'WGS84', "datum":'WGS84'},
-#         {"proj":'latlong', "ellps":'WGS84', "datum":'WGS84'},
-#         )
-#     lon1, lat1, alt1 = transformer.transform(x,y,z,radians=False)
-#     return lon1,lat1,alt1
-
+test_data_compute_azimut_elev = [(15813230.324051928, -15272264.751510132, 14913220.137688057, 2919785.712, -5383745.067, 1774604.692, (38.05066871295592, 59.07109574929687)) #(X,Y,Z,xm,ym,zm, (azimut,elevation (expected)))
+]
 
 
 @pytest.mark.parametrize("a, b, X, Y, Z, expected_output", test_data_ECEF2geodb)
@@ -58,6 +43,11 @@ def test_ECEF2enu(lat, lon, dX, dY, dZ, expected_output):
     assert result == pytest.approx(expected_output, abs=1e-3)  # Use appropriate tolerance
 
 
+@pytest.mark.parametrize("X, Y, Z, xm, ym, zm, expected_output", test_data_compute_azimut_elev)
+def test_compute_azimut_elev(X, Y, Z, xm, ym, zm, expected_output):
+    result = compute_azimut_elev(X, Y, Z, xm, ym, zm)
+    assert result == pytest.approx(expected_output, abs=1e-4)  # Use appropriate tolerance
+
 def read_pickle(file_path):
     with open(file_path, 'rb') as file:
         data = pickle.load(file)
@@ -65,31 +55,37 @@ def read_pickle(file_path):
 
 
 
-# def test_GNSS_MultipathAnalysis_sp3_file():
-#     """
-#     Test the results from OPEC2022 and sp3 files
-#     """
-#     # rinObs_file =  r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles\NMBUS_SAMSUNG_S20.20o"
-#     # sp3Nav_file = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\SP3\NMBUS_2020 10 30.SP3"
-#     # expected_res = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\Multipath_analysis\Tests\analysisResults_NMBUS.pkl"
-#     rinObs_file = r"TestData/ObservationFiles/NMBUS_SAMSUNG_S20.20o"
-#     sp3Nav_file = r"TestData/SP3/NMBUS_2020 10 30.SP3"
-#     expected_res = r"Tests/analysisResults_NMBUS.pkl"
-#     result = GNSS_MultipathAnalysis(rinObsFilename=rinObs_file, sp3NavFilename_1=sp3Nav_file,
-#                                     plotEstimates=False,
-#                                     plot_polarplot=False)
+def test_GNSS_MultipathAnalysis_sp3_file():
+    """
+    Test the results from OPEC2022 and sp3 files
+    """
+    # rinObs_file =  r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles\NMBUS_SAMSUNG_S20.20o"
+    # sp3Nav_file = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\SP3\NMBUS_2020 10 30.SP3"
+    # expected_res = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\Multipath_analysis\Tests\analysisResults_NMBUS.pkl"
+    # os.chdir(os.path.abspath(os.path.join(os.path.dirname('GNSS_MultipathAnalysis.py'))))
+    os.chdir('/workspaces/GNSS_Multipath_Analysis_Software/src')
+    # rinObs_file = r"TestData/ObservationFiles/NMBUS_SAMSUNG_S20.20o"
+    # sp3Nav_file = r"TestData/SP3/NMBUS_2020 10 30.SP3"
+    # expected_res = r"tests/analysisResults_NMBUS.pkl"
+
+    rinObs_file = "../TestData/ObservationFiles/NMBUS_SAMSUNG_S20.20o"
+    sp3Nav_file = "../TestData/SP3/NMBUS_2020 10 30.SP3"
+    expected_res = "../tests/analysisResults_NMBUS.pkl"
+    result = GNSS_MultipathAnalysis(rinObsFilename=rinObs_file, sp3NavFilename_1=sp3Nav_file,
+                                    plotEstimates=False,
+                                    plot_polarplot=False)
     
-#     expected_result = read_pickle(expected_res)
-#     # Compare the result with the expected result
-#     assert_almost_equal(expected_result['Sat_position']['G']['Position'][2],  result['Sat_position']['G']['Position'][2],decimal=4)
-#     assert_almost_equal(expected_result['Sat_position']['G']['Position'][4],  result['Sat_position']['G']['Position'][4],decimal=4)
-#     assert_almost_equal(expected_result['Sat_position']['G']['Position'][30],  result['Sat_position']['G']['Position'][30],decimal=4)
+    expected_result = read_pickle(expected_res)
+    # Compare the result with the expected result
+    assert_almost_equal(expected_result['Sat_position']['G']['Position'][2],  result['Sat_position']['G']['Position'][2],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['G']['Position'][4],  result['Sat_position']['G']['Position'][4],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['G']['Position'][30],  result['Sat_position']['G']['Position'][30],decimal=4)
 
-#     assert_almost_equal(expected_result['Sat_position']['G']['Azimut'],  result['Sat_position']['G']['Azimut'],decimal=4)
-#     assert_almost_equal(expected_result['Sat_position']['E']['Azimut'],  result['Sat_position']['E']['Azimut'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['G']['Azimut'],  result['Sat_position']['G']['Azimut'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['E']['Azimut'],  result['Sat_position']['E']['Azimut'],decimal=4)
 
-#     assert_almost_equal(expected_result['Sat_position']['G']['Elevation'],  result['Sat_position']['G']['Elevation'],decimal=4)
-#     assert_almost_equal(expected_result['Sat_position']['E']['Elevation'],  result['Sat_position']['E']['Elevation'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['G']['Elevation'],  result['Sat_position']['G']['Elevation'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['C']['Azimut'],  result['Sat_position']['C']['Azimut'],decimal=4)
 
 
 # def test_GNSS_MultipathAnalysis_broadcast_navfile():
@@ -149,6 +145,3 @@ def read_pickle(file_path):
 # Run the tests
 if __name__ == '__main__':
     pytest.main()
-
-
-    
