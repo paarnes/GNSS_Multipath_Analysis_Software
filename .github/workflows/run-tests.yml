@@ -25,4 +25,4 @@ jobs:
         pip install -r .devcontainer/requirements.txt
     - name: Test with pytest
       run: |
-        pytest src/Tests/test_GNSS_MultipathAnalysis.py
+        pytest tests/test_GNSS_MultipathAnalysis.py
