@@ -59,9 +59,10 @@ def ECEF2enu(lat,lon,dX,dY,dZ): ## added this new function 28.01.2023
     
     dP_ENU = np.dot(M, dP_ECEF)
     
-    e = float(dP_ENU[0]) 
-    n = float(dP_ENU[1])
-    u = float(dP_ENU[2])
+    e = dP_ENU[0, 0]
+    n = dP_ENU[1, 0]
+    u = dP_ENU[2, 0]
+
     return e, n, u
 
 
@@ -128,7 +129,7 @@ def compute_azimut_elev(X,Y,Z,xm,ym,zm):
     dZ = (Z - zm)
     
     ## -- Transformerer koordinatene over til lokalttoposentrisk system:
-    if X.shape == (): # if only float put in, not list or array
+    if isinstance(X, float): # if only float put in, not list or array
         east,north,up = ECEF2enu(lat,lon,dX,dY,dZ)
         ## -- Computes the azimut angle and elevation angel for current coordinates (in degrees)
         if (east > 0 and north < 0) or (east < 0 and north < 0):

@@ -23,6 +23,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest
         pip install -r .devcontainer/requirements.txt
+
+    - name: Print root directory
+      run: |
+        echo "Root directory: $PWD"
+        
     - name: Test with pytest
       run: |
-        pytest src/Tests/test_GNSS_MultipathAnalysis.py
+        export PYTHONPATH=$PYTHONPATH:/src/GNSS_MultipathAnalysis.py
+        python -m pytest tests/test_GNSS_MultipathAnalysis.py
