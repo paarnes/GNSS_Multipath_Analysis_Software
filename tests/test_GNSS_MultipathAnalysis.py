@@ -4,9 +4,12 @@ import sys
 import os
 import numpy as np
 from numpy.testing import assert_almost_equal
-os.chdir('src')
-from GNSS_MultipathAnalysis import GNSS_MultipathAnalysis
+
+from src.GNSS_MultipathAnalysis import GNSS_MultipathAnalysis
 from Geodetic_functions import ECEF2geodb, ECEF2enu, compute_azimut_elev
+
+
+os.chdir('src')
 
 test_data_ECEF2geodb = [
     (6378137.0, 6356752.314245, 2765120.7658, -4449250.0340, -3626405.4228, (-0.6086611088458492, -1.014732114220556, 41.7607967723161)),
