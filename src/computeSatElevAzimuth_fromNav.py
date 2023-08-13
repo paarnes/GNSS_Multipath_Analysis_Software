@@ -2,6 +2,7 @@ import numpy as np
 from readRinexNav import read_rinex3_nav
 from Geodetic_functions import *
 import pandas as pd, re, os
+from tqdm import tqdm, trange
 
 def computeSatElevAzimuth_fromNav(navigationFile,approxPosition,GNSS_SVs,GNSS_obs,time_epochs, tLim_GEC=None,tLim_R=None):
     """
@@ -36,6 +37,10 @@ def computeSatElevAzimuth_fromNav(navigationFile,approxPosition,GNSS_SVs,GNSS_ob
     y = float(approxPosition[1])
     z = float(approxPosition[2])
     
+    
+    total_epochs = sum(len(GNSS_obs[sys]) for sys in GNSS_SVs)
+    pbar = tqdm(total=total_epochs, desc=f"Computing satellite coordinates, azimuth and elevation angles for desired systems", position=0, leave=True, bar_format='{desc}: {percentage:3.0f}%|{bar}| ({n_fmt}/{total_fmt})')
+
     ## -- Running the computations for each system
     GNSS_FullName = dict(list(zip(['G','R','E','C'],['GPS','GLONASS','Galileo','BeiDou']))) # dict for mapping from system code to full name 
     sat_pos = {}                           # Dict for storing all data
@@ -57,8 +62,7 @@ def computeSatElevAzimuth_fromNav(navigationFile,approxPosition,GNSS_SVs,GNSS_ob
         ## -- Run through all epochs
         null_epoch = time_epochs[:,1][0]
         for epoch in np.arange(0,nepochs):
-            aktuelle_sat_list = [PRN for PRN in list(GNSS_SVs[sys][epoch][1::].astype(int)) if PRN !=0]   ## added [1::] because first ele is nr of satellites 30.01.2023
-            print("\rCurrently computing coordinates for the %s system. Progress: %.1f%%" %(GNSS_FullName[sys],epoch/len(GNSS_obs[sys])*100), end='\r',flush=True)  # \r makes the line get overwritten
+            aktuelle_sat_list = [PRN for PRN in list(GNSS_SVs[sys][epoch][1::].astype(int)) if PRN !=0]  
             ## -- Compute satellite coordinates for all availible satellites   
             curr_time = time_epochs[:,1][epoch] # Extracting time for RINEX obs-file
             df_data = pd.DataFrame(data) # making dataframe of data
@@ -104,7 +108,8 @@ def computeSatElevAzimuth_fromNav(navigationFile,approxPosition,GNSS_SVs,GNSS_ob
             sat_pos[sys]['Position']  = curr_pos
             sat_pos[sys]['Azimut']    = azimut
             sat_pos[sys]['Elevation'] = elevation
-        
+            pbar.update(1)
+    pbar.close()
     return sat_pos
     
             
