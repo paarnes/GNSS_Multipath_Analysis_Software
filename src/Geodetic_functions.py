@@ -28,7 +28,7 @@ def ECEF2geodb(a,b,X,Y,Z):
     rho = sqrt(X**2 +Y**2)
     my  = arctan((Z*a)/(rho*b))
     lat = arctan(( Z +e2m*b*(sin(my))**3)/(rho - e2*a*(cos(my))**3))
-    lon = arctan(Y/X)
+    lon = arctan2(Y,X)
     N   = Nrad(a,b,lat)
     h   = rho*cos(lat) + Z*sin(lat) - N*( 1 - e2*(sin(lat))**2)
     return lat, lon, h
@@ -59,9 +59,10 @@ def ECEF2enu(lat,lon,dX,dY,dZ): ## added this new function 28.01.2023
     
     dP_ENU = np.dot(M, dP_ECEF)
     
-    e = float(dP_ENU[0]) 
-    n = float(dP_ENU[1])
-    u = float(dP_ENU[2])
+    e = dP_ENU[0, 0]
+    n = dP_ENU[1, 0]
+    u = dP_ENU[2, 0]
+
     return e, n, u
 
 
@@ -128,7 +129,7 @@ def compute_azimut_elev(X,Y,Z,xm,ym,zm):
     dZ = (Z - zm)
     
     ## -- Transformerer koordinatene over til lokalttoposentrisk system:
-    if X.shape == (): # if only float put in, not list or array
+    if isinstance(X, float): # if only float put in, not list or array
         east,north,up = ECEF2enu(lat,lon,dX,dY,dZ)
         ## -- Computes the azimut angle and elevation angel for current coordinates (in degrees)
         if (east > 0 and north < 0) or (east < 0 and north < 0):

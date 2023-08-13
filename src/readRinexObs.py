@@ -729,7 +729,7 @@ def rinexFindNEpochs304(filename, tFirstObs, tLastObs, tInterval):
         tFirstObs = tFirstObs.astype(int) 
         tLastObs = tLastObs.astype(int) 
         rinex_lines = fid.readlines()
-        epoch_line = [line for line in rinex_lines if '>' in line] # list with all the line thats defines a epoch
+        epoch_line = [line for line in rinex_lines if line.startswith('>')] # list with all the line thats defines a epoch
         nepochs = len(epoch_line)    
     #  if tLastObs is not in header. Function counts number of epochs manually 
     else:  

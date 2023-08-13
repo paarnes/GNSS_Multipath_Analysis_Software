@@ -426,7 +426,6 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                 nCodes_Total = nCodes_Total + nCodes_currentBand
                
                 ## -- Store codes for this band
-                # current_band_dict.Codes = cellstr(obsCodeOverview{sys}{bandNumInd});
                 curr_band = current_sys_dict['Bands'][current_sys_dict['nBands']-1]
                 current_band_dict['Codes'] = obsCodeOverview[sys+1][bandNumInd]
     
@@ -498,6 +497,8 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                             for k in np.arange(0,nCodesOtherBand):                                
                                   ## Get code(range) and phase obsertion codes from the other band
                                   range2_Code = other_band_dict['Codes'][k]
+                                  if range2_Code == []:
+                                      continue
                                   phase2_Code = "L" + range2_Code[1::]
                                   ## Check if phase2 observation was read from RINEX 3 observtaion file
                                   if phase2_Code in obsCodes[sys+1][currentGNSSsystem]:
@@ -596,7 +597,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                                 current_code_dict['phase1_Code'], current_code_dict['phase2_Code'], graphDir)
                  
                       ## -- Place the current code dict in its original place in current band dict
-                      current_band_dict[range1_Code] = current_code_dict
+                    current_band_dict[range1_Code] = current_code_dict
                   
                 else:
                     ## If phase1 observation is not read from RINEX observation file
