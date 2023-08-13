@@ -454,9 +454,14 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         ## -- Get number of carrier bands in current system dict
         nBands = current_sys_dict['nBands']
         ## -- Itterate through Bands in system dict. 
-        ## NOTE variable "bandNumInd" is NOT the carrier band number, but the index of that band in this system dict  
-    
-        for bandNumInd in trange(0,nBands,initial=0, desc='Currently processing all available bands for %s' % (GNSSsystemName), leave=False,bar_format=bar_format,position=0): 
+        ## NOTE variable "bandNumInd" is NOT the carrier band number, but the index of that band in this system dict
+        
+        total_epochs = sum(current_sys_dict[current_sys_dict['Bands'][bandNumInd]]['nCodes'] for bandNumInd  in range(0,nBands))
+        pbar = tqdm(total=total_epochs, desc='Currently processing all available signals for %s' % (GNSSsystemName), position=0, leave=True, bar_format='{desc}: {percentage:3.0f}%|{bar}| ({n_fmt}/{total_fmt})')
+
+
+        # for bandNumInd in trange(0,nBands,initial=0, desc='Currently processing all available bands for %s' % (GNSSsystemName), leave=False,bar_format=bar_format,position=0): 
+        for bandNumInd in range(0,nBands): #,initial=0, desc='Currently processing all available bands for %s' % (GNSSsystemName), leave=False,bar_format=bar_format,position=0): 
             ## Make HARD copy of current band dict
             current_band_dict = current_sys_dict[current_sys_dict['Bands'][bandNumInd]]
             
@@ -602,13 +607,13 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                 else:
                     ## If phase1 observation is not read from RINEX observation file
                     print('\nINFO(GNSS_MultipathAnalysis): %s code exists in RINEX observation file, but not %s\n'\
-                                    'Linear combination using this signal is not used.\n\n' % (range1_Code, phase1_Code))
+                                    'Linear combination using this signal is not used. Jumping to next code..\n\n' % (range1_Code, phase1_Code))
 
 
                     current_band_dict['Codes'][ismember(current_band_dict['Codes'], range1_Code)] = []
                     current_band_dict['nCodes'] = current_band_dict['nCodes'] - 1 
                         
-                         
+                pbar.update(1)         
             ## -- Replace the, now altered, hard copy of current band dict in its original place in system dict
             current_sys_dict[current_sys_dict['Bands'][bandNumInd]] = current_band_dict
             if sp3NavFilename_1 != '':
@@ -671,6 +676,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         analysisResults['ExtraOutputInfo']['meanClockJumpInterval'] = meanClockJumpInterval
         analysisResults['ExtraOutputInfo']['stdClockJumpInterval']  = stdClockJumpInterval
         
+        pbar.close()
     if 'sat_pos' in locals(): # add satellite position,azimut, elevation to analysResults
         analysisResults['Sat_position'] = sat_pos
     
