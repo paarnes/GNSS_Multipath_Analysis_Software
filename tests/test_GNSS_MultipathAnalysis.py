@@ -4,12 +4,15 @@ import sys
 import os
 import numpy as np
 from numpy.testing import assert_almost_equal
-
+# sys.path.append("../src")
+project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(project_path,'src'))
+# os.chdir(os.path.join(project_path,'src'))
 from GNSS_MultipathAnalysis import GNSS_MultipathAnalysis
 from Geodetic_functions import ECEF2geodb, ECEF2enu, compute_azimut_elev
 
 
-os.chdir('src')
+# os.chdir('src')
 
 test_data_ECEF2geodb = [
     (6378137.0, 6356752.314245, 2765120.7658, -4449250.0340, -3626405.4228, (-0.6086611088458492, -1.014732114220556, 41.7607967723161)),
@@ -49,11 +52,12 @@ def read_pickle(file_path):
     return data
 
 
-
+os.chdir(os.path.join(project_path,'src'))
 def test_GNSS_MultipathAnalysis_sp3_file():
     """
     Test the results from OPEC2022 and sp3 files
     """
+    
     rinObs_file = "../TestData/ObservationFiles/NMBUS_SAMSUNG_S20.20o"
     sp3Nav_file = "../TestData/SP3/NMBUS_2020 10 30.SP3"
     expected_res = "../tests/analysisResults_NMBUS.pkl"
