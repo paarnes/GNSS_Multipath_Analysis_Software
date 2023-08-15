@@ -13,6 +13,8 @@ from writeOutputFile import writeOutputFile
 from make_polarplot import make_polarplot,make_skyplot, make_polarplot_SNR, plot_SNR_wrt_elev
 from make_polarplot_dont_use_TEX import make_polarplot_dont_use_TEX, make_skyplot_dont_use_TEX, make_polarplot_SNR_dont_use_TEX, plot_SNR_wrt_elev_dont_use_TEX
 from plotResults import *
+import warnings
+warnings.filterwarnings("ignore")
 
 def GNSS_MultipathAnalysis(rinObsFilename,
                           broadcastNav1=None,
