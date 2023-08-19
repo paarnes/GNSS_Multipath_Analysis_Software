@@ -308,7 +308,7 @@ def plotResults(ion_delay_phase1, multipath_range1, sat_elevation_angles,\
     # plt.show()
     
     # filename  = '%s_%s_%s_MP_combined.pdf' % (GNSSsystemName, range1_Code, range2_Code)
-    filename2 = '%s_%s_%s_MP_combined.png' % (GNSSsystemName, range1_Code, range2_Code)
+    filename2 = '%s_%s_MP_combined.png' % (GNSSsystemName, range1_Code)
     # full_filename = graphDir + '/' + filename
     full_filename2 = graphDir + '/' + filename2
     # fig5.savefig(graphDir + "/" +  filename)
@@ -679,7 +679,7 @@ def plotResults_dont_use_TEX(ion_delay_phase1, multipath_range1, sat_elevation_a
     # plt.show()
     
     # filename  = '%s_%s_%s_MP_combined.pdf' % (GNSSsystemName, range1_Code, range2_Code)
-    filename2 = '%s_%s_%s_MP_combined.png' % (GNSSsystemName, range1_Code, range2_Code)
+    filename2 = '%s_%s_MP_combined.png' % (GNSSsystemName, range1_Code)
     # full_filename = graphDir + '/' + filename
     full_filename2 = graphDir + '/' + filename2
     # fig5.savefig(graphDir + "/" +  filename)
