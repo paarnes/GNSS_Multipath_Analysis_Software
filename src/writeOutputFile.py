@@ -6,7 +6,9 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
     
     """
     import os, numpy as np
-    
+    import logging
+
+    logger = logging.getLogger(__name__)
     
     if outputDir is None or outputDir == "":
         outputDir = 'Outputs_Files'
@@ -83,15 +85,15 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                 try:
                     current_code_struct = current_band_struct[current_band_struct['Codes'][k]]
                 except:
-                    break # If noe code available
+                    continue # If noe code available
                 
                 if current_code_struct['LLI_slip_distribution']['n_slips_Tot'] > 0:
                     LLI_Active = 1
-                    break
+                    continue
             if LLI_Active:
-                break
+                continue
         if LLI_Active:
-            break
+            continue
     if not LLI_Active:
         includeLLIOverview = 0
     
@@ -288,8 +290,8 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                     try:
                         current_code_struct = current_band_struct[codeName]
                     except:
-                        print("No estimates to put in report for this code")
-                        break
+                        logger.warning(f"INFO(GNSS_MultipathAnalysis): No estimates to put in report for {codeName}")
+                        continue
     
                     topline                     = topline + '_________'
                     bottomline                  = bottomline + '________|'
@@ -352,8 +354,7 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                     try:
                         current_code_struct = current_band_struct[codeName]
                     except:
-                        print("No estimates to put in report for this code")
-                        break
+                        continue
     
                     topline                     = topline + '_________'
                     bottomline                  = bottomline + '________|'
