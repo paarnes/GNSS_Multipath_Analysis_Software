@@ -15,6 +15,7 @@ from make_polarplot_dont_use_TEX import make_polarplot_dont_use_TEX, make_skyplo
 from plotResults import *
 import warnings
 warnings.filterwarnings("ignore")
+import logging
 
 def GNSS_MultipathAnalysis(rinObsFilename,
                           broadcastNav1=None,
@@ -166,8 +167,17 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     if cutoff_elevation_angle == None:
         cutoff_elevation_angle = 0
     
+    ## -- Create output file    
     if outputDir == None:
-        outputDir = "" 
+        outputDir = 'Output_Files'
+       
+    if not os.path.isdir(outputDir):
+        os.mkdir(outputDir)
+    
+    ## --Unless graph directory already exists, create directory
+    graphDir = outputDir + '/Graphs' 
+    if not os.path.isdir(graphDir):
+        os.mkdir(graphDir)
         
     if plotEstimates == None:
         plotEstimates = 1 
@@ -245,6 +255,12 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         print('WARNING: Third SP3 Navigation file can not be found.\n')
     
     
+    latex_installed = True
+    
+    ## -- Create a logger instance (logging.INFO, which will include INFO, WARNING, ERROR, and CRITICAL (not DEBUG))
+    path_logfile = os.path.join(outputDir,'Logfile.log')
+    logging.basicConfig(filename=path_logfile, filemode='w', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logger = logging.getLogger(__name__)
     
     
     ## Make dictionaries
@@ -458,12 +474,12 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         ## -- Itterate through Bands in system dict. 
         ## NOTE variable "bandNumInd" is NOT the carrier band number, but the index of that band in this system dict
         
-        total_epochs = sum(current_sys_dict[current_sys_dict['Bands'][bandNumInd]]['nCodes'] for bandNumInd  in range(0,nBands))
-        pbar = tqdm(total=total_epochs, desc='Currently processing all available signals for %s' % (GNSSsystemName), position=0, leave=True, bar_format='{desc}: {percentage:3.0f}%|{bar}| ({n_fmt}/{total_fmt})')
+        n_signals= sum(current_sys_dict[current_sys_dict['Bands'][bandNumInd]]['nCodes'] for bandNumInd  in range(0,nBands))
+        pbar = tqdm(total=n_signals, desc='Currently processing all available signals for %s' % (GNSSsystemName), position=0, leave=True, bar_format='{desc}: {percentage:3.0f}%|{bar}| ({n_fmt}/{total_fmt})')
 
 
         # for bandNumInd in trange(0,nBands,initial=0, desc='Currently processing all available bands for %s' % (GNSSsystemName), leave=False,bar_format=bar_format,position=0): 
-        for bandNumInd in range(0,nBands): #,initial=0, desc='Currently processing all available bands for %s' % (GNSSsystemName), leave=False,bar_format=bar_format,position=0): 
+        for bandNumInd in np.arange(0,nBands): #,initial=0, desc='Currently processing all available bands for %s' % (GNSSsystemName), leave=False,bar_format=bar_format,position=0): 
             ## Make HARD copy of current band dict
             current_band_dict = current_sys_dict[current_sys_dict['Bands'][bandNumInd]]
             
@@ -502,42 +518,46 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                          
                             # Itterate through codes in other band
                             for k in np.arange(0,nCodesOtherBand):                                
-                                  ## Get code(range) and phase obsertion codes from the other band
-                                  range2_Code = other_band_dict['Codes'][k]
-                                  if range2_Code == []:
-                                      continue
-                                  phase2_Code = "L" + range2_Code[1::]
-                                  ## Check if phase2 observation was read from RINEX 3 observtaion file
-                                  if phase2_Code in obsCodes[sys+1][currentGNSSsystem]:
-                                       ## Execute the analysis of current combination of observations. Return statistics on analysis
-                                       currentStats, success = signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, frequencyOverview, nepochs, tInterval, \
-                                       int(max_sat[sys]), GNSS_SVs[currentGNSSsystem], obsCodes[sys+1], GNSS_obs[currentGNSSsystem], GNSS_LLI[currentGNSSsystem],\
-                                           sat_elevation_angles[sys], phaseCodeLimit, ionLimit, cutoff_elevation_angle)
-                
-                                       if not success:
-                                            return success
-                                       
-                                       ##  -- Get number of estimates produced from analysis
-                                       current_nEstimates = currentStats['nEstimates']
-                                
-                                       ## -- Check if current analysis has more estimate than previous
-                                       if current_nEstimates > best_nEstimates:
-                                            ## store current analysis results as "best so far"
-                                            best_nEstimates = current_nEstimates
-                                            best_range1 = range1_Code
-                                            best_range2 = range2_Code
-                                            best_currentStats = currentStats
+                                ## Get code(range) and phase obsertion codes from the other band
+                                range2_Code = other_band_dict['Codes'][k]
+                                if range2_Code == []:
+                                    continue
+                                phase2_Code = "L" + range2_Code[1::]
+                                ## Check if phase2 observation was read from RINEX 3 observtaion file
+                                if phase2_Code in obsCodes[sys+1][currentGNSSsystem]:
+                                    ## Execute the analysis of current combination of observations. Return statistics on analysis
+                                    currentStats, success = signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, frequencyOverview, nepochs, tInterval, \
+                                    int(max_sat[sys]), GNSS_SVs[currentGNSSsystem], obsCodes[sys+1], GNSS_obs[currentGNSSsystem], GNSS_LLI[currentGNSSsystem],\
+                                        sat_elevation_angles[sys], phaseCodeLimit, ionLimit, cutoff_elevation_angle)
+             
+                                    if not success:
+                                        return success
                                     
-                                  ## If phase2 observation is not read from RINEX 3 observation file
-                                  else:
-                                        print('\nINFO(GNSS_MultipathAnalysis): %s code exists in RINEX observation file, but not %s\n'\
-                                            'Linear combinations using this signal is not used.\n\n' % (range2_Code, phase2_Code))
-                                        ## -- Remove range1 observation dict from other band dict, as it can not be used later
-                                        other_band_dict['Codes'][ismember(other_band_dict['Codes'], range2_Code)] = []
-                                        ## -- Deincrement numbe rof codes in otehr band dict
-                                        other_band_dict['nCodes'] = other_band_dict['nCodes'] - 1 
-                                        ## -- replace the, now altered, hard copy of other band dict in its original place in system dict
-                                        current_sys_dict[current_sys_dict['Bands'][secondBandnum]] = other_band_dict
+                                    ##  -- Get number of estimates produced from analysis
+                                    current_nEstimates = currentStats['nEstimates']
+                             
+                                    if current_nEstimates == 0:
+                                        logger.warning(f'INFO(GNSS_MultipathAnalysis): Estimates for signal combination {range1_Code}-{phase1_Code}-{phase2_Code} were not possible.'\
+                                                       ' The reason could be a lack of simultaneous observations from the three signals.')
+
+
+                                    ## -- Check if current analysis has more estimate than previous
+                                    if current_nEstimates > best_nEstimates:
+                                        ## store current analysis results as "best so far"
+                                        best_nEstimates = current_nEstimates
+                                        best_currentStats = currentStats
+                                  
+                                ## If phase2 observation is not read from RINEX 3 observation file
+                                else:
+                                    pbar.update(1)
+                                    logger.warning(f"INFO(GNSS_MultipathAnalysis): {range2_Code} code exists in RINEX observation file, but not {phase2_Code}. Linear combinations using this signal are not used.")
+                                    
+                                    ## -- Remove range1 observation dict from other band dict, as it can not be used later
+                                    other_band_dict['Codes'][ismember(other_band_dict['Codes'], range2_Code)] = []
+                                    ## -- Deincrement numbe rof codes in otehr band dict
+                                    other_band_dict["nCodes"] -= 1 
+                                    ## -- replace the, now altered, hard copy of other band dict in its original place in system dict
+                                    current_sys_dict[current_sys_dict['Bands'][secondBandnum]] = other_band_dict
         
                     ## -- Store best analysis result dict in current band dict
                     current_code_dict = best_currentStats                  
@@ -548,8 +568,9 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                     if type(current_code_dict) == dict:
                         nSat = len(current_code_dict['range1_slip_distribution_per_sat'])
                     else:
-                        print('\n\nWARNING! No estimates for band: "%s" and system: "%s". Probably because of only one obscode available for the current band. Observations from two different frequency is needed.' % (currentBandName,GNSSsystemName))
-                        break
+                        pbar.update(1)
+                        continue
+                    
      
                     for sat in np.arange(0,nSat):
                         ## -- If current satellite had observation of range1 code
@@ -564,70 +585,57 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                                     current_sys_dict['observationOverview'][satCode][currentBandName] = current_sys_dict['observationOverview'][satCode][currentBandName] + current_code_dict['range1_Code']
     
                                 else:
-                                  current_sys_dict['observationOverview'][satCode][currentBandName] =  current_sys_dict['observationOverview'][satCode][currentBandName] + ', ' + current_code_dict['range1_Code']
+                                    current_sys_dict['observationOverview'][satCode][currentBandName] =  current_sys_dict['observationOverview'][satCode][currentBandName] + ', ' + current_code_dict['range1_Code']
     
                   
-                   ## -- If plotEstimates boolean is 1, plot estimates from best analysis and store figures
-                    if plotEstimates:
-                      ## If user has not specified an output directory, set output directory to "Output_Files" 
-                      if outputDir == "":
-                          outputDir = 'Output_Files'
-                         
-                      ## -- Unless output directory already exists, create output directory
-                      if not os.path.isdir(outputDir):
-                          os.mkdir(outputDir)
-                      
-                     
-                      ## --Unless graph directory already exists, create directory
-                      graphDir = outputDir + '/Graphs' 
-                      if not os.path.isdir(graphDir):
-                          os.mkdir(graphDir)
-                      
-                     
-                      ## -- Plot and save graphs
-                      if use_LaTex: #check if use TEX. Adding try/except to handle if user dont have TEX installed
-                          try:
-                              plotResults(current_code_dict['ion_delay_phase1'], current_code_dict['multipath_range1'], \
+                   
+                    if plotEstimates:                       
+                        ## -- Plot and save graphs
+                        if use_LaTex: #check if use TEX. Adding try/except to handle if user dont have TEX installed
+                            try:
+                                plotResults(current_code_dict['ion_delay_phase1'], current_code_dict['multipath_range1'], \
+                                    current_code_dict['sat_elevation_angles'], tInterval, currentGNSSsystem, \
+                                    current_code_dict['range1_Code'], current_code_dict['range2_Code'], \
+                                    current_code_dict['phase1_Code'], current_code_dict['phase2_Code'], graphDir)
+                            except:
+                                latex_installed = False
+                                plotResults_dont_use_TEX(current_code_dict['ion_delay_phase1'], current_code_dict['multipath_range1'], \
+                                    current_code_dict['sat_elevation_angles'], tInterval, currentGNSSsystem, \
+                                    current_code_dict['range1_Code'], current_code_dict['range2_Code'], \
+                                    current_code_dict['phase1_Code'], current_code_dict['phase2_Code'], graphDir)
+                        else:                          
+                            plotResults_dont_use_TEX(current_code_dict['ion_delay_phase1'], current_code_dict['multipath_range1'], \
                                   current_code_dict['sat_elevation_angles'], tInterval, currentGNSSsystem, \
                                   current_code_dict['range1_Code'], current_code_dict['range2_Code'], \
                                   current_code_dict['phase1_Code'], current_code_dict['phase2_Code'], graphDir)
-                          except:
-                              print("TEX not installed on your computer! Install that to get prettier text formatting in plots.")
-                              plotResults_dont_use_TEX(current_code_dict['ion_delay_phase1'], current_code_dict['multipath_range1'], \
-                                  current_code_dict['sat_elevation_angles'], tInterval, currentGNSSsystem, \
-                                  current_code_dict['range1_Code'], current_code_dict['range2_Code'], \
-                                  current_code_dict['phase1_Code'], current_code_dict['phase2_Code'], graphDir)
-                      else:                          
-                          plotResults_dont_use_TEX(current_code_dict['ion_delay_phase1'], current_code_dict['multipath_range1'], \
-                                current_code_dict['sat_elevation_angles'], tInterval, currentGNSSsystem, \
-                                current_code_dict['range1_Code'], current_code_dict['range2_Code'], \
-                                current_code_dict['phase1_Code'], current_code_dict['phase2_Code'], graphDir)
                  
                       ## -- Place the current code dict in its original place in current band dict
                     current_band_dict[range1_Code] = current_code_dict
-                  
+                    pbar.update(1)
                 else:
                     ## If phase1 observation is not read from RINEX observation file
-                    print('\nINFO(GNSS_MultipathAnalysis): %s code exists in RINEX observation file, but not %s\n'\
-                                    'Linear combination using this signal is not used. Jumping to next code..\n\n' % (range1_Code, phase1_Code))
-
+                    pbar.update(1) 
+                    logger.warning(f"INFO(GNSS_MultipathAnalysis): {range1_Code} code exists in RINEX observation file, but not {phase1_Code}\n'\
+                                   'Linear combination using this signal is not used.")
 
                     current_band_dict['Codes'][ismember(current_band_dict['Codes'], range1_Code)] = []
                     current_band_dict['nCodes'] = current_band_dict['nCodes'] - 1 
                         
-                pbar.update(1)         
+         
             ## -- Replace the, now altered, hard copy of current band dict in its original place in system dict
             current_sys_dict[current_sys_dict['Bands'][bandNumInd]] = current_band_dict
-            if sp3NavFilename_1 != '':
-                try:
-                    sat_pos[currentGNSSsystem] = {}
-                    sat_pos[currentGNSSsystem]['Position']  = sat_coordinates[currentGNSSsystem]                    
-                    sat_pos[currentGNSSsystem]['Azimut']    = sat_azimut_angles[sys]
-                    sat_pos[currentGNSSsystem]['Elevation'] = current_code_dict['sat_elevation_angles']
-                except:
-                    pass
+            
+        # Store the satellite position,azimuths and elevation angles if SP3 files is used    
+        if sp3NavFilename_1 != '':
+            try:
+                sat_pos[currentGNSSsystem] = {}
+                sat_pos[currentGNSSsystem]['Position']  = sat_coordinates[currentGNSSsystem]                    
+                sat_pos[currentGNSSsystem]['Azimut']    = sat_azimut_angles[sys]
+                sat_pos[currentGNSSsystem]['Elevation'] = sat_elevation_angles[sys]
+            except:
+                pass
         
-        
+ 
         ## -- Replace the, now altered, hard copy of current system dict in its original place in results dict
         analysisResults[GNSSsystemName] = current_sys_dict
     
@@ -685,19 +693,9 @@ def GNSS_MultipathAnalysis(rinObsFilename,
 
         
     print('\n\nINFO: Analysis complete!\n')
-    ## -- Create output file    
-    if outputDir == "":
-        outputDir = 'Output_Files'
-       
-    ## -- Unless output directory already exists, create output directory
-    if not os.path.isdir(outputDir):
-        os.mkdir(outputDir)
-    
-   
-    ## --Unless graph directory already exists, create directory
-    graphDir = outputDir + '/Graphs' 
-    if not os.path.isdir(graphDir):
-        os.mkdir(graphDir)
+
+    if latex_installed == False:
+        logger.warning("INFO(GNSS_MultipathAnalysis): Use of TEX was enabled, but not installed on your computer! Install that to get prettier text formatting in plots.")
         
     baseFileName = os.path.basename(rinObsFilename)
     outputFilename = baseFileName.split('.')[0] +   '_Report.txt'
@@ -747,18 +745,24 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                 make_polarplot_dont_use_TEX(analysisResults, graphDir)  
             
         if include_SNR:
-            
-            print('INFO: Making a plot of the Signal To Noise Ration (SNR). Please wait ...\n')
-            if use_LaTex:
-                try:
-                    make_polarplot_SNR(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir)
-                    plot_SNR_wrt_elev(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir,tInterval)
-                except:
+            # Seaching for SNR codes
+            for sys in GNSS_obs.keys():
+                GNSSsystemIndex = [k for k in GNSSsystems if GNSSsystems[k] == sys][0]
+                SNR_codes = [SNR_code for SNR_code in obsCodes[GNSSsystemIndex][sys] if 'S' in SNR_code[0]]
+            if len(SNR_codes) != 0:
+                print('INFO: Making a plot of the Signal To Noise Ration (SNR). Please wait ...\n')
+                if use_LaTex:
+                    try:
+                        make_polarplot_SNR(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir)
+                        plot_SNR_wrt_elev(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir,tInterval)
+                    except:
+                        make_polarplot_SNR_dont_use_TEX(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir)
+                        plot_SNR_wrt_elev_dont_use_TEX(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir,tInterval)
+                else:
                     make_polarplot_SNR_dont_use_TEX(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir)
                     plot_SNR_wrt_elev_dont_use_TEX(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir,tInterval)
             else:
-                make_polarplot_SNR_dont_use_TEX(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir)
-                plot_SNR_wrt_elev_dont_use_TEX(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir,tInterval)
+                logger.warning("INFO(GNSS_MultipathAnalysis): There is no SNR codes available in the RINEX files. Plot of the Signal To Noise Ration is not possible.")
                 
             for syst in GNSSsystems.keys():
                 curr_syst =GNSSsystemCode2Fullname[GNSSsystems[syst]]
@@ -783,7 +787,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     print('INFO: The analysis results has been written to the file %s.\n' % ('analysisResults.pkl'))
     print('INFO: Finished!')
     f.close()
-
+    logging.shutdown()
 
     return analysisResults
 
