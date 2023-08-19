@@ -119,52 +119,54 @@ def computeSatElevations(GNSS_SVs, GNSSsystems, approxPosition,\
         epochInterval = epochInterval_1;
     
     satMissingData = []
+    
+    
     bar_format = '{desc}: {percentage:3.0f}%|{bar}| ({n_fmt}/{total_fmt})'
     for k in tqdm(range(0,nGNSSsystems),desc='Looping through the systems',position=0,leave=True,bar_format=bar_format):
-       n_ep = int(nepochs)
-       nSat = int(max_sat[k]) + 1
-       # Initialize data matrix for current GNSSsystem
-       sat_elevation_angles[k] = np.zeros([n_ep, nSat])
-       sat_azimut_angles[k]    = np.zeros([n_ep, nSat]) 
-       X = np.full((n_ep, nSat), np.nan)  # Array for storing X-coordinate
-       Y = np.full((n_ep, nSat), np.nan)  # Array for storing Y-coordinate
-       Z = np.full((n_ep, nSat), np.nan)  # Array for storing Z-coordinate
-       
-       sys = GNSSsystems[k+1]
-       sat_coordinates[sys] = {} # added this 27.01.2023
-       if sys in navGNSSsystems: # lat til tqdm
-           curr_pos = {}  # dict for storing data   
-           for epoch in tqdm(range(0,nepochs),desc='Satellite elevation angles are being calculated for system %s of %s' %(k+1, nGNSSsystems),position=0, leave=False, bar_format=bar_format):             
-               ##-- GPS Week and time of week of current epoch
-               week = time_epochs[epoch,0]
-               tow  = time_epochs[epoch,1]
-               ## -- Satellites in current epoch that should have elevation computed
-               # SVs = np.nonzero(FirstLastObsEpochOverview[k][epoch, :])[0] # COMMENTED OUT 11.03.2023 to prevent computing elevation angles for satellites not visalble in the current epoc
-               SVs  = GNSS_SVs[sys][epoch,1::][GNSS_SVs[sys][epoch,1::] != 0].astype(int) #extract only nonzero and convert to integer
-               n_sat = len(SVs)
-               for sat in np.arange(0,n_sat):
-                   # Get satellite elevation angle of current sat at current epoch
-                   PRN = int(SVs[sat])
-                   elevation_angle, azimut_angle, missing_nav_data, X[epoch,PRN], Y[epoch,PRN], Z[epoch,PRN] = \
-                       get_elevation_angle(GNSSsystems[k+1], SVs[sat], week, tow, sat_positions, nEpochs,\
-                      epoch_dates, epochInterval, navGNSSsystems, approxPosition);
-                   curr_pos[int(SVs[sat])] = np.array([X[:,PRN],Y[:,PRN],Z[:,PRN]]).T
-                   sat_elevation_angles[k][epoch,SVs[sat]] = elevation_angle
-                   sat_azimut_angles[k][epoch,SVs[sat]] = azimut_angle
-                   if missing_nav_data:
-                       ## Combine PRN number and GNSS system 
-                       SVN = str(GNSSsystems[k]) + str(SVs(sat))
-                       if not any(SVN in satMissingData):
-                           satMissingData.append(SVN)
-               sat_coordinates[sys]  = curr_pos
+        n_ep = int(nepochs)
+        nSat = int(max_sat[k]) + 1
+        # Initialize data matrix for current GNSSsystem
+        sat_elevation_angles[k] = np.zeros([n_ep, nSat])
+        sat_azimut_angles[k]    = np.zeros([n_ep, nSat]) 
+        X = np.full((n_ep, nSat), np.nan)  # Array for storing X-coordinate
+        Y = np.full((n_ep, nSat), np.nan)  # Array for storing Y-coordinate
+        Z = np.full((n_ep, nSat), np.nan)  # Array for storing Z-coordinate
+        
+        sys = GNSSsystems[k+1]
+        sat_coordinates[sys] = {} 
+        if sys in navGNSSsystems: 
+            curr_pos = {}  # dict for storing data   
+            for epoch in tqdm(range(0,nepochs),desc='Satellite elevation angles are being calculated for system %s of %s' %(k+1, nGNSSsystems),position=0, leave=False, bar_format=bar_format):             
+                ##-- GPS Week and time of week of current epoch
+                week = time_epochs[epoch,0]
+                tow  = time_epochs[epoch,1]
+                ## -- Satellites in current epoch that should have elevation computed
+                # SVs = np.nonzero(FirstLastObsEpochOverview[k][epoch, :])[0] # COMMENTED OUT 11.03.2023 to prevent computing elevation angles for satellites not visalble in the current epoc
+                SVs  = GNSS_SVs[sys][epoch,1::][GNSS_SVs[sys][epoch,1::] != 0].astype(int) #extract only nonzero and convert to integer
+                n_sat = len(SVs)
+                for sat in np.arange(0,n_sat):
+                    # Get satellite elevation angle of current sat at current epoch
+                    PRN = int(SVs[sat])
+                    elevation_angle, azimut_angle, missing_nav_data, X[epoch,PRN], Y[epoch,PRN], Z[epoch,PRN] = \
+                        get_elevation_angle(GNSSsystems[k+1], SVs[sat], week, tow, sat_positions, nEpochs,\
+                       epoch_dates, epochInterval, navGNSSsystems, approxPosition);
+                    curr_pos[int(SVs[sat])] = np.array([X[:,PRN],Y[:,PRN],Z[:,PRN]]).T
+                    sat_elevation_angles[k][epoch,SVs[sat]] = elevation_angle
+                    sat_azimut_angles[k][epoch,SVs[sat]] = azimut_angle
+                    if missing_nav_data:
+                        ## Combine PRN number and GNSS system 
+                        SVN = str(GNSSsystems[k]) + str(SVs(sat))
+                        if not any(SVN in satMissingData):
+                            satMissingData.append(SVN)
+                sat_coordinates[sys]  = curr_pos
                            
   
 
         
     if satMissingData:
-       print('INFO(computeSatElevations): The following satellites had missing orbit data in SP3 file.',\
-       'Their elevation angles were set to 0 for these epochs') 
-       print(satMissingData)
+        print('INFO(computeSatElevations): The following satellites had missing orbit data in SP3 file.',\
+        'Their elevation angles were set to 0 for these epochs') 
+        print(satMissingData)
     
         
     print('INFO(computeSatElevations): Satellite elevation angles have been computed')
