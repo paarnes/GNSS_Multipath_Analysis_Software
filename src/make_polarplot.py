@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib import rc
 from matplotlib.ticker import MaxNLocator
+import warnings
+warnings.filterwarnings("ignore")
 import logging
 logger = logging.getLogger(__name__)
 
