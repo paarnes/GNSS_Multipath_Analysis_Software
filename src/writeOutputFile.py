@@ -290,7 +290,7 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                     try:
                         current_code_struct = current_band_struct[codeName]
                     except:
-                        logger.warning(f"INFO(GNSS_MultipathAnalysis): No estimates to put in report for {codeName}")
+                        logger.warning(f"INFO(GNSS_MultipathAnalysis): No estimates to put in report for {codeName} for {curr_sys}")
                         continue
     
                     topline                     = topline + '_________'
