@@ -95,10 +95,10 @@ def read_rinex2_nav(filename, dataframe = None):
 
 # data, header, n_eph = read_rinex2_nav('testfile.20n')
 
-def read_rinex3_nav(filename, dataframe = None):    
+def read_rinex3_nav(filename, dataframe = False):    
     """
     Reads the navigation message from broadcast efemerids in RINEX v.3 format.
-    Support all global systems: GPS,GLONASS,Galileo and BeiDou
+    Support all global systems: GPS, GLONASS, Galileo and BeiDou
   
     Reads one navigation message at a time until the end of the row. Accumulate in
     in a common matrix, "data", where there is a line for each message. 
@@ -109,19 +109,22 @@ def read_rinex3_nav(filename, dataframe = None):
     Parameters
     ----------
     filename : Filename of the RINEX navigation file
-    dataframe : Set to 'yes' or 'YES' to get the data output as a pandas DataFrame (array as default) 
+    dataframe : Set to True to get the data output as a pandas DataFrame (array as default) 
     
     Returns
     -------
     data : Matrix with data for all epochs (or dataframe)
     header: List with header content
     n_eph: Number of epochs
+    glo_fcn: Dictionary containing Glonass FCN is GLONASS included in rinex nav
 
 
     """
 
     import numpy as np
     from pandas import DataFrame
+    
+    glo_fcn = None
     
     try:
         filnr = open(filename, 'r')
@@ -251,21 +254,48 @@ def read_rinex3_nav(filename, dataframe = None):
          
     filnr.close()
     n_eph = len(data)
-    if dataframe == 'yes' or dataframe == 'YES':
+    if dataframe:
         data = DataFrame(data)
         data_columns = list(data.columns)
         data_columns.pop(0) # Removing index that contains PRN nr ex 'G01'
         data[data_columns] = data[data_columns].astype(float) # Change the other values to float
         
+    if np.any(np.char.startswith(data[:, 0], 'R')):
+        glo_fcn = extract_glonass_fcn_from_rinex_nav(data)
 
-    return data, header, n_eph
+    return data, header, n_eph, glo_fcn
 
 
 
+def extract_glonass_fcn_from_rinex_nav(data_array):
+    """
+    Extract the GLONASS frequency channels numbers (FCN) from 
+    RINEX navigation file.
+    
+    Input:
+    ------
+        - data_array: numpy array containing ephemerides for all avaible systems
+        
+    Output:
+    ------
+        - fcn_dict: dictionary with PRN as keys and FCN as values {'R01': 1,'R02': -4, 'R03': 5,...} 
+    """
+    import numpy as np
+    # Get the PRN and FCN columns
+    prn_column = data_array[:, 0]  # PRN numbers have index 0
 
-# data, header, n_eph = read_rinex3_nav('opec_3.18n',dataframe='yes')
+    # Create array with GLONASS data only
+    glo_rows = np.char.startswith(prn_column, 'R')
+    glo_data = data_array[glo_rows]
+    unique_prns_name, unique_glo_prns_idx = np.unique(glo_data[:, 0], return_index=True)
+    PRN_data = glo_data[unique_glo_prns_idx] # ephemeride array with glonass only
+    
+    # Create dictionary with PRN as keys and FCN as values
+    fcn_dict = {str(prn): int(fcn) for prn, fcn in zip(PRN_data[:,0], PRN_data[:,17].astype(float).astype(int))}
+    return fcn_dict
 
-# data, header, n_eph = read_rinex3_nav('OPEC00NOR_S_20220010000_01D_GN.rnx',dataframe='no')
 
+if __name__=="__main__":
+    pass
 
 
