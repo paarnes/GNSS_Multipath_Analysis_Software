@@ -4,11 +4,12 @@ import matplotlib.cm as cm
 from matplotlib import rc
 from matplotlib.ticker import MaxNLocator
 from matplotlib.ticker import ScalarFormatter
+import warnings
+warnings.filterwarnings("ignore")
 import logging
 logger = logging.getLogger(__name__)
 
 plt.rcParams['axes.axisbelow'] = True
-plt.rcParams['font.family'] = 'Arial'
 rc('text', usetex=False)
 plt.rc('figure', figsize=(14, 9),dpi = 170)
 
@@ -176,7 +177,7 @@ def make_polarplot_SNR_dont_use_TEX(analysisResults, GNSS_obs,GNSSsystems, obsCo
         for code in SNR_obs[curr_sys].keys():
             SNR = SNR_obs[curr_sys][code]
             if np.all(np.isnan(SNR)):
-                logger.warning(f"INFO(GNSS_MultipathAnalysis): Plot not possible for {code} for {system}. The RINEX file does not contain data for this code for this system." )
+                logger.warning(f"INFO(GNSS_MultipathAnalysis): Polarplot of SNR is not possible for {code} for {system}. The RINEX file does not contain data for this code for this system." )
                 continue
             range1_code = code                
             ## -- Setting some arguments

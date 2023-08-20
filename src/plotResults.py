@@ -1,4 +1,7 @@
 
+import warnings
+warnings.filterwarnings("ignore")
+
 def plotResults(ion_delay_phase1, multipath_range1, sat_elevation_angles,\
     tInterval, currentGNSSsystem, range1_Code, range2_Code, phase1_Code, phase2_Code, graphDir):
     """
@@ -435,7 +438,6 @@ def plotResults_dont_use_TEX(ion_delay_phase1, multipath_range1, sat_elevation_a
     
     n,m = ion_delay_phase1.shape
     plt.rcParams['axes.axisbelow'] = True
-    plt.rcParams['font.family'] = 'Arial'
     rc('text', usetex=False)
     plt.rc('figure', figsize=(14, 9),dpi = 170)
     plt.rcParams.update({'figure.max_open_warning': 0})
@@ -941,7 +943,6 @@ def make_barplot_dont_use_TEX(analysisResults,graphDir):
     matplotlib.use('Agg') # dont want the plots to be displayed.
     
     plt.rcParams['axes.axisbelow'] = True
-    plt.rcParams['font.family'] = 'Arial'
     rc('text', usetex=False)
     plt.rc('figure', figsize=(14, 9),dpi = 170)
     plt.rcParams.update({'figure.max_open_warning': 0})
