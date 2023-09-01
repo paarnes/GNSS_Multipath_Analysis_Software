@@ -24,7 +24,9 @@ def computeSatElevAzimuth_fromNav(navigationFile,approxPosition,GNSS_SVs,GNSS_ob
         org_name = os.path.basename(nav_file)
         new_name = org_name.split('.')[0] + '_temp.' + org_name.split('.')[-1]
         full_path = os.path.join(base_path,new_name)
-        data_,header, n_eph, glo_fcn = read_rinex3_nav(full_path)
+        nav_data = read_rinex3_nav(full_path)
+        data_ = nav_data['ephemerides']
+        glo_fcn = nav_data['glonass_fcn']
         os.remove(full_path) # removes the temp broadcasted file 
         if idx == 0:
             data = data_
