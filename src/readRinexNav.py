@@ -262,8 +262,14 @@ def read_rinex3_nav(filename, dataframe = False):
         
     if np.any(np.char.startswith(data[:, 0], 'R')):
         glo_fcn = extract_glonass_fcn_from_rinex_nav(data)
+        
+    # Create a dictinary for the data
+    nav_data = {'ephemerides':data,
+                 'header':header,
+                 'nepohs': n_eph,
+                 'glonass_fcn': glo_fcn}
 
-    return data, header, n_eph, glo_fcn
+    return nav_data
 
 
 
@@ -291,7 +297,7 @@ def extract_glonass_fcn_from_rinex_nav(data_array):
     PRN_data = glo_data[unique_glo_prns_idx] # ephemeride array with glonass only
     
     # Create dictionary with PRN as keys and FCN as values
-    fcn_dict = {str(prn): int(fcn) for prn, fcn in zip(PRN_data[:,0], PRN_data[:,17].astype(float).astype(int))}
+    fcn_dict = {int(prn[1::]): int(fcn) for prn, fcn in zip(PRN_data[:,0], PRN_data[:,17].astype(float).astype(int))}
     return fcn_dict
 
 
