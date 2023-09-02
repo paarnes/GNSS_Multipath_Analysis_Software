@@ -1,3 +1,9 @@
+import re
+from datetime import datetime, timedelta
+import numpy as np
+from pandas import DataFrame
+from tqdm import tqdm    
+    
 def read_rinex2_nav(filename, dataframe = None):    
     """
     Reads the navigation message from GPS broadcast efemerids in RINEX v.2 format. (GPS only)
@@ -22,9 +28,7 @@ def read_rinex2_nav(filename, dataframe = None):
 
     """
   
-    import numpy as np
-    from pandas import DataFrame
-    
+
     try:
         print('Reading broadcast ephemeris from RINEX-navigation file.....')
         filnr = open(filename, 'r')
@@ -93,9 +97,11 @@ def read_rinex2_nav(filename, dataframe = None):
 
     return data, header, n_eph
 
-# data, header, n_eph = read_rinex2_nav('testfile.20n')
 
-def read_rinex3_nav(filename, dataframe = False):    
+
+
+
+def read_rinex3_nav(filename, desired_GNSS: list = ['G','R','E','C'], dataframe = False, data_rate = 30):    
     """
     Reads the navigation message from broadcast efemerids in RINEX v.3 format.
     Support all global systems: GPS, GLONASS, Galileo and BeiDou
@@ -109,7 +115,9 @@ def read_rinex3_nav(filename, dataframe = False):
     Parameters
     ----------
     filename : Filename of the RINEX navigation file
-    dataframe : Set to True to get the data output as a pandas DataFrame (array as default) 
+    desired_GNSS: List of desired systems. Ex desired_GNSS = ['G','R','E']
+    dataframe : Set to True to get the data output as a pandas DataFrame (array as default)
+    data_rate: The desired data rate of ephemerides. Default is 30 min. 
     
     Returns
     -------
@@ -120,138 +128,134 @@ def read_rinex3_nav(filename, dataframe = False):
 
 
     """
-
-    import numpy as np
-    from pandas import DataFrame
     
     glo_fcn = None
     
     try:
         filnr = open(filename, 'r')
-        print('Reading broadcast ephemeris from RINEX-navigation file.....')
     except OSError:
         print("Could not open/read file: %s", filename)
         return
         
-    
+
+    bar_format = '{desc}: {percentage:3.0f}%|{bar}| ({n_fmt}/{total_fmt})'
     line = filnr.readline().rstrip()
     header = []
     while 'END OF HEADER' not in line:
         line = filnr.readline().rstrip()
         header.append(line)
-
-    data  = np.zeros((1,36))
-    while line != '':
-        block_arr = np.array([])
-        ## -- Read first line of navigation message
-        line = filnr.readline().rstrip()
-        sys_PRN = line[0:3]
-        line = line.replace('D','E') # Replacing 'D' with 'E' ('D' is fortran syntax for exponentiall form)          
-        while 'S' in sys_PRN or 'I' in sys_PRN or 'J' in sys_PRN: ## trying to add GLONASS #PH
-            line = filnr.readline().rstrip()
+        
+    nav_lines = filter_data_rinex_nav(filename, desired_GNSS, data_rate=data_rate)
+    current_epoch = 0
+    n_update_break = int(np.floor(len(nav_lines)/10)) #number of epoch before updating progressbar
+    with tqdm(total=100,desc ="Rinex navigation file is being read" , position=0, leave=True, bar_format=bar_format) as pbar:
+        data  = np.zeros((1,36))
+        for lines in nav_lines:
+            line = lines[0].rstrip()
+            block_arr = np.array([])
             sys_PRN = line[0:3]
-            while sys_PRN == '   ':
-                line = filnr.readline().rstrip()
-                sys_PRN = line[0:3]
-                line = line.replace('D','E') # Replacing 'D' with 'E' ('D' is fortran syntax for exponentiall form)               
-        ## -- Have to add space between datacolums where theres no whitespace
-        for idx, val in enumerate(line):
-            if line[0:2] != ' ' and line[23] != ' ':
-                line = line[:23] + " " + line[23:]
-            if line[idx] == 'e' or line[idx] == 'E' and idx !=0:
-                line = line[:idx+4] + " " + line[idx+4:]
-        
-        fl = [el for el in line.split(" ") if el != ""]
-        block_arr = np.append(block_arr,np.array([fl]))
-        block_arr = block_arr.reshape(1,len(block_arr))
-        
-        
-        ## Looping throug the next 3-lines for current message (satellitte) (GLONASS)
-        if 'R' in sys_PRN:
-            for i in np.arange(0,3):
-                line = filnr.readline().rstrip()
-                line = line.replace('D','E') # Replacing 'D' with 'E' ('D' is fortran syntax for exponentiall form)               
-                ## -- Have to add space between datacolums where theres no whitespace
-                for idx, val in enumerate(line):
-                    if line[idx] == 'e' or line[idx] == 'E':
-                        line = line[:idx+4] + " " + line[idx+4:]
-    
-                ## --Reads the line vector nl from the text string line and adds navigation 
-                # message for the relevant satellite n_sat. It becomes a long line vector 
-                # for the relevant message and satellite.
-                nl = [el for el in line.split(" ") if el != ""]
-                block_arr = np.append(block_arr,np.array([nl]))
-                block_arr = block_arr.reshape(1,len(block_arr))
-        else:   
-            ## Looping throug the next 7-lines for current message (satellitte) (GPS,Galileo,BeiDou)
-            for i in np.arange(0,7):
-                line = filnr.readline().rstrip()
-                line = line.replace('D','E') # Replacing 'D' with 'E' ('D' is fortran syntax for exponentiall form)               
-                if line == '': 
-                    continue
-                else:
+            line = line.replace('D','E') # Replacing 'D' with 'E' ('D' is fortran syntax for exponentiall form)                      
+            ## -- Have to add space between datacolums where theres no whitespace
+            for idx, val in enumerate(line):
+                if line[0:2] != ' ' and line[23] != ' ':
+                    line = line[:23] + " " + line[23:]
+                if line[idx] == 'e' or line[idx] == 'E' and idx !=0:
+                    line = line[:idx+4] + " " + line[idx+4:]
+            
+            fl = [el for el in line.split(" ") if el != ""]
+            block_arr = np.append(block_arr,np.array([fl]))
+            block_arr = block_arr.reshape(1,len(block_arr))
+            
+            ## Looping throug the next 3-lines for current message (satellitte) (GLONASS)
+            if 'R' in sys_PRN:
+                for i in np.arange(1,len(lines)):
+                    line = lines[i].rstrip()
+                    line = line.replace('D','E') # Replacing 'D' with 'E' ('D' is fortran syntax for exponentiall form)               
                     ## -- Have to add space between datacolums where theres no whitespace
                     for idx, val in enumerate(line):
                         if line[idx] == 'e' or line[idx] == 'E':
                             line = line[:idx+4] + " " + line[idx+4:]
-                    
+        
                     ## --Reads the line vector nl from the text string line and adds navigation 
                     # message for the relevant satellite n_sat. It becomes a long line vector 
                     # for the relevant message and satellite.
-                    
-                    ## Runs through line to see if each line contains 4 objects. If not, adds nan.
-                    if i < 6 and line.lower().count('e') < 4:
-                        if line[10:20].strip() == '':
-                            line = line[:10] +  'nan' + line[10:]
-                        if line[30:40].strip() == '':
-                            line = line[:30] +  'nan' + line[30:]
-                        if line[50:60].strip() == '':
-                            line = line[:50] +  'nan' + line[50:]
-                        if line[70:80].strip() == '':
-                            line = line[:70] +  'nan' + line[70:]
-                        
-                    
-                    if i == 6 and line.lower().count('e') < 2 and 'E' not in sys_PRN:
-                        if line[10:20].strip() == '':
-                            line = line[:10] +  'nan' + line[10:]
-                        if line[30:40].strip() == '':
-                            line = line[:30] +  'nan' + line[30:]
-                            
-                    if i == 6 and line.lower().count('e') < 1 and 'E' in sys_PRN: #only one object in last line for Galileo
-                        if line[10:20].strip() == '':
-                            line = line[:10] +  'nan' + line[10:]
-                    
-                    if i == 6 and 'E' in sys_PRN: #only one object in last line for Galileo, but add nan to get 36 in total
-                        line = line + 'nan'
-                        
-            
                     nl = [el for el in line.split(" ") if el != ""]
-            
                     block_arr = np.append(block_arr,np.array([nl]))
                     block_arr = block_arr.reshape(1,len(block_arr))
-        
-             
-        ## -- Collecting all data into common variable
-        if block_arr.shape[1] > 36:
-            block_arr = block_arr[:,0:36]
-        try:
-            if np.size(block_arr) != 0 and 'R' not in sys_PRN:
-                data  = np.concatenate([data , block_arr], axis=0)
+            else:   
+                ## Looping throug the next 7-lines for current message (satellitte) (GPS,Galileo,BeiDou)
+                for i in np.arange(1,len(lines)):
+                    line = lines[i].rstrip()
+                    line = line.replace('D','E') # Replacing 'D' with 'E' ('D' is fortran syntax for exponentiall form)               
+                    if line == '': 
+                        continue
+                    else:
+                        ## -- Have to add space between datacolums where theres no whitespace
+                        for idx, val in enumerate(line):
+                            if line[idx] == 'e' or line[idx] == 'E':
+                                line = line[:idx+4] + " " + line[idx+4:]
+                        
+                        ## --Reads the line vector nl from the text string line and adds navigation 
+                        # message for the relevant satellite n_sat. It becomes a long line vector 
+                        # for the relevant message and satellite.
+                        
+                        ## Runs through line to see if each line contains 4 objects. If not, adds nan.
+                        if i < 7 and line.lower().count('e') < 4:
+                            if line[10:20].strip() == '':
+                                line = line[:10] +  'nan' + line[10:]
+                            if line[30:40].strip() == '':
+                                line = line[:30] +  'nan' + line[30:]
+                            if line[50:60].strip() == '':
+                                line = line[:50] +  'nan' + line[50:]
+                            if line[70:80].strip() == '':
+                                line = line[:70] +  'nan' + line[70:]
+                            
+                        
+                        if i == 7 and line.lower().count('e') < 2 and 'E' not in sys_PRN:
+                            if line[10:20].strip() == '':
+                                line = line[:10] +  'nan' + line[10:]
+                            if line[30:40].strip() == '':
+                                line = line[:30] +  'nan' + line[30:]
+                                
+                        if i == 7 and line.lower().count('e') < 1 and 'E' in sys_PRN: #only one object in last line for Galileo
+                            if line[10:20].strip() == '':
+                                line = line[:10] +  'nan' + line[10:]
+                        
+                        if i == 7 and 'E' in sys_PRN: #only one object in last line for Galileo, but add nan to get 36 in total
+                            line = line + 'nan'
+                            
                 
-            elif np.size(block_arr) != 0 and 'R' in sys_PRN:
-                GLO_dum = np.zeros([1,np.size(data,axis=1) - np.size(block_arr,axis=1)])
-                block_arr = np.append(block_arr,GLO_dum) # adding emtpy columns to match size of other systems
-                block_arr = block_arr.reshape(1,len(block_arr))
-                data  = np.concatenate([data , block_arr], axis=0)
-            else:
-                data  = np.delete(data , (0), axis=0)
-                print('File %s is read successfully!' % (filename))
-        except:
-            print("ERROR! Sure this is a RINEX v.3 navigation file?")
-            break
+                        nl = [el for el in line.split(" ") if el != ""]
+                        block_arr = np.append(block_arr,np.array([nl]))
+                        block_arr = block_arr.reshape(1,len(block_arr))
             
+                 
+            ## -- Collecting all data into common variable
+            if block_arr.shape[1] > 36:
+                block_arr = block_arr[:,0:36]
+            try:
+                if np.size(block_arr) != 0 and 'R' not in sys_PRN:
+                    data  = np.concatenate([data , block_arr], axis=0)
+                    
+                elif np.size(block_arr) != 0 and 'R' in sys_PRN:
+                    GLO_dum = np.zeros([1,np.size(data,axis=1) - np.size(block_arr,axis=1)])
+                    block_arr = np.append(block_arr,GLO_dum) # adding emtpy columns to match size of other systems
+                    block_arr = block_arr.reshape(1,len(block_arr))
+                    data  = np.concatenate([data , block_arr], axis=0)
+                else:
+                    data  = np.delete(data , (0), axis=0)
+            except:
+                print("ERROR! Sure this is a RINEX v.3 navigation file?")
+                break
+            
+            current_epoch += 1     
+            if np.mod(current_epoch, n_update_break) == 0:  # Update progress bar every n_update_break epochs
+                  pbar.update(10)
 
-         
+    # Remove first row if contains only zeros
+    if np.all(data[0,:] == '0.0'):
+        data  = np.delete(data , (0), axis=0)
+     
     filnr.close()
     n_eph = len(data)
     if dataframe:
@@ -265,11 +269,66 @@ def read_rinex3_nav(filename, dataframe = False):
         
     # Create a dictinary for the data
     nav_data = {'ephemerides':data,
-                 'header':header,
-                 'nepohs': n_eph,
-                 'glonass_fcn': glo_fcn}
+                  'header':header,
+                  'nepohs': n_eph,
+                  'glonass_fcn': glo_fcn}
 
     return nav_data
+
+
+
+def filter_data_rinex_nav(filename, desired_GNSS, data_rate = 30):
+    """
+    This function is creating a list of lists that contain ephemeride data
+    for the desired GNSS systems only. The rate of data can be set by the user.
+    Default value is 30 min.
+    """
+    block_len = {'G' : 7, 'R': 3, 'E' : 7, 'C': 7}
+    pattern = r'^[' + ''.join(desired_GNSS) + ']\d{2}'
+    f = open(filename,"r")
+    lines = f.readlines()
+    desired_lines = [lines[idx:idx + block_len[line[0]] +1] for idx, line in enumerate(lines) if re.match(pattern, line) is not None]
+    desired_lines = filter_ephemeris_data_on_time(desired_lines, time_difference_minutes=data_rate) # remove epoch with time difference less that spesificed  time
+    f.close()
+    return desired_lines
+    
+
+def filter_ephemeris_data_on_time(ephemeris_list, time_difference_minutes=30):
+    """
+    Filter rinex nav data based on time. The desired data rate can be set
+    by time_difference_minutes. Default value is 30 min.
+    """
+    filtered_data = []
+    time_difference = timedelta(minutes=time_difference_minutes)
+    previous_epoch_str = ephemeris_list[0][0].split()[1:6]
+    previous_epoch = datetime(*map(int, previous_epoch_str))
+    prev_sys = ephemeris_list[0][0].split()[0][0]
+    prev_sat = ephemeris_list[0][0].split()[0]
+    
+    for ephemeris_sublist in ephemeris_list:
+        current_sys = ephemeris_sublist[0].split()[0][0]
+        current_sat = ephemeris_sublist[0].split()[0]
+        epoch_str = ephemeris_sublist[0].split()[1:6]
+        epoch = datetime(*map(int, epoch_str))
+        if prev_sys != current_sys: # check if new system
+            filtered_data.append(ephemeris_sublist)
+            previous_epoch = epoch
+            prev_sys = current_sys
+        elif prev_sys == current_sys and prev_sat != current_sat: # check if new satellite within same sys
+            filtered_data.append(ephemeris_sublist)
+            previous_epoch = epoch
+            prev_sat = current_sat
+            
+        # Calculate the time difference between the current epoch and the previous one
+        time_diff = epoch - previous_epoch
+
+        if time_diff >= time_difference:
+            filtered_data.append(ephemeris_sublist)
+            previous_epoch = epoch
+
+    return filtered_data
+
+
 
 
 
