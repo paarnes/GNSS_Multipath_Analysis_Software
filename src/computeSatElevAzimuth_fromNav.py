@@ -1,5 +1,5 @@
 import numpy as np
-from readRinexNav import read_rinex3_nav
+from RinexNav import Rinex_v3_Reader
 from Geodetic_functions import *
 import pandas as pd, re, os
 from tqdm import tqdm, trange
@@ -19,15 +19,9 @@ def computeSatElevAzimuth_fromNav(navigationFile,approxPosition,GNSS_SVs,GNSS_ob
     
     nav_list = [i for i in navigationFile if i !=""] #remove "NONE" if exist in list
     for idx, nav_file in enumerate(nav_list):
-        shorten_navigation_file(nav_file) # removes system 'S','J' and 'I' and ephermerids of same TOC to increase speed
-        base_path = os.path.split(nav_file)[0]
-        org_name = os.path.basename(nav_file)
-        new_name = org_name.split('.')[0] + '_temp.' + org_name.split('.')[-1]
-        full_path = os.path.join(base_path,new_name)
-        nav_data = read_rinex3_nav(full_path)
+        nav_data = Rinex_v3_Reader().read_rinex_nav(nav_file, data_rate = 60)
         data_ = nav_data['ephemerides']
         glo_fcn = nav_data['glonass_fcn']
-        os.remove(full_path) # removes the temp broadcasted file 
         if idx == 0:
             data = data_
         else:
@@ -71,8 +65,7 @@ def computeSatElevAzimuth_fromNav(navigationFile,approxPosition,GNSS_SVs,GNSS_ob
             curr_data = df_data[df_data.iloc[:,0].str.contains(sys)].to_numpy() # extaction data for current system only
             ## -- Extract satellites ephemerids
             time_diff = curr_time - null_epoch
-            ### Add if test here to speed up the process. Ephemerides get extracted only if time_diff is greater
-            ### than the pre defined limit tLim_GEC and tLim_R
+            # Check to speed up the process. Ephemerides get extracted only if time_diff is greater than the pre defined limit tLim_GEC and tLim_R
             if sys != 'R' and time_diff > tLim_GEC or sys == 'R' and time_diff > tLim_R or time_diff == 0:
                 eph_data = np.empty((36,1))        # Preallocation array for storing ephemerids
                 null_epoch = curr_time # resetting null_epoch
@@ -123,6 +116,8 @@ def shorten_navigation_file(navigationFile):
     have same TOC (Time of clock) as the previous epoch. This function is only used
     to shorted down the reading time of nav file. In addition it will shorten the time
     it takes to compute satellite coordinates. (Shorter extraction time)
+    
+    NO LONGER IN USE
     
     Parameters:
     ----------
@@ -239,26 +234,3 @@ def shorten_navigation_file(navigationFile):
     fid.close()
     return
 
-
-
-# def time_difference(list1, list2):
-#     """
-#     This function is compute the time difference between two list on the format
-#     [year, month, day, hour, minute, and seconds]. 
-#     """
-#     list1 = [int(i) for i in list1[1::]]
-#     list2 = [int(i) for i in list2[1::]]
-#     date1 = datetime(list1[0], list1[1], list1[2], list1[3], list1[4], list1[5])
-#     date2 = datetime(list2[0], list2[1], list2[2], list2[3], list2[4], list2[5])
-#     difference = date2 - date1
-#     return difference.total_seconds()
-
-# time1 = [2022, 1, 1, 0, 0, 0]
-# time2 = [2022, 1, 1, 0, 3, 0]
-# print(time_difference(line_curr, line_next)) # should print 1.0
-# eph_data = np.empty((36, 0))
-# for sat in aktuelle_sat_list:
-#     eph = extract_nav_message(curr_data,sat,t[i])
-#     eph_data = np.column_stack((eph_data, eph))
-#     eph_data = pd.DataFrame(eph_data)
-#     df.columns = df.iloc[0] # set first row as header

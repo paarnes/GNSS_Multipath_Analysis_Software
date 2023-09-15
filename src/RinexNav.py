@@ -213,7 +213,7 @@ class Rinex_v3_Reader(RinexNav):
         self.valid_systems = {'G', 'R', 'E', 'C'}
     
     
-    def read_rinex_nav(self, filename, desired_GNSS: list = ['G','R','E','C'], dataframe = False, data_rate = 30):    
+    def read_rinex_nav(self, filename, desired_GNSS: list = ['G','R','E','C'], dataframe = False, data_rate = 30):
         """
         Reads the navigation message from broadcast efemerids in RINEX v.3 format.
         Support all global systems: GPS, GLONASS, Galileo and BeiDou
@@ -229,7 +229,7 @@ class Rinex_v3_Reader(RinexNav):
         filename : Filename of the RINEX navigation file
         desired_GNSS: List of desired systems. Ex desired_GNSS = ['G','R','E']
         dataframe : Set to True to get the data output as a pandas DataFrame (array as default)
-        data_rate: The desired data rate of ephemerides. Default is 30 min. 
+        data_rate: The desired data rate of ephemerides given in minutes. Default is 30 min. 
         
         Returns
         -------
@@ -383,9 +383,6 @@ class Rinex_v3_Reader(RinexNav):
 
 
 if __name__=="__main__":
-    brod1 = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\NavigationFiles\NMBUS_SAMSUNG_S20.20n"
-    brod1 = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\NavigationFiles\BRDC00IGS_R_20220010000_01D_MN.rnx"
-    data = Rinex_v3_Reader().read_rinex_nav(brod1,dataframe=True, data_rate=720)
+    # brod1 = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\NavigationFiles\BRDC00IGS_R_20220010000_01D_MN.rnx"
+    # data = Rinex_v3_Reader().read_rinex_nav(brod1, dataframe=True, data_rate=1200000000000)
     pass
-
-
