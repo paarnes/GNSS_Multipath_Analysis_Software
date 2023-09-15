@@ -1,6 +1,5 @@
 import os
 import numpy as np
-import pickle
 from readRinexObs import *
 from Geodetic_functions import *
 from computeSatElevations import computeSatElevations
@@ -17,6 +16,7 @@ import warnings
 warnings.filterwarnings("ignore")
 import logging
 import time
+from PickleHandler import PickleHandler
 
 def GNSS_MultipathAnalysis(rinObsFilename,
                           broadcastNav1=None,
@@ -34,6 +34,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                           plotEstimates= None,
                           plot_polarplot=None,
                           include_SNR=None,
+                          save_results_as_pickle = True,
                           tLim_R   = None,
                           tLim_GEC = None,
                           includeResultSummary= None,
@@ -116,6 +117,8 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     
     
     include_SNR:              boolean. If not defined, SNR from Rinex obs file will NOT be used (optional)
+    
+    save_results_as_pickle:   boolean. If True, the results will be stored as dictionary in form of a binary pickle file. Default set to True.
     
     
     includeResultSummary:     boolean. 1 if user desires output file to
@@ -747,22 +750,27 @@ def GNSS_MultipathAnalysis(rinObsFilename,
             
             
     ## -- Saving the workspace as a binary pickle file ---
-    results_name = os.path.join(outputDir, 'analysisResults.pkl')
-    f = open(results_name,"wb")
-    ## -- write the python object (dict) to pickle file
-    pickle.dump(analysisResults,f)
-    print('INFO: The analysis results has been written to the file %s.\n' % ('analysisResults.pkl'))
+    if save_results_as_pickle:
+        pickle_filename = 'analysisResults.pkl'
+        results_name = os.path.join(outputDir, pickle_filename)
+        PickleHandler.write_zstd_pickle(analysisResults, results_name)
+        print(f'INFO: The analysis results has been written to the file {pickle_filename}.\n')
+        
     end_time = time.time()
+    compute_processing_time(start_time, end_time)
+    logging.shutdown()
+
+    return analysisResults
+
+
+def compute_processing_time(start_time, end_time):
+    """ Computes the processing time"""
     total_time_seconds = end_time - start_time
     hours = str(int(total_time_seconds // 3600)).zfill(2)
     minutes = str(int((total_time_seconds % 3600) // 60)).zfill(2)
     seconds = str(int(total_time_seconds % 60)).zfill(2)
     print(f"INFO: Finished! Processing time: {hours}:{minutes}:{seconds}")
-    f.close()
-    logging.shutdown()
-
-    return analysisResults
-
+    return
 
 
 def ismember(list_,code):
@@ -773,7 +781,6 @@ def ismember(list_,code):
     if indx != []:
         indx = indx[0]
     return indx
-
 
 
 
