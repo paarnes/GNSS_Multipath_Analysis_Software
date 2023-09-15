@@ -138,7 +138,6 @@ def read_rinex3_nav(filename, desired_GNSS: list = ['G','R','E','C'], dataframe 
         return
         
 
-    bar_format = '{desc}: {percentage:3.0f}%|{bar}| ({n_fmt}/{total_fmt})'
     line = filnr.readline().rstrip()
     header = []
     while 'END OF HEADER' not in line:
@@ -147,8 +146,10 @@ def read_rinex3_nav(filename, desired_GNSS: list = ['G','R','E','C'], dataframe 
         
     nav_lines = filter_data_rinex_nav(filename, desired_GNSS, data_rate=data_rate)
     current_epoch = 0
-    n_update_break = int(np.floor(len(nav_lines)/10)) #number of epoch before updating progressbar
-    with tqdm(total=100,desc ="Rinex navigation file is being read" , position=0, leave=True, bar_format=bar_format) as pbar:
+    n_update_break = max(1, len(nav_lines) // 10)
+    n_ep = 100 if len(nav_lines)>10 else len(nav_lines)
+    bar_format = '{desc}: {percentage:3.0f}%|{bar}| ({n_fmt}/{total_fmt})'
+    with tqdm(total= n_ep, desc ="Rinex navigation file is being read" , position=0, leave=True, bar_format=bar_format) as pbar:
         data  = np.zeros((1,36))
         for lines in nav_lines:
             line = lines[0].rstrip()
@@ -195,10 +196,9 @@ def read_rinex3_nav(filename, desired_GNSS: list = ['G','R','E','C'], dataframe 
                             if line[idx] == 'e' or line[idx] == 'E':
                                 line = line[:idx+4] + " " + line[idx+4:]
                         
-                        ## --Reads the line vector nl from the text string line and adds navigation 
+                        ## Reads the line vector nl from the text string line and adds navigation 
                         # message for the relevant satellite n_sat. It becomes a long line vector 
-                        # for the relevant message and satellite.
-                        
+                        # for the relevant message and satellite.                     
                         ## Runs through line to see if each line contains 4 objects. If not, adds nan.
                         if i < 7 and line.lower().count('e') < 4:
                             if line[10:20].strip() == '':
@@ -228,8 +228,7 @@ def read_rinex3_nav(filename, desired_GNSS: list = ['G','R','E','C'], dataframe 
                         nl = [el for el in line.split(" ") if el != ""]
                         block_arr = np.append(block_arr,np.array([nl]))
                         block_arr = block_arr.reshape(1,len(block_arr))
-            
-                 
+                           
             ## -- Collecting all data into common variable
             if block_arr.shape[1] > 36:
                 block_arr = block_arr[:,0:36]
@@ -249,9 +248,11 @@ def read_rinex3_nav(filename, desired_GNSS: list = ['G','R','E','C'], dataframe 
                 break
             
             current_epoch += 1     
-            if np.mod(current_epoch, n_update_break) == 0:  # Update progress bar every n_update_break epochs
-                  pbar.update(10)
-
+            if len(nav_lines) >=10 and np.mod(current_epoch, n_update_break) == 0:  # Update progress bar every n_update_break epochs
+                pbar.update(10)
+            elif len(nav_lines) < 10 and np.mod(current_epoch, n_update_break) == 0:
+                pbar.update(1)
+                
     # Remove first row if contains only zeros
     if np.all(data[0,:] == '0.0'):
         data  = np.delete(data , (0), axis=0)
@@ -361,6 +362,9 @@ def extract_glonass_fcn_from_rinex_nav(data_array):
 
 
 if __name__=="__main__":
+    brod1 = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\NavigationFiles\NMBUS_SAMSUNG_S20.20n"
+    brod1 = r"C:\Users\perhe\OneDrive\Documents\Python_skript\test_GNSS\black749\BRDC00IGS_R_20222440000_01D_MN.rnx"
+    data = read_rinex3_nav(brod1)
     pass
 
 
