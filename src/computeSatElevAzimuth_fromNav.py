@@ -4,7 +4,7 @@ from Geodetic_functions import *
 import pandas as pd, re, os
 from tqdm import tqdm, trange
 
-def computeSatElevAzimuth_fromNav(navigationFile,approxPosition,GNSS_SVs,GNSS_obs,time_epochs, tLim_GEC=None,tLim_R=None):
+def computeSatElevAzimuth_fromNav(navigationFile,approxPosition,GNSS_SVs,GNSS_obs,time_epochs, nav_data_rate, tLim_GEC=None,tLim_R=None):
     """
     A function for computing satellite elevations and azimut angles based on
     broadcasted ephemerides. Support all global navigation systems (GPS,GLONASS,Galileo & BeiDou).
@@ -19,7 +19,7 @@ def computeSatElevAzimuth_fromNav(navigationFile,approxPosition,GNSS_SVs,GNSS_ob
     
     nav_list = [i for i in navigationFile if i !=""] #remove "NONE" if exist in list
     for idx, nav_file in enumerate(nav_list):
-        nav_data = Rinex_v3_Reader().read_rinex_nav(nav_file, data_rate = 60)
+        nav_data = Rinex_v3_Reader().read_rinex_nav(nav_file, data_rate=nav_data_rate)
         data_ = nav_data['ephemerides']
         glo_fcn = nav_data['glonass_fcn']
         if idx == 0:

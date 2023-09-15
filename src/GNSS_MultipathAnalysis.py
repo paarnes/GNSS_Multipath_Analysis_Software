@@ -35,6 +35,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                           plot_polarplot=None,
                           include_SNR=None,
                           save_results_as_pickle = True,
+                          nav_data_rate=60,
                           tLim_R   = None,
                           tLim_GEC = None,
                           includeResultSummary= None,
@@ -120,6 +121,11 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     
     save_results_as_pickle:   boolean. If True, the results will be stored as dictionary in form of a binary pickle file. Default set to True.
     
+
+    nav_data_rate:            integer. The desired data rate of ephemerides given in minutes. Default is 60 min. The purpose with this
+                                parameter is to speed up processing time. Both reading the RINEX navigation file and looping through the
+                                ephemerides aftwerward will be significatnly faster by increasing this value. Note: A too high value will
+                                degrade the accuracy of the interploated satellite coordinates.  
     
     includeResultSummary:     boolean. 1 if user desires output file to
                               include more detailed overview of statistics, 
@@ -304,7 +310,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
             nepochs, time_epochs, max_sat, sp3NavFilename_1, sp3NavFilename_2, sp3NavFilename_3)
     else:
         nav_files = [broadcastNav1,broadcastNav2,broadcastNav3,broadcastNav4]
-        sat_pos, glo_fcn = computeSatElevAzimuth_fromNav(nav_files,approxPosition,GNSS_SVs,GNSS_obs,time_epochs,tLim_GEC,tLim_R)
+        sat_pos, glo_fcn = computeSatElevAzimuth_fromNav(nav_files, approxPosition, GNSS_SVs, GNSS_obs, time_epochs, nav_data_rate, tLim_GEC,tLim_R)
         
         ## -- Build same struture for satellit elevation angles if broadcast nav defined
         sat_elevation_angles = {}
