@@ -95,7 +95,9 @@ def test_GNSS_MultipathAnalysis_broadcast_navfile():
 
     result = GNSS_MultipathAnalysis(rinObsFilename=rinObs_file, broadcastNav1=broadNav_file,
                                     plotEstimates=False,
-                                    plot_polarplot=False)
+                                    plot_polarplot=False,
+                                    nav_data_rate=0)
+    
     expected_result = read_pickle(expected_res)
     # Compare the result with the expected result
     assert_almost_equal(expected_result['Sat_position']['G']['Position']['1'],  result['Sat_position']['G']['Position']['1'],decimal=4)
