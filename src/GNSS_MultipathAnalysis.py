@@ -268,6 +268,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     
     
     latex_installed = True
+    glo_fcn = None
     
     ## -- Create a logger instance (logging.INFO, which will include INFO, WARNING, ERROR, and CRITICAL (not DEBUG))
     path_logfile = os.path.join(outputDir,'Logfile.log')
@@ -697,7 +698,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
             try:
                 azimut_currentSys = analysisResults['Sat_position'][curr_sys]['Azimut']
                 elevation_currentSys = analysisResults['Sat_position'][curr_sys]['Elevation'] 
-                print('INFO: Making a regular polar plot for showing azimut and elevation angle for each satellite. Please wait...\n')
+                print('INFO: Making a regular polar plot for showing azimut and elevation angle for each satellite. Please wait...')
                 if use_LaTex:
                     try:
                         make_skyplot(azimut_currentSys,elevation_currentSys,sys,graphDir)
@@ -711,7 +712,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                 pass
     
         if plot_polarplot:
-            print('INFO: Making a polar plot of the multipath effect. Please wait ...\n')
+            print('INFO: Making a polar plot of the multipath effect. Please wait ...')
             if use_LaTex:
                 try:
                     make_polarplot(analysisResults, graphDir)
@@ -726,7 +727,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                 GNSSsystemIndex = [k for k in GNSSsystems if GNSSsystems[k] == sys][0]
                 SNR_codes = [SNR_code for SNR_code in obsCodes[GNSSsystemIndex][sys] if 'S' in SNR_code[0]]
             if len(SNR_codes) != 0:
-                print('INFO: Making a plot of the Signal To Noise Ration (SNR). Please wait ...\n')
+                print('INFO: Making a plot of the Signal To Noise Ration (SNR). Please wait ...')
                 if use_LaTex:
                     try:
                         make_polarplot_SNR(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir)
@@ -750,7 +751,6 @@ def GNSS_MultipathAnalysis(rinObsFilename,
                     curr_ban = [element for element in analysisResults[curr_syst].keys() if element.endswith(signal[1])][0]
                     curr_signal = np.stack(list(GNSS_obs[GNSSsystems[syst]].values()))[:, :, code_idx]
                     curr_signal = np.squeeze(curr_signal)
-                    # AS_copy[curr_syst][curr_ban][signal] = curr_signal
                     analysisResults[curr_syst]['SNR'][signal] = curr_signal
             
             
