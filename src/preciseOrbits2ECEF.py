@@ -2,7 +2,8 @@ from datetime import date,timedelta,datetime
 from barylag import barylag
 import numpy as np
 from Geodetic_functions import date2gpstime
-
+import warnings
+warnings.filterwarnings("ignore")
 
 def preciseOrbits2ECEF(sys, PRN, date_, dates, epochInterval, nEpochs, sat_positions, navGNSSsystems):
     """
@@ -47,63 +48,42 @@ def preciseOrbits2ECEF(sys, PRN, date_, dates, epochInterval, nEpochs, sat_posit
     --------------------------------------------------------------------------------------------------------------------------
     """
 
-    
-    ## Formating the date 
-    date_ = str(date_[0]) + "/" + str(date_[1]) + "/" + str(date_[2]) + " " + str(int(date_[3])) \
-        + ":" + str(int(date_[4])) + ":" + str(date_[5])[0:9]
-    
-    ## Need at tray/except for handelig date that have more decimals in the seconds. 
-    ## Ex date_ should look like 2020/10/30 13:22:59.000000, but sometimes i could look like 2020/10/30 13:23:3.9262886 (RINEX from RINEX ON Andriod app)
-    try:
-        date_ = datetime.strptime(date_, "%Y/%m/%d %H:%M:%S.%f")
-    except:
-        sec_dum = date_.split(':')[-1]
-        date_ = date_.replace(sec_dum, str(format(float(sec_dum), '.6f'))) # removing decimals if more than 3
-        date_ = datetime.strptime(date_, "%Y/%m/%d %H:%M:%S.%f")
-    
+    # Format the input date
+    date_ = f"{date_[0]}/{date_[1]}/{date_[2]} {int(date_[3]):02d}:{int(date_[4]):02d}:{float(str(date_[5])[0:9]):.6f}"    
+    date_ = datetime.strptime(date_, "%Y/%m/%d %H:%M:%S.%f")
     date_ = datetime.timestamp(date_) # convert to timestamp
     
-    ## --Degree of lagrange polynomial to be used
-    # lagrangeDegree = 3
-    lagrangeDegree = 7 # changed 27.01.2023
-
-    ## -- Amount of nodes
-    nNodes = lagrangeDegree + 1
+    lagrangeDegree = 7 # Degree of lagrange polynomial to be used
+    nNodes = lagrangeDegree + 1 # Amount of nodes
     
-    ## -- GNSSsystemIndex = find(navGNSSsystems == sys, 1);
     GNSSsystemIndex = [idx for idx,val in enumerate(navGNSSsystems) if navGNSSsystems[idx]==sys][0] 
     curr_sys = navGNSSsystems[GNSSsystemIndex]
 
     ## --Date of first epoch
     tFirstEpoch = np.array(dates[0, :]).astype(float)
-    tFirstEpoch = str(int(tFirstEpoch[0])) + "/" + str(int(tFirstEpoch[1])) + "/" + str(int(tFirstEpoch[2])) + " " + str(int(tFirstEpoch[3])) \
-        + ":" + str(int(tFirstEpoch[4])) + ":" + str(tFirstEpoch[5])[0:9] 
-        
+    tFirstEpoch = f"{int(tFirstEpoch[0])}/{int(tFirstEpoch[1])}/{int(tFirstEpoch[2])} {int(tFirstEpoch[3])}:{int(tFirstEpoch[4])}:{int(tFirstEpoch[5]):.1f}"
     tFirstEpoch = datetime.strptime(tFirstEpoch, "%Y/%m/%d %H:%M:%S.%f")
     tFirstEpoch = datetime.timestamp(tFirstEpoch) # convert to timestamp
     
+    # Compute time difference between first epoch and current
     tk = date_ - tFirstEpoch 
     
     ## -- Closest node before desired time
     closestEpochBeforeIndex = np.floor(tk/epochInterval) + 1
     
     # Get the index of the first and last node. If there is not enough epochs
-    # before or after desired time the degree of lagrange polynomial i reduces,
-    # as well as number of nodes
-    node1EpochIndex = closestEpochBeforeIndex - min(nNodes/2 - 1, closestEpochBeforeIndex-1);
-    diff1 = node1EpochIndex - (closestEpochBeforeIndex - (nNodes/2 - 1));
+    # before or after desired time the degree of lagrange polynomial i reduces, as well as number of nodes
+    node1EpochIndex = closestEpochBeforeIndex - min(nNodes/2 - 1, closestEpochBeforeIndex-1)
+    diff1 = node1EpochIndex - (closestEpochBeforeIndex - (nNodes/2 - 1))
     
-    node8EpochIndex = closestEpochBeforeIndex + min(nNodes/2, nEpochs - closestEpochBeforeIndex);
-    diff2 = node8EpochIndex - (closestEpochBeforeIndex + nNodes/2);
+    node8EpochIndex = closestEpochBeforeIndex + min(nNodes/2, nEpochs - closestEpochBeforeIndex)
+    diff2 = node8EpochIndex - (closestEpochBeforeIndex + nNodes/2)
     
     node1EpochIndex = int(node1EpochIndex - diff2) -1 # - 1 because null-indexed
     node8EpochIndex = int(node8EpochIndex - diff1) -1 
     
-    ## Indices of node epochs
-    nodeEpochs = np.array(range(node1EpochIndex,node8EpochIndex+1))
-    
-    ## Reduce number of nodes if necessary
-    nNodes = int(nNodes - diff1*2 + diff2*2)
+    nodeEpochs = np.array(range(node1EpochIndex,node8EpochIndex+1)) # Indices of node epochs
+    nNodes = int(nNodes - diff1*2 + diff2*2) # Reduce number of nodes if necessary
     
     # Get positions at each node and relative time
     nodePositions = np.zeros([nNodes, 3])
@@ -113,21 +93,22 @@ def preciseOrbits2ECEF(sys, PRN, date_, dates, epochInterval, nEpochs, sat_posit
             nodePositions[i, :] = sat_positions[curr_sys][nodeEpochs[i]][PRN]
         except:
             nodePositions[i, :] = np.nan
-        date_dum = datetime(year=int(dates[nodeEpochs[i], :][0]), month= int(dates[nodeEpochs[i], :][1]), 
-                            day = int(dates[nodeEpochs[i], :][2]), hour = int(dates[nodeEpochs[i], :][3]), 
-                            minute = int(dates[nodeEpochs[i], :][4]),second = int(dates[nodeEpochs[i], :][5][0:1]))
+        date_dum = datetime(year   = int(dates[nodeEpochs[i], :][0]), month  = int(dates[nodeEpochs[i], :][1]), 
+                            day    = int(dates[nodeEpochs[i], :][2]), hour   = int(dates[nodeEpochs[i], :][3]), 
+                            minute = int(dates[nodeEpochs[i], :][4]), second = int(dates[nodeEpochs[i], :][5][0:1]))
 
         
-        date_dum = datetime.timestamp(date_dum) # convert to timestamp
+        date_dum = datetime.timestamp(date_dum)
         nodeTimes[i] = date_dum - tFirstEpoch
     
     ## -- Interpolate new posistion of satellite using a lagrange polynomial
     try: 
-        X=barylag(np.hstack([nodeTimes, nodePositions[:, 0].reshape(len(nodePositions[:, 0]),1)]), tk)
-        Y=barylag(np.hstack([nodeTimes, nodePositions[:, 1].reshape(len(nodePositions[:, 1]),1)]), tk)
-        Z=barylag(np.hstack([nodeTimes, nodePositions[:, 2].reshape(len(nodePositions[:, 2]),1)]), tk)
+        X = barylag(np.hstack([nodeTimes, nodePositions[:, 0].reshape(-1, 1)]), tk)
+        Y = barylag(np.hstack([nodeTimes, nodePositions[:, 1].reshape(-1, 1)]), tk)
+        Z = barylag(np.hstack([nodeTimes, nodePositions[:, 2].reshape(-1, 1)]), tk)
     except:
         X = np.nan
         Y = np.nan
         Z = np.nan
+        
     return X, Y, Z
