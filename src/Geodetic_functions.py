@@ -2,7 +2,8 @@ from numpy import fix,array,log,fmod,arctan,arctan2,arcsin,sqrt,sin,cos,pi,arang
 import numpy as np
 from datetime import datetime,timedelta
 from datetime import date
-
+import warnings
+warnings.filterwarnings("ignore")
 
 def ECEF2geodb(a,b,X,Y,Z):
     '''

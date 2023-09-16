@@ -3,6 +3,10 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib import rc
 from matplotlib.ticker import MaxNLocator
+import warnings
+warnings.filterwarnings("ignore")
+import logging
+logger = logging.getLogger(__name__)
 
 plt.rcParams['axes.axisbelow'] = True
 rc('font',**{'family':'serif','serif':['Computer Modern Roman']})
@@ -23,8 +27,8 @@ def make_polarplot(analysisResults, graph_dir):
             sat_elevation = analysisResults['Sat_position'][curr_sys]['Elevation']
             sat_azimut = analysisResults['Sat_position'][curr_sys]['Azimut']
         except:
-            print("Polarplot of multipath is not possible for %s Missing data." % (system))
-            break
+            logger.warning(f"INFO(GNSS_MultipathAnalysis): Polarplot of multipath is not possible for {system}. Satellite azimuth and elevation angles are missing." )
+            continue
         vmax_list = []
         ## -- Finding larges mean multipath value for scale on cbar (vmax)
         for band in bands_curr_sys:
@@ -64,10 +68,9 @@ def make_polarplot(analysisResults, graph_dir):
                     pc = ax.imshow(color,cmap = cmap,vmin = vmin, vmax = vmax,data = multipath, origin='upper', extent=[0,0,0,0])
                     kwargs = {'format': '%.1f'}
                     cbar = fig.colorbar(pc, ax=ax, orientation='vertical',shrink=0.55,pad=.04,aspect=15,**kwargs) #removed cmap due to warning 10.01.2023             
-                    # cbar = fig.colorbar(pc, ax=ax, orientation='vertical',shrink=0.55,pad=.04,aspect=15) #removed cmap due to warning 10.01.2023             
+                    # cbar = fig.colorbar(pc, ax=ax, orientation='vertical',shrink=0.55,pad=.04,aspect=15) #removed cmap due to warning 10.01.2023
                     cbar.ax.set_title('MP[m]',fontsize=18,pad=15)
-                    cbar.ax.tick_params(labelsize=18) 
-                       
+                    cbar.ax.tick_params(labelsize=18)
                     ax.set_rticks([10 ,20 ,30, 40, 50, 60, 70, 80, 90])  # Less radial ticks
                     # ax.set_rlabel_position(-22.5)  # Move radial labels away from plotted line
                     ax.tick_params(axis='both',labelsize=18,pad=4)
@@ -147,7 +150,7 @@ def make_polarplot_SNR(analysisResults, GNSS_obs,GNSSsystems, obsCodes, graphDir
     SNR_obs = {}
     for sys in GNSS_obs.keys():
         GNSSsystemIndex = [k for k in GNSSsystems if GNSSsystems[k] == sys][0]
-        SNR_codes = [SNR_code for SNR_code in obsCodes[GNSSsystemIndex][sys] if 'S' in SNR_code]
+        SNR_codes = [SNR_code for SNR_code in obsCodes[GNSSsystemIndex][sys] if 'S' in SNR_code[0]]
         SNR_obs[sys] = {}
         for SNR_code in SNR_codes:
             SNR_idx = obsCodes[GNSSsystemIndex][sys].index(SNR_code)
@@ -163,8 +166,8 @@ def make_polarplot_SNR(analysisResults, GNSS_obs,GNSSsystems, obsCodes, graphDir
             sat_elevation = analysisResults['Sat_position'][curr_sys]['Elevation']
             sat_azimut = analysisResults['Sat_position'][curr_sys]['Azimut']
         except:
-            print("Polarplot of SNR is not possible for %s Missing data." % (system))
-            break
+            logger.warning(f"INFO(GNSS_MultipathAnalysis): Polarplot of SNR is not possible for {system}. Satellite azimuth and elevation angles are missing." )
+            continue
         vmax_list = []
         ## -- Finding larges mean multipath value for scale on cbar (vmax)
         # for code in SNR_obs[curr_sys].keys():
@@ -174,7 +177,7 @@ def make_polarplot_SNR(analysisResults, GNSS_obs,GNSSsystems, obsCodes, graphDir
         for code in SNR_obs[curr_sys].keys():
             SNR = SNR_obs[curr_sys][code]
             if np.all(np.isnan(SNR)):
-                print("INFO: Plot not possible for %s for %s. The RINEX file does not contain data for this code for this system. Jumping to next code.. " %(code,system))
+                logger.warning(f"INFO(GNSS_MultipathAnalysis): Polarplot of SNR not possible for {code} for {system}. The RINEX file does not contain data for this code for this system." )
                 continue
             range1_code = code                
             ## -- Setting some arguments
@@ -242,7 +245,7 @@ def plot_SNR_wrt_elev(analysisResults,GNSS_obs, GNSSsystems, obsCodes, graphDir,
     SNR_obs = {}
     for sys in GNSS_obs.keys():
         GNSSsystemIndex = [k for k in GNSSsystems if GNSSsystems[k] == sys][0]
-        SNR_codes = [SNR_code for SNR_code in obsCodes[GNSSsystemIndex][sys] if 'S' in SNR_code]
+        SNR_codes = [SNR_code for SNR_code in obsCodes[GNSSsystemIndex][sys] if 'S' in SNR_code[0]]
         SNR_obs[sys] = {}
         for SNR_code in SNR_codes:
             SNR_idx = obsCodes[GNSSsystemIndex][sys].index(SNR_code)
@@ -257,12 +260,12 @@ def plot_SNR_wrt_elev(analysisResults,GNSS_obs, GNSSsystems, obsCodes, graphDir,
             sat_elevation = analysisResults['Sat_position'][curr_sys]['Elevation']
             sat_elevation[(sat_elevation < 0) | (sat_elevation > 90)] = np.nan # removes elevation angels when the sat not visable (below the horizon)
         except:
-            print("Polarplot of SNR is not possible for %s Missing data." % (system))
-            break
+            logger.warning(f"INFO(GNSS_MultipathAnalysis): Plot of SNR wrt elevation angle is not possible for {system}. Satellite azimuth and elevation angles are missing." )
+            continue
         for code in SNR_obs[curr_sys].keys():
             SNR = SNR_obs[curr_sys][code]   
             if np.all(np.isnan(SNR)):
-                print("INFO: Plot not possible for %s for %s. The RINEX file does not contain data for this code for this system. Jumping to next code.. " %(code,system))
+                logger.warning(f"INFO(GNSS_MultipathAnalysis): Plot of SNR wrt elevation is not possible for {code} for {system}. The RINEX file does not contain data for this code for this system." )
                 continue
             range1_code = code                
             ## -- Setting some arguments
@@ -310,9 +313,8 @@ def plot_SNR_wrt_elev(analysisResults,GNSS_obs, GNSSsystems, obsCodes, graphDir,
             for legobj in legend.legendHandles:
                 legobj.set_linewidth(1.5)
                 
-            # filename = 'SNR_' + system + "_" + range1_code + '.png'
+
             filename = 'SNR_' + system + "_" + range1_code + '.pdf'
-            # fig.savefig(graphDir + "/" + filename, dpi=dpi_fig, orientation='landscape')
             fig.savefig(graphDir + "/" + filename, orientation='landscape',bbox_inches='tight')
             plt.close()
 
