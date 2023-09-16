@@ -3,7 +3,8 @@ from datetime import datetime, timedelta
 import numpy as np
 from pandas import DataFrame
 from tqdm import tqdm    
-
+import warnings
+warnings.filterwarnings("ignore")
 
 class RinexNav:
     def __init__(self):

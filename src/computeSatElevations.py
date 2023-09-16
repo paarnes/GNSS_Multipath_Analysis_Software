@@ -7,7 +7,7 @@ from Geodetic_functions import ECEF2geodb, ECEF2enu, atanc
 from numpy import arctan,sqrt
 from preciseOrbits2ECEF import preciseOrbits2ECEF
 import warnings
-warnings.filterwarnings(action='ignore', message='invalid value encountered in fmod')
+warnings.filterwarnings("ignore")
 
 
 
@@ -87,8 +87,7 @@ def computeSatElevations(GNSS_SVs, GNSSsystems, approxPosition,\
         if sp3_nav_filename_3 != "":
           three_sp3_files = 1
        
-        
-    
+
     ## ---  Read first SP3 file
     sat_positions_1, epoch_dates_1, navGNSSsystems_1, nEpochs_1, epochInterval_1, success = readSP3Nav(sp3_nav_filename_1)
     # if two SP3 files inputted by user, read second SP3 file
@@ -120,9 +119,10 @@ def computeSatElevations(GNSS_SVs, GNSSsystems, approxPosition,\
     
     satMissingData = []
     
-    
     bar_format = '{desc}: {percentage:3.0f}%|{bar}| ({n_fmt}/{total_fmt})'
-    for k in tqdm(range(0,nGNSSsystems),desc='Looping through the systems',position=0,leave=True,bar_format=bar_format):
+    total_epochs = nGNSSsystems * nepochs
+    pbar = tqdm(total=total_epochs, desc=f"Computing satellite coordinates, azimuth and elevation angles for desired systems", position=0, leave=True, bar_format=bar_format)
+    for k in np.arange(0,nGNSSsystems):
         n_ep = int(nepochs)
         nSat = int(max_sat[k]) + 1
         # Initialize data matrix for current GNSSsystem
@@ -130,18 +130,15 @@ def computeSatElevations(GNSS_SVs, GNSSsystems, approxPosition,\
         sat_azimut_angles[k]    = np.zeros([n_ep, nSat]) 
         X = np.full((n_ep, nSat), np.nan)  # Array for storing X-coordinate
         Y = np.full((n_ep, nSat), np.nan)  # Array for storing Y-coordinate
-        Z = np.full((n_ep, nSat), np.nan)  # Array for storing Z-coordinate
-        
+        Z = np.full((n_ep, nSat), np.nan)  # Array for storing Z-coordinate    
         sys = GNSSsystems[k+1]
         sat_coordinates[sys] = {} 
         if sys in navGNSSsystems: 
             curr_pos = {}  # dict for storing data   
-            for epoch in tqdm(range(0,nepochs),desc='Satellite elevation angles are being calculated for system %s of %s' %(k+1, nGNSSsystems),position=0, leave=False, bar_format=bar_format):             
-                ##-- GPS Week and time of week of current epoch
-                week = time_epochs[epoch,0]
-                tow  = time_epochs[epoch,1]
+            for epoch in np.arange(0,nepochs):             
+                week = time_epochs[epoch,0] # GPS Week of current epoch
+                tow  = time_epochs[epoch,1] # Time of week of current epoch
                 ## -- Satellites in current epoch that should have elevation computed
-                # SVs = np.nonzero(FirstLastObsEpochOverview[k][epoch, :])[0] # COMMENTED OUT 11.03.2023 to prevent computing elevation angles for satellites not visalble in the current epoc
                 SVs  = GNSS_SVs[sys][epoch,1::][GNSS_SVs[sys][epoch,1::] != 0].astype(int) #extract only nonzero and convert to integer
                 n_sat = len(SVs)
                 for sat in np.arange(0,n_sat):
@@ -159,9 +156,8 @@ def computeSatElevations(GNSS_SVs, GNSSsystems, approxPosition,\
                         if not any(SVN in satMissingData):
                             satMissingData.append(SVN)
                 sat_coordinates[sys]  = curr_pos
-                           
-  
-
+                pbar.update(1)
+    pbar.close()
         
     if satMissingData:
         print('INFO(computeSatElevations): The following satellites had missing orbit data in SP3 file.',\

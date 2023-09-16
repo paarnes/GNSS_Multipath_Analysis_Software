@@ -1,7 +1,7 @@
 import numpy as np
 from detectCycleSlips import detectCycleSlips, orgSlipEpochs
 import warnings
-warnings.filterwarnings(action='ignore', message='Mean of empty slice')
+warnings.filterwarnings("ignore")
 
 def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carrier_freq1, \
                          carrier_freq2, nepochs, max_sat, GNSS_SVs, obsCodes, GNSS_obs, \

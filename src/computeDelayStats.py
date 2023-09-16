@@ -1,6 +1,7 @@
 from numpy import mean, sqrt, sin, nan,pi,isnan, sum, concatenate, zeros, where, intersect1d,nanmean,count_nonzero,union1d,arange
 import warnings
-warnings.filterwarnings(action='ignore', message='Mean of empty slice')
+warnings.filterwarnings("ignore")
+
 def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_angles, range1_slip_periods, ambiguity_slip_periods ,LLI_slip_periods, range1_observations, tInterval):
     """
     Function that computes statistical values on estimates of multipath delay, ionospheric delay and satellite elevation angles
