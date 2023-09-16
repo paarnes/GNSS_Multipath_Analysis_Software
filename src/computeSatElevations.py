@@ -1,9 +1,8 @@
 from read_SP3Nav import *
 from readRinexNav import *
-from gpstime2date import gpstime2date
 from tqdm import tqdm
 import numpy as np
-from Geodetic_functions import ECEF2geodb, ECEF2enu, atanc
+from Geodetic_functions import ECEF2geodb, ECEF2enu, atanc, gpstime2date
 from numpy import arctan,sqrt
 from preciseOrbits2ECEF import preciseOrbits2ECEF
 import warnings
