@@ -7,6 +7,7 @@ GNSS_MultipathAnalysis is a software for analyzing the multipath effect on Globa
 * Makes polar plot of each satellite for each system
 * Makes polar plot that shows the multipath effect as function of azimuth and elevation angle.
 * Plots the Signal-To-Noise Ratio (SNR) wrt to time and elevation angle
+* Extracts GLONASS FCN from RINEX navigation file
 * Makes polar plot that shows the Signal-To-Noise Ratio (SNR) as function of azimuth and elevation angle
 * Possible to choose which navigation system to run analysis on (not hardcoded anymore)
 * Summary of the number of cycle slips detected in total (both ionospheric residuals and code- phase difference)
@@ -22,9 +23,9 @@ The rest of the arguments are optional. Their default values are described in th
 ## Installation 
 To install the required packages, run:     
 `pip install -r requirements.txt`   
-where the *requirements.txt* is located [here](https://github.com/paarnes/GNSS/blob/master/Multipath_analysis/requirements.txt).
+where the *requirements.txt* is located [here](https://github.com/paarnes/GNSS/blob/master/src/requirements.txt).
 
-Note: In the example plots, TEX is used to get prettier text formatting. However, this requires TEX/LaTex to be installed on your computer. The program will first try to use TEX, and if it's not possible, standard text formatting will be used. So TEX/LaTex is not required to run the program and make plots anymore. The software will just not use TEX as a interpreter. In the previous release, the software required TEX to be installed to successfully create plots.
+Note: In the example plots, TEX is used to get prettier text formatting. However, this requires TEX/LaTex to be installed on your computer. The program will first try to use TEX, and if it's not possible, standard text formatting will be used. So TEX/LaTex is not required to run the program and make plots.
 
 ## The steps are:
 1. Reads in the RINEX observation file 
@@ -39,7 +40,7 @@ $$d\Phi_1R_1 = \Phi_1 - R_1$$
 6. Multipath estimates get computed by making a linear combination of the code and phase observation. PS: A dual frequency receiver is necessary because observations from two different bands/frequency are needed. 
 $$MP_1 = R_1 - \left(1+\frac{2}{\alpha - 1}\right)\Phi_1 + \left(\frac{2}{\alpha - 1}\right)\Phi_2$$
 where $R_1$ is the code observation on band 1, $\Phi_1$ and $\Phi_2$ is phase observation on band 1 and band 2 respectively. Furthermore $\alpha$ is the ratio between the two frequency squared $\alpha=\frac{{f}^2_1}{{f}^2_2}$
-7. Based on the multipath estimates computed in step 6, both weighted and unweighted RMS-values get computed. The RMS value is given as
+7. Based on the multipath estimates computed in step 6, both weighted and unweighted RMS-values get computed. The RMS value has unit _meter_, and is given by
 $$RMS=\sqrt{\frac{\sum\limits_{i=1}^{N_{sat}}\sum\limits_{j=1}^{N_{epohcs}} MP_{ij}}{N_{est}}}$$ 
 For the weighted RMS value, the satellite elevation angle is used in a weighting function defined as $$w =\frac{1}{4sin^2\beta}$$ for every estimates with elevation angle $\beta$ is below $30^{\circ}$ and $w =1$ for $\beta > 30^{\circ}$. 
 8. Several plot will be generated (if not set to FALSE): 
@@ -78,7 +79,7 @@ For the weighted RMS value, the satellite elevation angle is used in a weighting
 
 
 ## How to run it
-An example file on how to call the program is located [here](https://github.com/paarnes/GNSS_Multipath_Analysis_Software/blob/master/Multipath_analysis/Running_multipath_analysis_example.py). This will show some examples
+An example file on how to call the program is located [here](https://github.com/paarnes/GNSS_Multipath_Analysis_Software/blob/master/src/Examples_on_how_to_run_it.ipynb). This will show some examples
 on how to run the analysis with different user defined arguments, how to read in the resultfile (pickle file), and in addition it shows how to use only the RINEX
 reading routine. The most simple example on how to run the code is:
 
