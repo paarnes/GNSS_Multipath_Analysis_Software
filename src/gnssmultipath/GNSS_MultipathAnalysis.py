@@ -1,22 +1,30 @@
+"""
+This is the main module for running the software GNSS_Multipath_Analysis.
+
+Made by: Per Helge Aarnes
+E-mail: per.helge.aarnes@gmail.com
+"""
+
 import os
-import numpy as np
-from readRinexObs import *
-from Geodetic_functions import *
-from computeSatElevations import computeSatElevations
-from computeSatElevAzimuth_fromNav import computeSatElevAzimuth_fromNav
-from readFrequencyOverview import readFrequencyOverview
-from signalAnalysis import signalAnalysis
-from detectClockJumps import detectClockJumps
-from tqdm import tqdm, trange
-from writeOutputFile import writeOutputFile
-from make_polarplot import make_polarplot,make_skyplot, make_polarplot_SNR, plot_SNR_wrt_elev
-from make_polarplot_dont_use_TEX import make_polarplot_dont_use_TEX, make_skyplot_dont_use_TEX, make_polarplot_SNR_dont_use_TEX, plot_SNR_wrt_elev_dont_use_TEX
-from plotResults import *
 import warnings
-warnings.filterwarnings("ignore")
 import logging
 import time
-from PickleHandler import PickleHandler
+import numpy as np
+from tqdm import tqdm
+from gnssmultipath.readRinexObs import readRinexObs
+from gnssmultipath.computeSatElevations import computeSatElevations
+from gnssmultipath.computeSatElevAzimuth_fromNav import computeSatElevAzimuth_fromNav
+from gnssmultipath.signalAnalysis import signalAnalysis
+from gnssmultipath.detectClockJumps import detectClockJumps
+from gnssmultipath.writeOutputFile import writeOutputFile
+from gnssmultipath.make_polarplot import make_polarplot,make_skyplot, make_polarplot_SNR, plot_SNR_wrt_elev
+from gnssmultipath.make_polarplot_dont_use_TEX import make_polarplot_dont_use_TEX, make_skyplot_dont_use_TEX, make_polarplot_SNR_dont_use_TEX, plot_SNR_wrt_elev_dont_use_TEX
+from gnssmultipath.plotResults import plotResults, plotResults_dont_use_TEX, make_barplot, make_barplot_dont_use_TEX
+from gnssmultipath.PickleHandler import PickleHandler
+
+warnings.filterwarnings("ignore")
+
+
 
 def GNSS_MultipathAnalysis(rinObsFilename,
                           broadcastNav1=None,
@@ -147,40 +155,39 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     start_time = time.time()
 
 
-    if broadcastNav1 == None and sp3NavFilename_1 == None:
+    if broadcastNav1 is None and sp3NavFilename_1 is None:
         raise RuntimeError("No SP3 or navigation file is defined! This is \
                            mandatory for this software, so please add one of them.")
 
-    if broadcastNav1 !=None and sp3NavFilename_1 != None:
+    if broadcastNav1 is not None and sp3NavFilename_1 is not None:
         raise RuntimeError("You defined both a navigation file and a SP3 file. Please\
                            choose between using broadcast ephemerides or precise.")
 
-    if broadcastNav1 == None:
+    if broadcastNav1 is None:
         broadcastNav1 = ""
-    if broadcastNav2 == None:
+    if broadcastNav2 is None:
         broadcastNav2 = ""
-    if broadcastNav3 == None:
+    if broadcastNav3 is None:
         broadcastNav3 = ""
-    if broadcastNav4 == None:
+    if broadcastNav4 is None:
         broadcastNav4 = ""
-    if sp3NavFilename_1 == None:
+    if sp3NavFilename_1 is None:
         sp3NavFilename_1 = ""
-    if sp3NavFilename_2 == None:
+    if sp3NavFilename_2 is None:
         sp3NavFilename_2 = ""
-    if sp3NavFilename_3 == None:
+    if sp3NavFilename_3 is None:
         sp3NavFilename_3 = ""
-
-    if phaseCodeLimit == None:
+    if phaseCodeLimit is None:
         phaseCodeLimit = 0
 
-    if ionLimit == None:
+    if ionLimit is None:
         ionLimit = 0
 
-    if cutoff_elevation_angle == None:
+    if cutoff_elevation_angle is None:
         cutoff_elevation_angle = 0
 
     ## -- Create output file
-    if outputDir == None:
+    if outputDir is None:
         outputDir = 'Output_Files'
 
     if not os.path.isdir(outputDir):
@@ -191,36 +198,36 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     if not os.path.isdir(graphDir):
         os.mkdir(graphDir)
 
-    if plotEstimates == None:
+    if plotEstimates is None:
         plotEstimates = 1
 
-    if plot_polarplot == None:
+    if plot_polarplot is None:
         plot_polarplot = 1
 
-    if tLim_R == None:
+    if tLim_R is None:
         tLim_R = 1800 # 30 min
-    if tLim_GEC == None:
+    if tLim_GEC is None:
         tLim_GEC = 7200 # 2 hours
 
-    if includeResultSummary == None:
+    if includeResultSummary is None:
         includeResultSummary = 1
 
-    if includeCompactSummary == None:
+    if includeCompactSummary is None:
         includeCompactSummary = 1
 
-    if includeObservationOverview == None:
+    if includeObservationOverview is None:
         includeObservationOverview = 1
 
-    if includeLLIOverview == None:
+    if includeLLIOverview is None:
         includeLLIOverview = 1
 
-    if desiredGNSSsystems == None:
+    if desiredGNSSsystems is None:
         includeAllGNSSsystems   = 1
-        desiredGNSSsystems = ["G", "R", "E", "C"];  # All GNSS systems.
+        desiredGNSSsystems = ["G", "R", "E", "C"]  # All GNSS systems.
     else:
         includeAllGNSSsystems   = 0
 
-    if use_LaTex == None:
+    if use_LaTex is None:
         use_LaTex = True
 
     ## ---  Control of the user input arguments
@@ -269,6 +276,14 @@ def GNSS_MultipathAnalysis(rinObsFilename,
 
     latex_installed = True
     glo_fcn = None
+    # A frequency overview for the different systems.
+    frequencyOverview_temp2 = {
+        'G': np.array([[1.57542e+09],[1.22760e+09],[np.nan],[np.nan],[1.17645e+09],[np.nan],[np.nan],[np.nan],[np.nan]]),
+        'R': np.array([[1.602000e+09, 5.625000e+05],[1.246000e+09, 4.375000e+05],[1.202025e+09, 0.000000e+00],[1.600995e+09, 0.000000e+00],
+                        [np.nan, 0.000000e+00],[1.248060e+09, 0.000000e+00],[np.nan, 0.000000e+00],[np.nan, 0.000000e+00],[np.nan, 0.000000e+00]]),
+        'E': np.array([[1.575420e+09],[np.nan],[np.nan],[np.nan],[1.176450e+09],[1.278750e+09],[1.207140e+09],[1.191795e+09],[np.nan]]),
+        'C': np.array([[1.575420e+09],[1.561098e+09],[np.nan],[np.nan],[1.176450e+09],[1.268520e+09],[1.207140e+09],[1.191795e+09],[np.nan]])
+        }
 
     ## -- Create a logger instance (logging.INFO, which will include INFO, WARNING, ERROR, and CRITICAL (not DEBUG))
     path_logfile = os.path.join(outputDir,'Logfile.log')
@@ -285,11 +300,11 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     ## --- Read observation file
     includeAllObsCodes  = 0
 
-    if include_SNR == None:
+    if include_SNR is None:
         desiredObsCodes = ["C", "L"] # only code and phase observations
-    elif include_SNR == True:
+    elif include_SNR is True:
         desiredObsCodes = ["C", "L", "S"]
-    # desiredObsCodes = ["C", "L"] # only code and phase observations
+
     desiredObsBands = list(np.arange(1,10)) # all carrier bands. Tot 9, but arange stops at 8 -> 10
 
 
@@ -338,14 +353,6 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     ## Define carrier frequencies for every GNSS system. Note: Carrier band numbers follow RINEX 3 convention
     nGNSSsystems = len(GNSSsystems)
     max_GLO_ID = 36
-
-    ## -- Read frequency overview file
-    frequencyOverviewFilename = 'Rinex_Frequency_Overview.txt'
-    frequencyOverview_temp, frequencyGNSSsystemOrder, _ = readFrequencyOverview(frequencyOverviewFilename)
-
-    ## -- Making a new dummy frequencyOverview to rename key values in dict (make it able to run only one system)
-    systems_in_overview = ['G','R','E','C'] # KAN FJERNE DETTE ETTER TESTING AV GLONASS ER FERDI. ELLER PRØV Å LA PROGRAMMET SLIK AT ANALYSEN KAN GJENNOMFØRS KUN PÅ ET FORHÅNDSBESTEMT SYSTEM
-    frequencyOverview_temp2 =  dict(zip(systems_in_overview, list(frequencyOverview_temp.values())))
 
     ## -- Initialize cell for storing carrier bands for all systems
     frequencyOverview = {}
@@ -459,10 +466,6 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         analysisResults[GNSSsystemName] = current_sys_dict
 
     #### -------- Execute analysis of current data, produce results and store results in results dictionary ------
-
-    ## -- Intialize wait bar
-    # waitbar = tqdm(0, 'INFO(GNSS\\_Receiver\\_QC\\_2020): Data analysis is being executed. Please wait.')
-    ## --Initialize counter of number of codes processed so far. This is used  mainly for waitbar
     codeNum = 0
     ## -- Defining frrmat of progressbar
     bar_format = '{desc}: {percentage:3.0f}%|{bar}| ({n_fmt}/{total_fmt})'
@@ -474,7 +477,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         ## -- Itterate through Bands in system dict.
         ## NOTE variable "bandNumInd" is NOT the carrier band number, but the index of that band in this system dict
         n_signals= sum(current_sys_dict[current_sys_dict['Bands'][bandNumInd]]['nCodes'] for bandNumInd  in range(0,nBands))
-        pbar = tqdm(total=n_signals, desc='Currently processing all available signals for %s' % (GNSSsystemName), position=0, leave=True, bar_format='{desc}: {percentage:3.0f}%|{bar}| ({n_fmt}/{total_fmt})')
+        pbar = tqdm(total=n_signals, desc='Currently processing all available signals for %s' % (GNSSsystemName), position=0, leave=True, bar_format=bar_format)
         # for bandNumInd in trange(0,nBands,initial=0, desc='Currently processing all available bands for %s' % (GNSSsystemName), leave=False,bar_format=bar_format,position=0):
         for bandNumInd in np.arange(0,nBands): #,initial=0, desc='Currently processing all available bands for %s' % (GNSSsystemName), leave=False,bar_format=bar_format,position=0):
             current_band_dict = current_sys_dict[current_sys_dict['Bands'][bandNumInd]] # Make HARD copy of current band dict
@@ -792,6 +795,3 @@ def ismember(list_,code):
 
 if __name__== "__main__":
     pass
-
-
-

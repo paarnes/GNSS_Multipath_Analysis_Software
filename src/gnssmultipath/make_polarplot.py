@@ -1,11 +1,12 @@
+import warnings
+import logging
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib import rc
 from matplotlib.ticker import MaxNLocator
-import warnings
+
 warnings.filterwarnings("ignore")
-import logging
 logger = logging.getLogger(__name__)
 
 plt.rcParams['axes.axisbelow'] = True
@@ -13,13 +14,13 @@ rc('font',**{'family':'serif','serif':['Computer Modern Roman']})
 rc('text', usetex=True)
 plt.rc('figure', figsize=(14, 9),dpi = 170)
 
-def make_polarplot(analysisResults, graph_dir): 
+def make_polarplot(analysisResults, graph_dir):
     """
-    The function makes a polar plot that shows the multipath effect as a function 
-    of azimut and elevation angle."    
+    The function makes a polar plot that shows the multipath effect as a function
+    of azimut and elevation angle."
     """
     GNSS_Name2Code =  dict(zip(['GPS', 'GLONASS', 'Galileo', 'BeiDou'], ['G', 'R', 'E', 'C']))
-    
+
     for system in analysisResults['GNSSsystems']:
         curr_sys = GNSS_Name2Code[system]
         bands_curr_sys = analysisResults[system]['Bands']
@@ -27,8 +28,10 @@ def make_polarplot(analysisResults, graph_dir):
             sat_elevation = analysisResults['Sat_position'][curr_sys]['Elevation']
             sat_azimut = analysisResults['Sat_position'][curr_sys]['Azimut']
         except:
-            logger.warning(f"INFO(GNSS_MultipathAnalysis): Polarplot of multipath is not possible for {system}. Satellite azimuth and elevation angles are missing." )
+            logger.warning("INFO(GNSS_MultipathAnalysis): Polarplot of multipath is not possible for %s. Satellite azimuth and elevation angles are missing.", system)
             continue
+
+
         vmax_list = []
         ## -- Finding larges mean multipath value for scale on cbar (vmax)
         for band in bands_curr_sys:
@@ -40,7 +43,7 @@ def make_polarplot(analysisResults, graph_dir):
                 else:
                     multipath = analysisResults[system][band][code]['multipath_range1']
                     vmax_list.append(round(2*np.nanmean(np.abs(multipath)),1)) # Multipath max color by 2 times the means value
-        ## --Do the plotting             
+        ## --Do the plotting
         for band in bands_curr_sys:
             codes_curr_sys = analysisResults[system][band]['Codes']
             codes_curr_sys = [ele for ele in codes_curr_sys if ele != []] # removing empty list if exist
@@ -49,7 +52,7 @@ def make_polarplot(analysisResults, graph_dir):
                     continue
                 else:
                     multipath = analysisResults[system][band][code]['multipath_range1']
-                    range1_code = code                
+                    range1_code = code
                     ## -- Setting some arguments
                     vmin     = 0          # Multipath minimum. Har med fargingen av multipathverdiene ift fargeskalaen
                     # vmax     = 1.5        # Multipath max. Verdier på 0.8 meter og over får max fargemetning.
@@ -62,12 +65,12 @@ def make_polarplot(analysisResults, graph_dir):
                     fig.subplots_adjust(left=None, bottom=0.1, right=None, top=None, wspace=None, hspace=None)
                     ax.set_rlim(bottom=90, top=0)
                     _,num_sat = multipath.shape
-                    
+
                     color = np.arange(1,0,-0.1)
                     color = color.reshape(len(color),1)
                     pc = ax.imshow(color,cmap = cmap,vmin = vmin, vmax = vmax,data = multipath, origin='upper', extent=[0,0,0,0])
                     kwargs = {'format': '%.1f'}
-                    cbar = fig.colorbar(pc, ax=ax, orientation='vertical',shrink=0.55,pad=.04,aspect=15,**kwargs) #removed cmap due to warning 10.01.2023             
+                    cbar = fig.colorbar(pc, ax=ax, orientation='vertical',shrink=0.55,pad=.04,aspect=15,**kwargs) #removed cmap due to warning 10.01.2023
                     # cbar = fig.colorbar(pc, ax=ax, orientation='vertical',shrink=0.55,pad=.04,aspect=15) #removed cmap due to warning 10.01.2023
                     cbar.ax.set_title('MP[m]',fontsize=18,pad=15)
                     cbar.ax.tick_params(labelsize=18)
@@ -118,7 +121,7 @@ def make_skyplot(azimut_currentSys, elevation_currentSys, GNSSsystemName,graph_d
         else:
             sat_az = azimut_currentSys[:,PRN]
         # Convert azimut angles to radians
-        azimuth_rad = np.deg2rad(sat_az)        
+        azimuth_rad = np.deg2rad(sat_az)
         # Plot the satellite positions on the skyplot
         PRN_ = sys_code+str(PRN)
         PRN_ = sys_code+str(PRN).zfill(2)
@@ -138,14 +141,14 @@ def make_skyplot(azimut_currentSys, elevation_currentSys, GNSSsystemName,graph_d
     filename2 = 'Skyplot_' + GNSSsystemName + '.pdf'
     # fig.savefig(graph_dir + "/" + filename, dpi=300, orientation='landscape')
     fig.savefig(graph_dir + "/" + filename2, orientation='landscape',bbox_inches='tight')
-    
-    return
-        
 
-def make_polarplot_SNR(analysisResults, GNSS_obs,GNSSsystems, obsCodes, graphDir): 
+    return
+
+
+def make_polarplot_SNR(analysisResults, GNSS_obs,GNSSsystems, obsCodes, graphDir):
     """
-    The function makes a polar plot that shows the Signal to noise ration (SNR) a function 
-    of azimut and elevation angle."    
+    The function makes a polar plot that shows the Signal to noise ration (SNR) a function
+    of azimut and elevation angle."
     """
     SNR_obs = {}
     for sys in GNSS_obs.keys():
@@ -157,9 +160,9 @@ def make_polarplot_SNR(analysisResults, GNSS_obs,GNSSsystems, obsCodes, graphDir
             SNR_data =  np.array([epoch[:, SNR_idx] for epoch in GNSS_obs[sys].values()])
             SNR_data[SNR_data ==0] = np.nan
             SNR_obs[sys][SNR_code] = SNR_data
-    
+
     GNSS_Name2Code =  dict(zip(['GPS', 'GLONASS', 'Galileo', 'BeiDou'], ['G', 'R', 'E', 'C']))
-    
+
     for system in analysisResults['GNSSsystems']:
         curr_sys = GNSS_Name2Code[system]
         try:
@@ -173,13 +176,13 @@ def make_polarplot_SNR(analysisResults, GNSS_obs,GNSSsystems, obsCodes, graphDir
         # for code in SNR_obs[curr_sys].keys():
         #     SNR = SNR_obs[curr_sys][code]
         #     vmax_list.append(round(1.5*np.nanmean(np.abs(SNR)),1)) # SNR max color by 2 times the means value
-        ## --Do the plotting 
+        ## --Do the plotting
         for code in SNR_obs[curr_sys].keys():
             SNR = SNR_obs[curr_sys][code]
             if np.all(np.isnan(SNR)):
                 logger.warning(f"INFO(GNSS_MultipathAnalysis): Polarplot of SNR not possible for {code} for {system}. The RINEX file does not contain data for this code for this system." )
                 continue
-            range1_code = code                
+            range1_code = code
             ## -- Setting some arguments
             # vmin     = 0  # Multipath minimum. Har med fargingen av multipathverdiene ift fargeskalaen
             vmin     = round(np.nanmin(np.abs(SNR)),0)  # Multipath minimum. Har med fargingen av multipathverdiene ift fargeskalaen
@@ -191,15 +194,15 @@ def make_polarplot_SNR(analysisResults, GNSS_obs,GNSSsystems, obsCodes, graphDir
             fig.subplots_adjust(left=None, bottom=0.1, right=None, top=None, wspace=None, hspace=None)
             ax.set_rlim(bottom=90, top=0)
             _,num_sat = SNR.shape
-            
+
             color = np.arange(1,0,-0.1)
             color = color.reshape(len(color),1)
             pc = ax.imshow(color,cmap = cmap,vmin = vmin, vmax = vmax,data = SNR, origin='upper', extent=[0,0,0,0])
             num_ticks = 8
             tick_locs = MaxNLocator(nbins=num_ticks).tick_values(vmin, vmax)
-            cbar = fig.colorbar(pc, ax=ax, orientation='vertical', ticks=tick_locs,shrink=0.55,pad=.04,aspect=15) #removed cmap due to warning 10.01.2023             
+            cbar = fig.colorbar(pc, ax=ax, orientation='vertical', ticks=tick_locs,shrink=0.55,pad=.04,aspect=15) #removed cmap due to warning 10.01.2023
             cbar.ax.set_title('SNR[dB-Hz]',fontsize=18,pad=15)
-            cbar.ax.tick_params(labelsize=18) 
+            cbar.ax.tick_params(labelsize=18)
 
             ## -- set color
             ax.set_facecolor('#373B44')
@@ -207,18 +210,18 @@ def make_polarplot_SNR(analysisResults, GNSS_obs,GNSSsystems, obsCodes, graphDir
             # set ticks color
             ax.tick_params(colors="white", labelcolor="white")
             ax.tick_params(axis="y", colors="white")
-            ax.tick_params(axis="x", colors="black") # want the ticks outside the facecolor to be black 
-            
+            ax.tick_params(axis="x", colors="black") # want the ticks outside the facecolor to be black
+
             ax.set_rticks([10 ,20 ,30, 40, 50, 60, 70, 80, 90])  # Less radial ticks
             # # ax.set_rlabel_position(-22.5)  # Move radial labels away from plotted line
             ax.tick_params(axis='both',labelsize=18,pad=4)
-            
-            
+
+
             ax.grid(True)
             ax.set_theta_zero_location("N")  # theta=0 at the top
             ax.set_theta_direction(-1)  # theta increasing clockwise
-            
-            
+
+
             ax.set_title("Polar plot of the SNR as funtion of azimut and elevation angle for \n Signal: %s (%s)" % (range1_code, system), va='bottom',fontsize=28)
             for PRN in range(0,num_sat):
                 SNR_est = SNR[:,PRN]
@@ -236,11 +239,11 @@ def make_polarplot_SNR(analysisResults, GNSS_obs,GNSSsystems, obsCodes, graphDir
 
 
 
-        
+
 def plot_SNR_wrt_elev(analysisResults,GNSS_obs, GNSSsystems, obsCodes, graphDir,tInterval):
     """
-    Funtion that makes a subplot of the Signal to nosie ration (SNR) wrt to 
-    time and the satellites elevation angle. 
+    Funtion that makes a subplot of the Signal to nosie ration (SNR) wrt to
+    time and the satellites elevation angle.
     """
     SNR_obs = {}
     for sys in GNSS_obs.keys():
@@ -252,7 +255,7 @@ def plot_SNR_wrt_elev(analysisResults,GNSS_obs, GNSSsystems, obsCodes, graphDir,
             SNR_data =  np.array([epoch[:, SNR_idx] for epoch in GNSS_obs[sys].values()])
             SNR_data[SNR_data ==0] = np.nan
             SNR_obs[sys][SNR_code] = SNR_data
-    
+
     GNSS_Name2Code =  dict(zip(['GPS', 'GLONASS', 'Galileo', 'BeiDou'], ['G', 'R', 'E', 'C']))
     for system in analysisResults['GNSSsystems']:
         curr_sys = GNSS_Name2Code[system]
@@ -263,11 +266,11 @@ def plot_SNR_wrt_elev(analysisResults,GNSS_obs, GNSSsystems, obsCodes, graphDir,
             logger.warning(f"INFO(GNSS_MultipathAnalysis): Plot of SNR wrt elevation angle is not possible for {system}. Satellite azimuth and elevation angles are missing." )
             continue
         for code in SNR_obs[curr_sys].keys():
-            SNR = SNR_obs[curr_sys][code]   
+            SNR = SNR_obs[curr_sys][code]
             if np.all(np.isnan(SNR)):
                 logger.warning(f"INFO(GNSS_MultipathAnalysis): Plot of SNR wrt elevation is not possible for {code} for {system}. The RINEX file does not contain data for this code for this system." )
                 continue
-            range1_code = code                
+            range1_code = code
             ## -- Setting some arguments
             dpi_fig  = 300        # Oppløsningen på figurene
             # fig, ax = plt.subplots(figsize=(16,12),dpi=170)
@@ -276,12 +279,12 @@ def plot_SNR_wrt_elev(analysisResults,GNSS_obs, GNSSsystems, obsCodes, graphDir,
             num_ep,num_sat = SNR.shape
             ## -- Time stamps
             t = np.arange(1,num_ep+1)*tInterval/60**2 # Convert to hours
-            
+
             ## -- Subplot 1
             for PRN in range(1,num_sat):
                 if not np.isnan(SNR[:,PRN]).all():
                     ax[0].plot(t,SNR[:,PRN], label='PRN%s' % (PRN),linewidth=0.7)
-            
+
             ax[0].grid(True,linewidth=0.3)
             ax[0].set_xlim([0,t[-1]])
             ax[0].set_ylim(0,np.nanmax(SNR)+10)
@@ -293,7 +296,7 @@ def plot_SNR_wrt_elev(analysisResults,GNSS_obs, GNSSsystems, obsCodes, graphDir,
             for legobj in legend.legendHandles: # Set the linewidth of each legend object (then not dependent of linewith in plot)
                 legobj.set_linewidth(1.5)
 
-            
+
             ## -- Subplot 2
             ax[1].grid(True,linewidth=0.3)
             ax[1].set_xlim([0,90])
@@ -312,7 +315,7 @@ def plot_SNR_wrt_elev(analysisResults,GNSS_obs, GNSSsystems, obsCodes, graphDir,
             legend = ax[1].legend(loc='center right',fontsize=12,bbox_to_anchor=(1.25, 0.5), fancybox=True, shadow=True,ncol=2) # frame = legend.get_frame(); frame.set_facecolor((0.89701,0.79902,0.68137)); frame.set_edgecolor('black') #legend
             for legobj in legend.legendHandles:
                 legobj.set_linewidth(1.5)
-                
+
 
             filename = 'SNR_' + system + "_" + range1_code + '.pdf'
             fig.savefig(graphDir + "/" + filename, orientation='landscape',bbox_inches='tight')
