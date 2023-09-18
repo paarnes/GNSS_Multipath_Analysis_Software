@@ -1,5 +1,7 @@
 # GNSS Multipath Analysis
 [![Python application](https://github.com/paarnes/GNSS_Multipath_Analysis_Software/actions/workflows/run-tests.yml/badge.svg)](https://github.com/paarnes/GNSS_Multipath_Analysis_Software/actions/workflows/run-tests.yml)
+[![PyPI version](https://badge.fury.io/py/gnssmultipath.svg)](https://badge.fury.io/py/gnssmultipath)
+
 
 GNSS_MultipathAnalysis is a software for analyzing the multipath effect on Global Navigation Satellite Systems (GNSS). This software is largely based on the MATLAB software [GNSS_Receiver_QC_2020](https://gitlab.com/bjro/GNSS_reading_protocol/-/tree/main/GNSS_Receiver_QC_2020) made by Bjørn-Eirik Roald. Mainly it follows the same logic, just with Python syntax. However, there are added some other features like for instance:
 * Possible to use broadcasted ephemerides (not only SP3 files)
@@ -21,9 +23,11 @@ The main function is called "GNSS_MultipathAnalysis.py" and takes in different a
 The rest of the arguments are optional. Their default values are described in the function description. By default, this software will provide the results in forms of plots and an analysis report as a text file. In addition, it exports the results as a pickle file which can be imported as a dictionary in python for instance.
 
 ## Installation
-To install the required packages, run:
-`pip install -r requirements.txt`
-where the *requirements.txt* is located [here](https://github.com/paarnes/GNSS/blob/master/src/requirements.txt).
+
+The software can be installed using `pip` in the terminal:
+```
+$ pip install gnssmultipath
+```
 
 Note: In the example plots, TEX is used to get prettier text formatting. However, this requires TEX/LaTex to be installed on your computer. The program will first try to use TEX, and if it's not possible, standard text formatting will be used. So TEX/LaTex is not required to run the program and make plots.
 
@@ -81,14 +85,82 @@ For the weighted RMS value, the satellite elevation angle is used in a weighting
 ## How to run it
 An example file on how to call the program is located [here](https://github.com/paarnes/GNSS_Multipath_Analysis_Software/blob/master/src/Examples_on_how_to_run_it.ipynb). This will show some examples
 on how to run the analysis with different user defined arguments, how to read in the resultfile (pickle file), and in addition it shows how to use only the RINEX
-reading routine. The most simple example on how to run the code is:
+reading routine.
 
+### Some simple examples on how to use the software:
+
+#### Run a multipath analysis using a SP3 file and only mandatory arguments
 ```
-from GNSS_MultipathAnalysis import GNSS_MultipathAnalysis
+from gnssmultipath import GNSS_MultipathAnalysis
 
 rinObs_file = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04'
 SP3_file    = 'SP3_20220010000.eph'
-analysisResults = GNSS_MultipathAnalysis(rinex_obs_file, sp3NavFilename_1=SP3_file)
+analysisResults = GNSS_MultipathAnalysis(rinex_obs_file, sp3NavFilename_1 = SP3_file)
+```
+
+#### Run a multipath analysis using a RINEX navigation file with SNR and a defined datarate for ephemerides
+```
+from gnssmultipath import GNSS_MultipathAnalysis
+
+# Input arguments
+rinObs_file = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04'
+rinNav_file = 'BRDC00IGS_R_20220010000_01D_MN.rnx
+output_folder = 'C:\Users\xxxx\Results_Multipath'
+cutoff_elevation_angle = 10 # drop satellites lower than 10 degrees
+nav_data_rate = 60 # desired datarate for ephemerides (to improve speed)
+
+analysisResults = GNSS_MultipathAnalysis(rinex_obs_file,
+										 broadcastNav1=rinNav_file,
+										 include_SNR = True,
+										 outputDir = output_folder,
+										 nav_data_rate = nav_data_rate,
+										 cutoff_elevation_angle = cutoff_elevation_angle)
+```
+
+#### Read a RINEX observation file
+```
+from gnssmultipath import readRinexObs
+
+rinObs_file = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04'
+
+GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems,\
+		obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType,\
+		rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, success = \
+		readRinexObs(rinObs_file)
+
+```
+
+
+#### Read a RINEX navigation file (v.3)
+```
+from gnssmultipath import Rinex_v3_Reader
+
+rinNav_file = 'BRDC00IGS_R_20220010000_01D_MN.rnx'
+
+navdata = Rinex_v3_Reader().read_rinex_nav(rinNav_file, data_rate=60)
+
+```
+
+#### Read in the results from a uncompressed pickle file
+
+```
+from gnssmultipath import PickleHandler
+
+path_to_picklefile = 'analysisResults.pkl'
+
+result_dict = PickleHandler.read_pickle(pickl_file)
+
+
+```
+
+#### Read in the results from a compressed pickle file
+```
+from gnssmultipath import PickleHandler
+
+path_to_picklefile = 'analysisResults.pkl'
+
+result_dict = PickleHandler.read_zstd_pickle(pickl_file)
+
 ```
 
 
