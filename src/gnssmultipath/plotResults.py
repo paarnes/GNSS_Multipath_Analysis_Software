@@ -321,7 +321,7 @@ def plotResults(ion_delay_phase1, multipath_range1, sat_elevation_angles,\
     # full_filename = graphDir + '/' + filename
     full_filename2 = graphDir + '/' + filename2
     # fig5.savefig(graphDir + "/" +  filename)
-    fig5.savefig(graphDir + "/" +  filename2, dpi=300)
+    fig5.savefig(graphDir + "/" +  filename2, dpi=300, bbox_inches='tight')
     plt.close()
 
 
@@ -683,7 +683,7 @@ def plotResults_dont_use_TEX(ion_delay_phase1, multipath_range1, sat_elevation_a
     # full_filename = graphDir + '/' + filename
     full_filename2 = graphDir + '/' + filename2
     # fig5.savefig(graphDir + "/" +  filename)
-    fig5.savefig(graphDir + "/" +  filename2, dpi=300)
+    fig5.savefig(graphDir + "/" +  filename2, dpi=300, bbox_inches='tight')
     plt.close()
 
 
@@ -875,7 +875,7 @@ def make_barplot(analysisResults,graphDir):
                         data_elw_rms.append(elweight_rms_MP)
                         data_codes.append(code)
             # creating the bar plot
-            fig, ax = plt.subplots(nrows=1, ncols=1,sharex=False,figsize=(18,12),dpi = 150)
+            fig, ax = plt.subplots(nrows=1, ncols=1,sharex=False,figsize=(16,10),dpi = 150)
             fig.subplots_adjust(left=0.082, bottom=0.08, right=0.887, top=0.93, wspace=None, hspace=0.2)
             data = {"Codes":data_codes, "RMS": data_rms, "RMS (weighted)":data_elw_rms} # make dict
             df = pd.DataFrame(data)
@@ -898,11 +898,11 @@ def make_barplot(analysisResults,graphDir):
             #     width =0.15
             # rects1 = ax.bar(x - width/2, data_rms, width, label='RMS')
             # rects2 = ax.bar(x + width/2, data_elw_rms, width, label='RMS (weighted)')
-            ax.set_ylabel('RMS [m]',fontsize=18,labelpad=20)
-            ax.set_title('RMS values for the multipath effect (%s)' %(sys),fontsize=24)
+            ax.set_ylabel('RMS [m]',fontsize=30,labelpad=20)
+            ax.set_title('RMS values for the multipath effect (%s)' %(sys),fontsize=36)
             ax.locator_params(tight=True, nbins=12)
-            ax.legend(fontsize=16,fancybox=True, shadow=True)
-            ax.tick_params(axis='both', labelsize= 16)
+            ax.legend(fontsize=24,fancybox=True, shadow=True)
+            ax.tick_params(axis='both', labelsize= 28)
             ax.grid(color='grey', linestyle='-', linewidth=0.3,axis='y')
             try:
                 plt.setp(ax,ylim=(0,max(max_MP)+0.08))
@@ -1073,12 +1073,13 @@ def make_barplot_dont_use_TEX(analysisResults,graphDir):
             #     width =0.15
             # rects1 = ax.bar(x - width/2, data_rms, width, label='RMS')
             # rects2 = ax.bar(x + width/2, data_elw_rms, width, label='RMS (weighted)')
-            ax.set_ylabel('RMS [m]',fontsize=18,labelpad=20)
-            ax.set_title('RMS values for the multipath effect (%s)' %(sys),fontsize=24)
+            ax.set_ylabel('RMS [m]',fontsize=30,labelpad=20)
+            ax.set_title('RMS values for the multipath effect (%s)' %(sys),fontsize=36)
             ax.locator_params(tight=True, nbins=12)
-            ax.legend(fontsize=16,fancybox=True, shadow=True)
-            ax.tick_params(axis='both', labelsize= 16)
+            ax.legend(fontsize=24,fancybox=True, shadow=True)
+            ax.tick_params(axis='both', labelsize= 28)
             ax.grid(color='grey', linestyle='-', linewidth=0.3,axis='y')
+
             try:
                 plt.setp(ax,ylim=(0,max(max_MP)+0.08))
             except:

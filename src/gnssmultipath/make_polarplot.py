@@ -94,7 +94,7 @@ def make_polarplot(analysisResults, graph_dir):
                             ax.scatter(np.radians(sat_az), sat_el, c = abs(mp_est), cmap = cmap ,marker = 'o', s = 100, edgecolor='none',vmin = vmin, vmax = vmax)
 
                     filename = 'MP_' + system + "_" + range1_code + '.png'
-                    fig.savefig(graph_dir + "/" + filename, dpi=dpi_fig, orientation='landscape')
+                    fig.savefig(graph_dir + "/" + filename, dpi=dpi_fig, orientation='landscape', bbox_inches='tight')
                     plt.close()
 
 
@@ -234,7 +234,7 @@ def make_polarplot_SNR(analysisResults, GNSS_obs,GNSSsystems, obsCodes, graphDir
                     c = cm.jet((c-np.min(c))/(np.max(c)-np.min(c)))
                     ax.scatter(np.radians(sat_az), sat_el, c = abs(SNR_est), cmap = cmap ,marker = 'o', s = 100, edgecolor='none',vmin = vmin, vmax = vmax)
             filename = 'SNR_Polar_' + system + "_" + range1_code + '.png'
-            fig.savefig(graphDir + "/" + filename, dpi=dpi_fig, orientation='landscape')
+            fig.savefig(graphDir + "/" + filename, dpi=dpi_fig, orientation='landscape',bbox_inches='tight')
             plt.close()
 
 
