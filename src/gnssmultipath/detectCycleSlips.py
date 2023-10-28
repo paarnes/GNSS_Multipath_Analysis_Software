@@ -38,19 +38,63 @@ def detectCycleSlips(estimates, missing_obs_overview,epoch_first_obs, epoch_last
     ## -- Preallocating
     slips_from_missing_obs = []
     ## -- Calculate rate of change of estimates of ionospheric delay (time derivative)
-    estimates_rate_of_change = np.diff(estimates)/tInterval
+    estimates_rate_of_change = np.diff(estimates,axis=0)/tInterval
 
     ## -- Detect slips for current sat. as epochs with either estimates_rate_of_change
     ## higher than critical value, or epochs with missing estimates
-    slips_from_crit_rate =  [idx for idx,val in enumerate(estimates_rate_of_change) if abs(val) > crit_slip_rate] # use listcomp instead
+    
+    # Create a boolean array where True indicates the condition is met
+    condition_met = np.abs(estimates_rate_of_change) > crit_slip_rate
+    slips_from_crit_rate = np.where(condition_met)
 
-    if type(epoch_first_obs) !=np.ndarray and type(epoch_last_obs) != np.ndarray:
-        slips_from_missing_obs = (np.where(missing_obs_overview[epoch_first_obs:epoch_last_obs] == 1) + epoch_first_obs)[0].tolist() 
 
-    if len(slips_from_missing_obs) != 0:
-        slip_epochs = np.array(sorted(set(slips_from_crit_rate + slips_from_missing_obs)))
-    else:
-        slip_epochs = np.array(sorted(set(slips_from_crit_rate)))
+    slip_epochs = {str(key): [] for key in range(1, estimates.shape[1])}
+    if slips_from_crit_rate[0].size > 0:
+        for key, value in zip(slips_from_crit_rate[1].astype(str).tolist(), slips_from_crit_rate[0]):
+            slip_epochs[key].append(value)
+
+        
+    slips_from_missing_obs_curr_sat = []
+    if epoch_first_obs.size > 0:
+        for PRN in np.arange(len(epoch_first_obs)):
+            epoch_first_obs_temp = epoch_first_obs[PRN].astype(int) if not np.isnan(epoch_first_obs[PRN]) else None
+            epoch_last_obs_temp = epoch_last_obs[PRN].astype(int) if not np.isnan(epoch_last_obs[PRN]) else None
+
+            if any(item is None for item in [epoch_first_obs_temp, epoch_first_obs_temp]):
+                continue
+            else:
+                slips_from_missing_obs_curr_sat = (np.where(missing_obs_overview[epoch_first_obs_temp:epoch_last_obs_temp,PRN] == 1) + epoch_first_obs_temp)[0].tolist()
+  
+            slips_from_crit_rate_curr = slip_epochs[str(PRN)]  
+            if len(slips_from_missing_obs_curr_sat) != 0:
+                slip_epochs[str(PRN)].extend(list(sorted(set(slips_from_crit_rate_curr + slips_from_missing_obs_curr_sat))))
+            else:
+                slip_epochs[str(PRN)].extend(list(sorted(set(slips_from_missing_obs_curr_sat))))
+
+                    
+    # if epoch_first_obs.size > 0:
+    #     for PRN in np.arange(len(epoch_first_obs)):
+    #         epoch_first_obs_temp = epoch_first_obs[PRN].astype(int) if not np.isnan(epoch_first_obs[PRN]) else None
+    #         epoch_last_obs_temp = epoch_last_obs[PRN].astype(int) if not np.isnan(epoch_last_obs[PRN]) else None
+
+    #         if any(item is None for item in [epoch_first_obs_temp, epoch_first_obs_temp]):
+    #             continue
+    #         else:
+    #             slips_from_missing_obs_curr_sat = (np.where(missing_obs_overview[epoch_first_obs_temp:epoch_last_obs_temp,PRN] == 1) + epoch_first_obs_temp)[0].tolist()
+  
+    #         if str(PRN) in slip_epochs.keys():
+    #             slips_from_crit_rate_curr = slip_epochs[str(PRN)]  
+    #             if len(slips_from_missing_obs_curr_sat) != 0:
+    #                 slip_epochs[str(PRN)].extend(list(sorted(set(slips_from_crit_rate_curr + slips_from_missing_obs_curr_sat))))
+    #             else:
+    #                 slip_epochs[str(PRN)].extend(list(sorted(set(slips_from_missing_obs_curr_sat))))
+    #         else:
+    #             if len(slips_from_missing_obs_curr_sat) != 0:
+    #                 slip_epochs[str(PRN)] = list(sorted(set(slips_from_missing_obs_curr_sat)))
+
+    # Ensure no duplicates
+    for key, value in slip_epochs.items():
+        slip_epochs[key] = list(sorted(set(value)))
 
     return slip_epochs 
 
