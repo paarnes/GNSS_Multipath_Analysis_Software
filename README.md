@@ -110,11 +110,11 @@ cutoff_elevation_angle = 10 # drop satellites lower than 10 degrees
 nav_data_rate = 60 # desired datarate for ephemerides (to improve speed)
 
 analysisResults = GNSS_MultipathAnalysis(rinex_obs_file,
-						broadcastNav1=rinNav_file,
-						include_SNR = True,
-						outputDir = output_folder,
-						nav_data_rate = nav_data_rate,
-						cutoff_elevation_angle = cutoff_elevation_angle)
+					broadcastNav1=rinNav_file,
+					include_SNR = True,
+					outputDir = output_folder,
+					nav_data_rate = nav_data_rate,
+					cutoff_elevation_angle = cutoff_elevation_angle)
 ```
 
 #### Read a RINEX observation file
