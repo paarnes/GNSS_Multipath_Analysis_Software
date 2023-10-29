@@ -110,11 +110,11 @@ cutoff_elevation_angle = 10 # drop satellites lower than 10 degrees
 nav_data_rate = 60 # desired datarate for ephemerides (to improve speed)
 
 analysisResults = GNSS_MultipathAnalysis(rinex_obs_file,
-										 broadcastNav1=rinNav_file,
-										 include_SNR = True,
-										 outputDir = output_folder,
-										 nav_data_rate = nav_data_rate,
-										 cutoff_elevation_angle = cutoff_elevation_angle)
+						broadcastNav1=rinNav_file,
+						include_SNR = True,
+						outputDir = output_folder,
+						nav_data_rate = nav_data_rate,
+						cutoff_elevation_angle = cutoff_elevation_angle)
 ```
 
 #### Read a RINEX observation file
@@ -122,7 +122,6 @@ analysisResults = GNSS_MultipathAnalysis(rinex_obs_file,
 from gnssmultipath import readRinexObs
 
 rinObs_file = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04'
-
 GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems,\
 		obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType,\
 		rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, success = \
@@ -136,7 +135,6 @@ GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems,\
 from gnssmultipath import Rinex_v3_Reader
 
 rinNav_file = 'BRDC00IGS_R_20220010000_01D_MN.rnx'
-
 navdata = Rinex_v3_Reader().read_rinex_nav(rinNav_file, data_rate=60)
 
 ```
@@ -147,8 +145,7 @@ navdata = Rinex_v3_Reader().read_rinex_nav(rinNav_file, data_rate=60)
 from gnssmultipath import PickleHandler
 
 path_to_picklefile = 'analysisResults.pkl'
-
-result_dict = PickleHandler.read_pickle(pickl_file)
+result_dict = PickleHandler.read_pickle(path_to_picklefile)
 
 
 ```
@@ -158,8 +155,7 @@ result_dict = PickleHandler.read_pickle(pickl_file)
 from gnssmultipath import PickleHandler
 
 path_to_picklefile = 'analysisResults.pkl'
-
-result_dict = PickleHandler.read_zstd_pickle(pickl_file)
+result_dict = PickleHandler.read_zstd_pickle(path_to_picklefile)
 
 ```
 
