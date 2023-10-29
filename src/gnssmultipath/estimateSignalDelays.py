@@ -220,7 +220,7 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
         ambiguity_slip_periods[int(PRN)], n_slip_periods = orgSlipEpochs(ambiguity_slip_epochs) # Orginize combined slips detected on range1/phase1 signal only
 
         ## If there are no slips then there is only one "ambiguity period". All estimates are therefore reduced by the same relative value
-        if len(ambiguity_slip_periods[PRN]) == 0:
+        if len(ambiguity_slip_periods[int(PRN)]) == 0:
             ion_delay_phase1[epoch_first_obs_prn::, PRN] = ion_delay_phase1[epoch_first_obs_prn::, PRN] - ion_delay_phase1[epoch_first_obs_prn, PRN]
             multipath_range1[epoch_first_obs_prn::, PRN] = multipath_range1[epoch_first_obs_prn::, PRN] - np.nanmean(multipath_range1[epoch_first_obs_prn::, PRN])
             # multipath_range2[epoch_first_obs::, PRN] = multipath_range2[epoch_first_obs::, PRN] - np.mean(np.nonzero(multipath_range2[epoch_first_obs::, PRN]))
