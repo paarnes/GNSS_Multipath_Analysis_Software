@@ -25,8 +25,8 @@ def make_polarplot(analysisResults, graph_dir):
         curr_sys = GNSS_Name2Code[system]
         bands_curr_sys = analysisResults[system]['Bands']
         try:
-            sat_elevation = analysisResults['Sat_position'][curr_sys]['Elevation']
-            sat_azimut = analysisResults['Sat_position'][curr_sys]['Azimut']
+            sat_elevation = analysisResults['Sat_position'][curr_sys]['elevation']
+            sat_azimut = analysisResults['Sat_position'][curr_sys]['azimuth']
         except:
             logger.warning("INFO(GNSS_MultipathAnalysis): Polarplot of multipath is not possible for %s. Satellite azimuth and elevation angles are missing.", system)
             continue
@@ -166,8 +166,8 @@ def make_polarplot_SNR(analysisResults, GNSS_obs,GNSSsystems, obsCodes, graphDir
     for system in analysisResults['GNSSsystems']:
         curr_sys = GNSS_Name2Code[system]
         try:
-            sat_elevation = analysisResults['Sat_position'][curr_sys]['Elevation']
-            sat_azimut = analysisResults['Sat_position'][curr_sys]['Azimut']
+            sat_elevation = analysisResults['Sat_position'][curr_sys]['elevation']
+            sat_azimut = analysisResults['Sat_position'][curr_sys]['azimuth']
         except:
             logger.warning(f"INFO(GNSS_MultipathAnalysis): Polarplot of SNR is not possible for {system}. Satellite azimuth and elevation angles are missing." )
             continue
@@ -260,7 +260,7 @@ def plot_SNR_wrt_elev(analysisResults,GNSS_obs, GNSSsystems, obsCodes, graphDir,
     for system in analysisResults['GNSSsystems']:
         curr_sys = GNSS_Name2Code[system]
         try:
-            sat_elevation = analysisResults['Sat_position'][curr_sys]['Elevation']
+            sat_elevation = analysisResults['Sat_position'][curr_sys]['elevation']
             sat_elevation[(sat_elevation < 0) | (sat_elevation > 90)] = np.nan # removes elevation angels when the sat not visable (below the horizon)
         except:
             logger.warning(f"INFO(GNSS_MultipathAnalysis): Plot of SNR wrt elevation angle is not possible for {system}. Satellite azimuth and elevation angles are missing." )

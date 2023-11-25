@@ -326,7 +326,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
             nepochs, time_epochs, max_sat, sp3NavFilename_1, sp3NavFilename_2, sp3NavFilename_3)
     else:
         nav_files = [broadcastNav1,broadcastNav2,broadcastNav3,broadcastNav4]
-        sat_pos, glo_fcn = computeSatElevAzimuth_fromNav(nav_files, approxPosition, GNSS_SVs, GNSS_obs, time_epochs, nav_data_rate, tLim_GEC,tLim_R)
+        sat_pos, glo_fcn = computeSatElevAzimuth_fromNav(nav_files, approxPosition, GNSS_SVs, GNSS_obs, time_epochs, nav_data_rate)
 
         ## -- Build same struture for satellit elevation angles if broadcast nav defined
         sat_elevation_angles = {}
@@ -334,15 +334,15 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         for sys in np.arange(0,len(GNSSsystems)):
             currentGNSSsystem = GNSSsystems[sys+1]
             if currentGNSSsystem != 'C':
-                sat_elevation_angles[sys] = sat_pos_dummy[currentGNSSsystem]['Elevation'][:,0:37]
+                sat_elevation_angles[sys] = sat_pos_dummy[currentGNSSsystem]['elevation'][:,0:37]
             else:
-                sat_elevation_angles[sys] = sat_pos_dummy[currentGNSSsystem]['Elevation']
+                sat_elevation_angles[sys] = sat_pos_dummy[currentGNSSsystem]['elevation']
 
         ## - Check for missing systems in navigation file, and remove if found
         missing_sys = []
         dummy_GNSSsystems = GNSSsystems.copy()
         for key,sys in dummy_GNSSsystems.items():
-            if len(sat_pos[sys]['Position']) == 0:
+            if len(sat_pos[sys]['position']) == 0:
                 del sat_pos[sys]
                 del GNSSsystems[key]
                 missing_sys.append(sys)
@@ -412,22 +412,18 @@ def GNSS_MultipathAnalysis(rinObsFilename,
 
     ### --- Build the dicture of the dict used for storing results ----
 
-    ## --initialize variable storing total number of observation codes processed
+    ## --Initialize variable storing total number of observation codes processed
     nCodes_Total = 0
-    ## -- initialize results dictionary
+    ## -- Initialize results dictionary
     analysisResults = {}
     analysisResults['nGNSSsystem'] = nGNSSsystems
     analysisResults['GNSSsystems'] = list(GNSSsystems.values())
     # for sys in range(0,nGNSSsystems):
-    for sys in np.arange(0,nGNSSsystems):
-        ## -- Full name of current GNSS system
-        GNSSsystemName = GNSSsystemCode2Fullname[GNSSsystems[sys+1]]
-        ## -- Include full name of current GNSS system
-        analysisResults[GNSSsystemName] =  {}
-        ## -- Initialize dict for current GNSS system
-        current_sys_dict = {}
-        ## -- Initialize observationOverview field as a dict
-        current_sys_dict['observationOverview'] = {}
+    for sys in np.arange(0, nGNSSsystems):
+        GNSSsystemName = GNSSsystemCode2Fullname[GNSSsystems[sys+1]] # Full name of current GNSS system
+        analysisResults[GNSSsystemName] = {}  # Include full name of current GNSS system
+        current_sys_dict = {} # Initialize dict for current GNSS system
+        current_sys_dict['observationOverview'] = {} # Initialize observationOverview field as a dict
         ## -- Extract the possible bands of current GNSS system, example GPS: 1,2,5
         GNSSsystemPossibleBands = GNSSsystem2BandsMap[GNSSsystemName]
         nPossibleBands = len(GNSSsystemPossibleBands)
@@ -620,9 +616,9 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         if sp3NavFilename_1 != '':
             try:
                 sat_pos[currentGNSSsystem] = {}
-                sat_pos[currentGNSSsystem]['Position']  = sat_coordinates[currentGNSSsystem]
-                sat_pos[currentGNSSsystem]['Azimut']    = sat_azimut_angles[sys]
-                sat_pos[currentGNSSsystem]['Elevation'] = sat_elevation_angles[sys]
+                sat_pos[currentGNSSsystem]['position']  = sat_coordinates[currentGNSSsystem]
+                sat_pos[currentGNSSsystem]['azimuth']    = sat_azimut_angles[sys]
+                sat_pos[currentGNSSsystem]['elevation'] = sat_elevation_angles[sys]
             except:
                 pass
 
@@ -699,8 +695,8 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         for sys in analysisResults['GNSSsystems']:
             curr_sys = GNSS_Name2Code[sys]
             try:
-                azimut_currentSys = analysisResults['Sat_position'][curr_sys]['Azimut']
-                elevation_currentSys = analysisResults['Sat_position'][curr_sys]['Elevation']
+                azimut_currentSys = analysisResults['Sat_position'][curr_sys]['azimuth']
+                elevation_currentSys = analysisResults['Sat_position'][curr_sys]['elevation']
                 print('INFO: Making a regular polar plot for showing azimut and elevation angle for each satellite. Please wait...')
                 if use_LaTex:
                     try:
