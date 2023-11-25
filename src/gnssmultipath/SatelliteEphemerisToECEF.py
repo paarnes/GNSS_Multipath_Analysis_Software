@@ -1,17 +1,18 @@
 """
-Module for converting from broadcasted ephemerides to ECEF
+Module for converting from broadcasted ephemerides to ECEF and interpolated to the desired epoch.
+
+Made by: Per Helge Aarnes
+E-mail: per.helge.aarnes@gmail.com
 """
 
 
 from typing import Literal, Optional, List, Union
+import time
 import numpy as np
 from numpy import ndarray
-# from gnssmultipath.Geodetic_functions import date2gpstime_vectorized, get_leap_seconds, gpstime2date_arrays
-from gnssmultipath.RinexNav import Rinex_v3_Reader
-from gnssmultipath.Geodetic_functions import *
 from tqdm import tqdm
-import time
-
+from gnssmultipath.Geodetic_functions import date2gpstime_vectorized, get_leap_seconds, gpstime2date_arrays, ECEF2enu, ECEF2geodb
+from gnssmultipath.RinexNav import Rinex_v3_Reader
 
 
 
@@ -26,15 +27,20 @@ class GLOStateVec2ECEF:
 
     def interpolate_glonass_coord_runge_kutta(self, filtered_eph_data, time_epochs):
         """
-        Function that use broadcast ephemerides (from rinex nav file) and interpolates to current time using 4th order Runge-kutta.
+        Function that use broadcast ephemerides (from rinex nav file) and interpolates to the
+        desired time defined by "time_epochs" using 4th order Runge-kutta.
 
-        Parameters:
-
+        INPUT:
+        ------
         ephemerides: A array with ephemerides for current satellite
         time_epochs: An n_obs X 2 sized array with weeks and tow read from the rinex observation file.
 
         Return:
-
+        -------
+        pos            : The interpolated satellite coordiantes for the desired time defined by "time_epochs"
+        vel            : The satellite velocity for the desired time defined by "time_epochs"
+        clock_err      : The satellite clock error for the desired time defined by "time_epochs"
+        clock_rate_err : The satellite clock rate error for the desired time defined by "time_epochs"
 
         """
         filtered_eph_data[:,0] = np.nan #reming char from string (ex G01 -> 9999)
@@ -45,7 +51,7 @@ class GLOStateVec2ECEF:
         tauN = filtered_eph_data[:,6]   # SV clock bias (sec) (-TauN)
         gammaN = filtered_eph_data[:,7] # SV relative frequency bias (+GammaN)
 
-        _, tow_rec = time_epochs[:,0], np.round(time_epochs[:,1],6)  # extracting tow
+        tow_rec = np.round(time_epochs[:,1], 6)  # extracting tow
         x_te = filtered_eph_data[:,10]  # X-coordinates at t_e in PZ-90 [km]
         y_te = filtered_eph_data[:,14]  # Y-coordinates at t_e in PZ-90 [km]
         z_te = filtered_eph_data[:,18]  # Z-coordinates at t_e in PZ-90 [km]
@@ -64,12 +70,6 @@ class GLOStateVec2ECEF:
 
         ## -- Find time difference
         tdiff = tow_rec - toc_gps_time
-        # if week_rec[0] == week[0]:
-        #     tdiff = tow_rec - toc_gps_time
-        # else:
-        #     time_eph = self.format_date_string(week,toc_gps_time)
-        #     time_rec = self.format_date_string(week_rec, tow_rec)
-        #     tdiff = (time_rec - time_eph).total_seconds()
 
         ## -- Clock correction (except for general relativity which is applied later)
         clock_err = tauN + tdiff * (gammaN)
@@ -96,11 +96,34 @@ class GLOStateVec2ECEF:
         return pos, vel, clock_err, clock_rate_err
 
 
-    def glonass_diff_eq(self, state, acc):
-        J2 = 1.0826257e-3       # Second zonal coefficient of spherical harmonic expression.
-        mu = 3.9860044e14       # Gravitational constant [m3/s2]   (product of the mass of the earth and and gravity constant)
-        omega = 7.292115e-5     # Earth rotation rate    [rad/sek]
-        ae = 6378136.0          # Semi-major axis PZ-90   [m]
+    def glonass_diff_eq(self, state:ndarray , acc:ndarray):
+        """
+        Calculate the derivatives of Glonass satellite coordinates using the Runge-Kutta interpolation method.
+
+        INPUT:
+        ------
+        state : numpy.ndarray. State vector containing the coordinates and velocities of Glonass satellites.
+                Shape: (n, 6), where n is the number of epochs.
+
+        acc   : numpy.ndarray. Acceleration vector. Shape: (3, n), where n is the number of epochs.
+
+        Returns:
+        --------
+        der_state : numpy.ndarray. Derivatives of the state vector representing the change in satellite coordinates and velocities.
+                    Shape: (n, 6), where n is the number of epochs.
+
+        Constants:
+        -----------
+        J2    : float. Second zonal coefficient of the spherical harmonic expression.
+        mu    : float. Gravitational constant [m^3/s^2] (product of the mass of the Earth and the gravitational constant).
+        omega : float. Earth rotation rate [rad/s].
+        ae    : float. Semi-major axis of the PZ-90 ellipsoid [m].
+        """
+
+        J2 = 1.0826257e-3     # Second zonal coefficient of spherical harmonic expression.
+        mu = 3.9860044e14     # Gravitational constant [m3/s2]   (product of the mass of the earth and and gravity constant)
+        omega = 7.292115e-5   # Earth rotation rate    [rad/sek]
+        ae = 6378136.0        # Semi-major axis PZ-90   [m]
 
         r = np.linalg.norm(state[:, :3], axis=1)  # Euclidean norm for the radius
         der_state = np.zeros((state.shape[0], 6))
@@ -125,16 +148,16 @@ class GLOStateVec2ECEF:
         Add leap seconds based on date. Input is week and tow for current obs.
         """
         year,month,day,_,_,_ = gpstime2date_arrays(week, tow) # convert to gregorian date
-        time = (year,month,day)
-        if time <= (2006, 1, 1):
+        ep_time = (year,month,day)
+        if ep_time <= (2006, 1, 1):
             raise ValueError("Have no history on leap seconds before 2006")
-        elif time <= (2009, 1, 1):
+        elif ep_time <= (2009, 1, 1):
             return 14
-        elif time <= (2012, 7, 1):
+        elif ep_time <= (2012, 7, 1):
             return 15
-        elif time <= (2015, 7, 1):
+        elif ep_time <= (2015, 7, 1):
             return 16
-        elif time <= (2017, 1, 1):
+        elif ep_time <= (2017, 1, 1):
             return 17
         else:
             return 18
@@ -154,15 +177,15 @@ class Kepler2ECEF:
     RINEX navigation file to Earth Centered Earth Fixed (ECEF).
 
     Initialize the class with a RINEX navigation file, the reciecer coordinates in ECEF
-    (xm, ym, zm). data_rate is optional
+    (x_rec, y_rec, z_rec). data_rate is optional
     and set to 60 min as default. (60 min between each epoch)
 
     """
 
-    def __init__(self, xm, ym, zm, data_rate=60):
-        self.xm = xm
-        self.ym = ym
-        self.zm = zm
+    def __init__(self, x_rec, y_rec, z_rec, data_rate=60):
+        self.x_rec = x_rec
+        self.y_rec = y_rec
+        self.z_rec = z_rec
         self.data_rate = data_rate
 
     def kepler2ecef(self, filtered_eph_data, tow_rec):
@@ -247,7 +270,7 @@ class Kepler2ECEF:
         # Relativistic clock correction
         dT_rel = (-2/c**2)*np.sqrt(A*GM)*e*np.sin(E)
 
-        if (abs(self.xm)) > 1.0 and (abs(self.ym)) > 1.0 and (abs(self.zm)) > 1.0:
+        if (abs(self.x_rec)) > 1.0 and (abs(self.y_rec)) > 1.0 and (abs(self.z_rec)) > 1.0:
             TRANS = 0
             TRANS0 = 0.075  # approximate signal travel time
             j = 0
@@ -262,9 +285,9 @@ class Kepler2ECEF:
                 X = x * np.cos(OMEGA_k) - y * np.sin(OMEGA_k) * np.cos(i_k)
                 Y = x * np.sin(OMEGA_k) + y * np.cos(OMEGA_k) * np.cos(i_k)
                 Z = y * np.sin(i_k)
-                dX = (X - self.xm)
-                dY = (Y - self.ym)
-                dZ = (Z - self.zm)
+                dX = (X - self.x_rec)
+                dY = (Y - self.y_rec)
+                dZ = (Z - self.z_rec)
                 DS = np.sqrt(dX**2 + dY**2 + dZ**2)
                 TRANS0 = DS / c
         else:
@@ -286,19 +309,20 @@ class SatelliteEphemerisToECEF:
     """
     Parent class for converting from broadcasted ephemerides to Earth Centered Earth Fixed (ECEF).
     Make use of the classes "GLOStateVec2ECEF" and "Kepler2ECEF".
-    
+
     Input:
     -----
-    
-    rinex_nav_file: List or string. Takes in both a single RINEX navfile or a list of RINEX navigation file. If a list is provided, the data will
-                    be merged in a single array (merged on to one file).
-                    
-    xm, ym, zm : 
-    
-    xm
+
+    rinex_nav_file  : List or string. Takes in both a single RINEX navfile or a list of RINEX navigation file. If a list is provided, the data will
+                      be merged in a single array (merged on to one file).
+    x_rec           : Receiver X-coordinates in ECEF
+    y_rec           : Receiver Y-coordinates in ECEF
+    z_rec           : Receiver Z-coordinates in ECEF
+    desired_systems : List of desired system codes ["G","R","E"]
+    data_rate       : Update rate of the ephemerides. Higher values correspond to less data and faster file reading (in minutes)
     """
 
-    def __init__(self, rinex_nav_file:Union[str, List[str]], xm, ym, zm, desired_systems: Optional[List[str]] = None, data_rate=60):
+    def __init__(self, rinex_nav_file:Union[str, List[str]], x_rec, y_rec, z_rec, desired_systems: Optional[List[str]] = None, data_rate=60):
 
         if desired_systems is None:
             desired_systems = ["G", "R", "E", "C"]
@@ -310,17 +334,14 @@ class SatelliteEphemerisToECEF:
             self.ephemerides = self.nav_data['ephemerides']
             self.glo_fcn = self.nav_data['glonass_fcn']
 
-        self.xm = xm
-        self.ym = ym
-        self.zm = zm
+        self.x_rec = x_rec
+        self.y_rec = y_rec
+        self.z_rec = z_rec
         self.max_sat_per_sys = {"G" : 36, "R" : 36, "E" : 36, "C" : 60}
         self.available_systems = self.find_available_systems_in_eph_data()
         self.available_systems = list(set(self.available_systems).intersection(desired_systems))
         self.sat_coord = {sys: {"position": {int(PRN): None for PRN in range(1, max_sat + 1)}} for sys, max_sat in self.max_sat_per_sys.items() if sys in self.available_systems}
-        # self.az_elevation_dict = {sys: {int(PRN): None for PRN in range(1, max_sat + 1)} for sys, max_sat in self.max_sat_per_sys.items() if sys in self.available_systems}
         self.sat_coord_computed = False
-        # self.az_elevation_dict = {sys: {"azimuth": {int(PRN): None for PRN in range(1, max_sat + 1)},
-        #                                 "elevation": {int(PRN): None for PRN in range(1, max_sat + 1)}} for sys, max_sat in self.max_sat_per_sys.items() if sys in self.available_systems}
         self.prn_overview = self.get_availible_satellites_for_a_system()
         self.system_code_mapper = {"G" : "GPS", "R" : "GLONASS", "C" : "BeiDou", "E" : "Galileo"}
         self.sys_names = [self.system_code_mapper[sys_code] for sys_code in self.available_systems]
@@ -414,7 +435,7 @@ class SatelliteEphemerisToECEF:
         b   =  6356752.314245    # semi minor ax
 
         # Compute latitude and longitude for the receiver
-        lat,lon,h = ECEF2geodb(a, b, self.xm, self.ym, self.zm)
+        lat,lon,h = ECEF2geodb(a, b, self.x_rec, self.y_rec, self.z_rec)
 
         bar_format = '{desc}:{percentage:3.0f}%|{bar}|({n_fmt}/{total_fmt} satellites)'
         desc = ', '.join(self.sys_names[:-1]) + (' and ' + self.sys_names[-1] if len(self.sys_names) > 1 else self.sys_names[0])
@@ -429,14 +450,14 @@ class SatelliteEphemerisToECEF:
                         continue
                     X,Y,Z = self.sat_coord[sys]['position'][PRN].T
                     # Find coordinate difference between satellite and receiver
-                    dX = (X - self.xm)
-                    dY = (Y - self.ym)
-                    dZ = (Z - self.zm)
+                    dX = (X - self.x_rec)
+                    dY = (Y - self.y_rec)
+                    dZ = (Z - self.z_rec)
 
                     # Convert from ECEF to ENU (east,north, up)
                     east, north, up = np.vectorize(ECEF2enu)(lat,lon,dX,dY,dZ)
 
-                    # Calculate azimuth angle and correct for quadrants                    
+                    # Calculate azimuth angle and correct for quadrants
                     azimuth = np.rad2deg(np.arctan(east/north))
                     azimuth = np.where((east > 0) & (north < 0) | ((east < 0) & (north < 0)), azimuth + 180, azimuth)
                     azimuth = np.where((east < 0) & (north > 0), azimuth + 360, azimuth)
@@ -488,7 +509,7 @@ class SatelliteEphemerisToECEF:
             _, desired_time = date2gpstime_vectorized(desired_time)
         if PRN and 'R' not in PRN:
             filtered_eph_data = self.get_closest_ephemerides_for_PRN_at_time(PRN, desired_time)
-            xs, ys, zs, dTrel = Kepler2ECEF(self.xm, self.ym, self.zm).kepler2ecef(filtered_eph_data,desired_time)
+            xs, ys, zs, dTrel = Kepler2ECEF(self.x_rec, self.y_rec, self.z_rec).kepler2ecef(filtered_eph_data,desired_time)
             return np.array([xs, ys, zs]).T
         elif PRN and 'R' in PRN:
             filtered_eph_data = self.get_closest_ephemerides_for_PRN_at_time(PRN, desired_time)
@@ -506,7 +527,7 @@ class SatelliteEphemerisToECEF:
                         if 'R' in sys_code:
                             current_sat_coord,_,_,_ = GLOStateVec2ECEF().interpolate_glonass_coord_runge_kutta(filtered_eph_data, desired_time)
                         else:
-                            xs, ys, zs, dTrel = Kepler2ECEF(self.xm, self.ym, self.zm).kepler2ecef(filtered_eph_data, desired_time[:,1])
+                            xs, ys, zs, dTrel = Kepler2ECEF(self.x_rec, self.y_rec, self.z_rec).kepler2ecef(filtered_eph_data, desired_time[:,1])
                             current_sat_coord = np.array([xs, ys, zs]).T
                         # self.sat_coord[sys][int(sys_code[1::])] = current_sat_coord
                         self.sat_coord[sys]['position'][int(sys_code[1::])] = current_sat_coord
@@ -518,41 +539,4 @@ class SatelliteEphemerisToECEF:
 
 
 if __name__ == "__main__":
-
-    from gnssmultipath import readRinexObs
-    from gnssmultipath.Geodetic_functions import filter_array_on_system, extract_nav_message, compute_GLO_coord_from_nav
-    import cProfile
-    from gnssmultipath import Rinex_v3_Reader
-    import numpy as np
-
-    broad1 = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\NavigationFiles\BRDC00IGS_R_20220010000_01D_MN.rnx"
-    # nav1 = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\NavigationFiles\OPEC00NOR_S_20220010000_01D_RN.rnx"
-
-    # xm, ym, zm = approxPosition
-    xm = np.array([3149785.9652])
-    ym = np.array([598260.8822])
-    zm = np.array([5495348.4927])
-
-    # nav_data = Rinex_v3_Reader().read_rinex_nav(nav1, data_rate=60)
-    # ephemerides = nav_data["ephemerides"]
-
-    # broad1 = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\NavigationFiles\BRDC00IGS_R_20220010000_01D_MN.rnx"
-    # eph_data = Rinex_v3_Reader().read_rinex_nav(broad1, data_rate=60)
-    # eph = eph_data["ephemerides"]
-
-    # rin_NMBUS = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles\OPEC00NOR_S_20220010000_01D_30S_MO_3.04.rnx"
-    # GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems,\
-    #       obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType,\
-    #       rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, _ = readRinexObs(rin_NMBUS)
-
-    time_epochs = np.load(r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\src\time_epochs.npy")
-    # eph = np.load(r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\src\ephemerides.npy")
-
-    DAT = SatelliteEphemerisToECEF(broad1, xm, ym, zm)
-    # DAT = Kepler2ECEF(nav_lst, xm, ym, zm)
-    start_processing = time.time()  # Record the start time for the entire script
-    test = DAT.get_sat_ecef_coordinates(time_epochs)
-    azel = DAT.compute_satellite_azimut_and_elevation_angle()
-    end_processing = time.time()  # Record the end time for the entire script
-    elapsed_processing_time = end_processing - start_processing
-    print(f"Total processing time for the entire script: {elapsed_processing_time} seconds")
+    pass
