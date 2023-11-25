@@ -69,8 +69,9 @@ class RinexNav:
                 prev_sat = current_sat
 
             # Calculate the time difference between the current epoch and the previous one
+            # Appends the data if the time diff is greater than the set limit, or if it is the first epoch (filtered_data is empty)
             time_diff = epoch - previous_epoch
-            if time_diff >= time_difference:
+            if time_diff >= time_difference or not filtered_data: 
                 filtered_data.append(ephemeris_sublist)
                 previous_epoch = epoch
 
@@ -413,5 +414,5 @@ class Rinex_v3_Reader(RinexNav):
 
 if __name__=="__main__":
     # brod1 = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\NavigationFiles\BRDC00IGS_R_20220010000_01D_MN.rnx"
-    # data = Rinex_v3_Reader().read_rinex_nav(brod1, dataframe=True, data_rate=1200000000000)
+    # data = Rinex_v3_Reader().read_rinex_nav(brod1, dataframe=True, data_rate=60)
     pass
