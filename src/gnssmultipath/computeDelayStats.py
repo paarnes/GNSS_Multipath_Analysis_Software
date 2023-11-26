@@ -1,3 +1,11 @@
+"""
+This module is computing the stats.
+
+Made by: Per Helge Aarnes
+E-mail: per.helge.aarnes@gmail.com
+"""
+
+
 from numpy import mean, sqrt, sin, nan,pi,isnan, sum, concatenate, zeros, where, intersect1d,nanmean,count_nonzero,union1d,arange, nanstd
 import warnings
 warnings.filterwarnings("ignore")
@@ -6,8 +14,9 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
     """
     Function that computes statistical values on estimates of multipath delay, ionospheric delay and satellite elevation angles
 
-    --------------------------------------------------------------------------------------------------------------------------
-     INPUTS
+
+     INPUTS:
+    -------
 
     ion_delay_phase1:      matrix containing estimates of ionospheric delays
                            on the first phase signal for each PRN, at each epoch.
@@ -50,8 +59,13 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
                            range1_observations(epoch, PRN)
 
      tInterval:            observation interval in seconds
-    --------------------------------------------------------------------------------------------------------------------------
-     OUTPUTS
+
+
+
+
+     OUTPUTS:
+     -------
+
 
      mean_multipath_range1:        array. contains mean values of estimates of
                                    multipath delay of the first range signal,
@@ -106,31 +120,31 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
 
      nRange1Obs:                   total number of range1 observations, all SVs
 
-     range1_slip_distribution_per_sat:     cell. each element contains a structure for
+     range1_slip_distribution_per_sat:     dict. each element contains a structure for
                                    each satellite. each structure has
                                    information on number of range1 slips
                                    distributed over groups depending on the
                                    elevation angle of the satellite at the
                                    time of the slip.
 
-     range1_slip_distribution:     structure. Stores information on number of
+     range1_slip_distribution:     dict. Stores information on number of
                                    range1 slips distributed over groups depending
                                    on the elevation angle of the satellite at the
                                    time of the slip.
 
-     LLI_slip_distribution_per_sat:     cell. each element contains a structure for
+     LLI_slip_distribution_per_sat:     dict. each element contains a structure for
                                    each satellite. each structure has
                                    information on number of LLI detected slips
                                    distributed over groups depending on the
                                    elevation angle of the satellite at the
                                    time of the slip.
 
-     LLI_slip_distribution:        structure. Stores information on number of
+     LLI_slip_distribution:        dict. Stores information on number of
                                    LLI detected slips distributed over groups depending
                                    on the elevation angle of the satellite at the
                                    time of the slip.
 
-     combined_slip_distribution_per_sat:     cell. each element contains a structure for
+     combined_slip_distribution_per_sat:     dict. each element contains a structure for
                                    each satellite. each structure has
                                    information on number of slips detected
                                    both by LLI and this siftware analysis,
@@ -138,7 +152,7 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
                                    elevation angle of the satellite at the
                                    time of the slip.
 
-     combined_slip_distribution:   structure. Stores information on number of
+     combined_slip_distribution:   dict. Stores information on number of
                                    slips detected both ny LLI and this software
                                    analysis, distributed over groups depending
                                    on the elevation angle of the satellite at the
@@ -147,50 +161,40 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
     """
     nSat = len(range1_slip_periods)
 
-    ## set all 0 values to NaN so they are excluded from stats calculation
+    # set all 0 values to NaN so they are excluded from stats calculation
     ion_delay_phase1[ion_delay_phase1==0] = nan
     multipath_range1[multipath_range1==0] = nan
     current_sat_elevation_angles[current_sat_elevation_angles==0] = nan
 
-    ## -- Compute mean
-    mean_multipath_range1 = nanmean(multipath_range1,axis=0)
+    mean_multipath_range1 = nanmean(multipath_range1,axis=0)              # Compute mean
+    overall_mean_multipath_range1 = nanmean(mean_multipath_range1,axis=0) # overall mean multipath, excluding NaN values
+    rms_multipath_range1 = nanstd(multipath_range1,axis=0, ddof=0)        # RMS multipath of each satellite, excluding NaN
+    average_rms_multipath_range1 = nanstd(multipath_range1, ddof=0)       # Average RMS multipath, excluding NaN
 
-    # overall mean multipath, excluding NaN values
-    overall_mean_multipath_range1 = nanmean(mean_multipath_range1,axis=0)
-
-    # RMS multipath of each satellite, excluding NaN
-    rms_multipath_range1 = nanstd(multipath_range1,axis=0, ddof=0)
-
-    ## Average RMS multipath, excluding NaN
-    average_rms_multipath_range1 = nanstd(multipath_range1, ddof=0)
-
-    ## -- Weighted RMS multipath
+    #  Weighted RMS multipath
     weights     = current_sat_elevation_angles.copy()
     crit_weight = 4*sin(30*pi/180)**2
     weights     = 4*sin(weights*pi/180)**2
     weights[weights > crit_weight] = 1
     elevation_weighted_multipath_range1 = multipath_range1*weights
 
-    ## -- RMS multipath of each satellite, excluding NaN
+    # RMS multipath of each satellite, excluding NaN
     elevation_weighted_rms_multipath_range1 = sqrt(nanmean(elevation_weighted_multipath_range1*elevation_weighted_multipath_range1,axis=0))
-
-    ## -- Average RMS multipath, excluding NaN
+    # Average RMS multipath, excluding NaN
     elevation_weighted_average_rms_multipath_range1 = sqrt(nanmean(elevation_weighted_multipath_range1*elevation_weighted_multipath_range1))
 
-    ## --Ionosphere
-    ## mean ionospheric delay for each satellite, excluding NaN
-    mean_ion_delay_phase1 = nanmean(ion_delay_phase1,axis=0)
-
-    ## Overall mean ionospheric delay, excluding NaN
-    overall_mean_ion_delay_phase1 = nanmean(mean_ion_delay_phase1)
+    # Ionosphere
+    mean_ion_delay_phase1 = nanmean(ion_delay_phase1,axis=0) # mean ionospheric delay for each satellite, excluding NaN
+    overall_mean_ion_delay_phase1 = nanmean(mean_ion_delay_phase1) # Overall mean ionospheric delay, excluding NaN
 
     ## Average elevation angle for each satellite, excluding NaN
-    dumm1 = (range1_observations!= 0)*1 # multiplying with 1 to get from True/False -> 1/0
+    dumm1 = (range1_observations!= 0)*1 # multiplying with 1 to get from True/False -> 1/0 # commented out 25.11.2023
     dumm2 = (~isnan(range1_observations))*1
     dummy = (dumm1 & dumm2)
     obs_elevations = current_sat_elevation_angles*dummy
     obs_elevations[obs_elevations==0] =nan
     mean_sat_elevation_angles = nanmean(obs_elevations,axis=0)
+    mean_sat_elevation_angles = nanmean(current_sat_elevation_angles,axis=0)
 
     ## -- Amount of epochs with estimates
     nEstimates = sum(~isnan(multipath_range1))
@@ -293,7 +297,7 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
             LLI_slip_epochs.append(int(LLI_slip_periods[i][j,0]))
 
         ## Get elevation angles for every LLI slip of current sat
-        if not isnan(current_sat_elevation_angles[LLI_slip_epochs, i+1]):
+        if not isnan(current_sat_elevation_angles[LLI_slip_epochs, i+1]).any():
             LLI_slip_epoch_elevation_angles = current_sat_elevation_angles[LLI_slip_epochs, i+1].astype(int)
         else:
             LLI_slip_epoch_elevation_angles = current_sat_elevation_angles[LLI_slip_epochs, i+1]
