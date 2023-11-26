@@ -36,10 +36,16 @@ jobs:
       run: sed -i "s/version = \".*\"/version = \"${{ steps.increment_version.outputs.version }}\"/" pyproject.toml
 
     - name: Build and upload to Test PyPI (dev branch)
-      if: github.ref == 'refs/heads/dev'
+      if: github.ref == 'refs/heads/feature/vectorization'
       run: |
         python -m build
         twine upload --repository-url https://test.pypi.org/legacy/ --username __token__ --password ${{ secrets.PYPI_TOKEN }} dist/*
+
+    # - name: Build and upload to Test PyPI (dev branch)
+    #   if: github.ref == 'refs/heads/dev'
+    #   run: |
+    #     python -m build
+    #     twine upload --repository-url https://test.pypi.org/legacy/ --username __token__ --password ${{ secrets.PYPI_TOKEN }} dist/*
 
     # - name: Build and upload to PyPI (master branch)
     #   if: github.ref == 'refs/heads/master'
