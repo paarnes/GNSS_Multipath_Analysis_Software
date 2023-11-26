@@ -40,13 +40,7 @@ jobs:
       if: github.ref == 'refs/heads/feature/vectorization'
       run: |
         python -m build
-        twine upload --repository testpypi dist/* --username __token__ --password ${{ secrets._TEST_PYPI_TOKEN }} dist/*
-
-    # - name: Build and upload to Test PyPI (dev branch)
-    #   if: github.ref == 'refs/heads/feature/vectorization'
-    #   run: |
-    #     python -m build
-    #     twine upload --repository-url https://test.pypi.org/legacy/ --username __token__ --password ${{ secrets._TEST_PYPI_TOKEN }} dist/*
+        twine upload --repository-url https://test.pypi.org/legacy/ --username __token__ --password ${{ secrets.TEST_PYPI_TOKEN }} dist/*
 
 
 
