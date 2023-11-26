@@ -7,7 +7,6 @@ E-mail: per.helge.aarnes@gmail.com
 
 
 from typing import Literal, Optional, List, Union
-import time
 import numpy as np
 from numpy import ndarray
 from tqdm import tqdm
@@ -51,7 +50,7 @@ class GLOStateVec2ECEF:
         tauN = filtered_eph_data[:,6]   # SV clock bias (sec) (-TauN)
         gammaN = filtered_eph_data[:,7] # SV relative frequency bias (+GammaN)
 
-        tow_rec = np.round(time_epochs[:,1], 6)  # extracting tow
+        tow_rec = np.round(time_epochs, 6)  # extracting tow
         x_te = filtered_eph_data[:,10]  # X-coordinates at t_e in PZ-90 [km]
         y_te = filtered_eph_data[:,14]  # Y-coordinates at t_e in PZ-90 [km]
         z_te = filtered_eph_data[:,18]  # Z-coordinates at t_e in PZ-90 [km]
@@ -320,6 +319,32 @@ class SatelliteEphemerisToECEF:
     z_rec           : Receiver Z-coordinates in ECEF
     desired_systems : List of desired system codes ["G","R","E"]
     data_rate       : Update rate of the ephemerides. Higher values correspond to less data and faster file reading (in minutes)
+
+
+    Examples on how to use the class:
+
+    - Compute satellite coordinates for all systems and satellites where the time is defined GPS time "Time-of-week" (seconds):
+            sat_pos = SatelliteEphemerisToECEF(rin_nav_file, x_rec, y_rec, z_rec).get_sat_ecef_coordinates(tow_epochs) # where "tow_epochs" is an 1D array with time-of-week
+
+
+    - Compute satellite coordinates for a specific satellite (in this case "R10") and where the time is defined in GPS time and "Time-of-week" (seconds):
+            sat_pos = SatelliteEphemerisToECEF(rin_nav_file, x_rec, y_rec, z_rec).get_sat_ecef_coordinates(tow_epochs, PRN = 'R10')
+
+
+    - Compute satellite coordinates for a specific satellite (in this case "G20") and where the time is defined in Gregorian time (year, month,day,hour,minute,seconds):
+            time_epochs = np.array([[2020,   10,   30,   13,   22,   14],
+                                    [2020,   10,   30,   13,   22,   15],
+                                    [2020,   10,   30,   13,   22,   16]])
+
+            sat_pos = SatelliteEphemerisToECEF(rin_nav_file, x_rec, y_rec, z_rec).get_sat_ecef_coordinates(time_epochs, time_fmt='GREGORIAN', PRN = 'G20')
+
+
+    - Compute satellite azimuth and elevation angles
+            CONVERTER = SatelliteEphemerisToECEF(rinnav, x_rec, y_rec, z_rec, data_rate=120) # create an object
+            CONVERTER.get_sat_ecef_coordinates(time_epochs)                                  # compute satellite coordinates
+            sat_pos = CONVERTER.compute_satellite_azimut_and_elevation_angle()               # compute satellite elevation and azimuth angles
+
+
     """
 
     def __init__(self, rinex_nav_file:Union[str, List[str]], x_rec, y_rec, z_rec, desired_systems: Optional[List[str]] = None, data_rate=60):
@@ -328,7 +353,7 @@ class SatelliteEphemerisToECEF:
             desired_systems = ["G", "R", "E", "C"]
 
         if isinstance(rinex_nav_file, list):
-            self.ephemerides, self.glo_fcn = self.read_a_list_of_nav_files(rinex_nav_file, data_rate)
+            self.ephemerides, self.glo_fcn = self.read_a_list_of_nav_files(rinex_nav_file, data_rate=data_rate)
         else:
             self.nav_data = Rinex_v3_Reader().read_rinex_nav(rinex_nav_file, desired_systems, data_rate=data_rate)
             self.ephemerides = self.nav_data['ephemerides']
@@ -340,7 +365,7 @@ class SatelliteEphemerisToECEF:
         self.max_sat_per_sys = {"G" : 36, "R" : 36, "E" : 36, "C" : 60}
         self.available_systems = self.find_available_systems_in_eph_data()
         self.available_systems = list(set(self.available_systems).intersection(desired_systems))
-        self.sat_coord = {sys: {"position": {int(PRN): None for PRN in range(1, max_sat + 1)}} for sys, max_sat in self.max_sat_per_sys.items() if sys in self.available_systems}
+        self.sat_coord = {sys: {"position": {str(PRN): None for PRN in range(1, max_sat + 1)}} for sys, max_sat in self.max_sat_per_sys.items() if sys in self.available_systems}
         self.sat_coord_computed = False
         self.prn_overview = self.get_availible_satellites_for_a_system()
         self.system_code_mapper = {"G" : "GPS", "R" : "GLONASS", "C" : "BeiDou", "E" : "Galileo"}
@@ -357,6 +382,7 @@ class SatelliteEphemerisToECEF:
         first_nav_data = Rinex_v3_Reader().read_rinex_nav(nav_files[0], data_rate=data_rate)
         data = np.concatenate([first_nav_data['ephemerides']] + [Rinex_v3_Reader().read_rinex_nav(nav_file, data_rate=data_rate)['ephemerides'] for nav_file in nav_files[1:]], axis=0)
         glonass_fcn = first_nav_data.get('glonass_fcn', None)
+        data = np.unique(data, axis=0) # ensure no duplicates
         return data, glonass_fcn
 
 
@@ -445,10 +471,10 @@ class SatelliteEphemerisToECEF:
                 el_array = np.full((self.nepochs, self.max_sat_per_sys[sys]+1), np.nan)
                 for sys_code in self.prn_overview[sys]:
                     PRN = int(sys_code[1::])
-                    if self.sat_coord[sys]['position'][PRN] is None:
+                    if self.sat_coord[sys]['position'][str(PRN)] is None:
                         pbar.update(1) # Update the progress bar for each satellite processed
                         continue
-                    X,Y,Z = self.sat_coord[sys]['position'][PRN].T
+                    X,Y,Z = self.sat_coord[sys]['position'][str(PRN)].T
                     # Find coordinate difference between satellite and receiver
                     dX = (X - self.x_rec)
                     dY = (Y - self.y_rec)
@@ -506,7 +532,7 @@ class SatelliteEphemerisToECEF:
         """
 
         if time_fmt == "GREGORIAN":
-            _, desired_time = date2gpstime_vectorized(desired_time)
+            desired_time = np.atleast_2d(date2gpstime_vectorized(desired_time)).T
         if PRN and 'R' not in PRN:
             filtered_eph_data = self.get_closest_ephemerides_for_PRN_at_time(PRN, desired_time)
             xs, ys, zs, dTrel = Kepler2ECEF(self.x_rec, self.y_rec, self.z_rec).kepler2ecef(filtered_eph_data,desired_time)
@@ -514,23 +540,25 @@ class SatelliteEphemerisToECEF:
         elif PRN and 'R' in PRN:
             filtered_eph_data = self.get_closest_ephemerides_for_PRN_at_time(PRN, desired_time)
             current_sat_coord,_,_,_ = GLOStateVec2ECEF().interpolate_glonass_coord_runge_kutta(filtered_eph_data, desired_time)
+            return current_sat_coord
         else:
             bar_format = '{desc}:{percentage:3.0f}%|{bar}|({n_fmt}/{total_fmt} satellites)'
             desc = ', '.join(self.sys_names[:-1]) + (' and ' + self.sys_names[-1] if len(self.sys_names) > 1 else self.sys_names[0])
             with tqdm(total = self.total_sats, desc =f"Satellite coordinates are being computed for {desc}" , position=0, leave=True, bar_format=bar_format) as pbar:
                 for sys in self.available_systems:
                     for sys_code in self.prn_overview[sys]:
-                        filtered_eph_data = self.get_closest_ephemerides_for_PRN_at_time(sys_code, desired_time[:,1])
+                        PRN = int(sys_code[1::])
+                        filtered_eph_data = self.get_closest_ephemerides_for_PRN_at_time(sys_code, desired_time)
                         if filtered_eph_data is None:
                             pbar.update(1)
                             continue
                         if 'R' in sys_code:
                             current_sat_coord,_,_,_ = GLOStateVec2ECEF().interpolate_glonass_coord_runge_kutta(filtered_eph_data, desired_time)
                         else:
-                            xs, ys, zs, dTrel = Kepler2ECEF(self.x_rec, self.y_rec, self.z_rec).kepler2ecef(filtered_eph_data, desired_time[:,1])
+                            xs, ys, zs, dTrel = Kepler2ECEF(self.x_rec, self.y_rec, self.z_rec).kepler2ecef(filtered_eph_data, desired_time)
                             current_sat_coord = np.array([xs, ys, zs]).T
-                        # self.sat_coord[sys][int(sys_code[1::])] = current_sat_coord
-                        self.sat_coord[sys]['position'][int(sys_code[1::])] = current_sat_coord
+
+                        self.sat_coord[sys]['position'][str(PRN)] = current_sat_coord
                         pbar.update(1) # Update the progress bar for each satellite processed
         self.sat_coord_computed = True
         self.nepochs = len(desired_time)
@@ -539,4 +567,25 @@ class SatelliteEphemerisToECEF:
 
 
 if __name__ == "__main__":
+    # nav1 = r"C:\Users\perhe\Desktop\TEST VEC\test_5\OPEC00NOR_S_20220010000_01D_GN.rnx"
+    # nav2 = r"C:\Users\perhe\Desktop\TEST VEC\test_5\OPEC00NOR_S_20220010000_01D_RN.rnx"
+    # nav3 = r"C:\Users\perhe\Desktop\TEST VEC\test_5\OPEC00NOR_S_20220010000_01D_CN.rnx"
+    # nav4 = r"C:\Users\perhe\Desktop\TEST VEC\test_5\OPEC00NOR_S_20220010000_01D_EN.rnx"
+
+    # rinnav = [nav1,nav2,nav3,nav4]
+    # x_rec = 3149785.9652
+    # y_rec = 598260.8822
+    # z_rec = 5495348.4927
+    # time_epochs = np.array([[2199, 45345]])
+    # time_epochs = np.array([[2020,   10,   30,   13,   22,   14],
+    #                         [2020,   10,   30,   13,   22,   15],
+    #                         [2020,   10,   30,   13,   22,   16]])
+    # time_epochs = np.load(r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\Admin\gammel kode ifm vectorisering\time_epochs.npy")
+    # CONVERTER = SatelliteEphemerisToECEF(rinnav, x_rec, y_rec, z_rec, data_rate=120)
+    # CONVERTER.get_sat_ecef_coordinates(time_epochs[:,1])
+    # sat_pos = CONVERTER.compute_satellite_azimut_and_elevation_angle()
+    # sat_pos = SatelliteEphemerisToECEF(rinnav, x_rec, y_rec, z_rec).get_sat_ecef_coordinates(time_epochs[:,1], PRN = 'R10')
+    # sat_pos = SatelliteEphemerisToECEF(rinnav, x_rec, y_rec, z_rec).get_sat_ecef_coordinates(time_epochs, time_fmt='GREGORIAN' ,PRN = 'R10')
+
+
     pass
