@@ -128,8 +128,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-Admin 
+Admin
 launch.json
+SLETT_*
 
 Output_Files/
 .vscode/
