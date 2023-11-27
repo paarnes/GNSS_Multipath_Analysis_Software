@@ -46,7 +46,7 @@ jobs:
       if: github.ref == 'refs/heads/master'
 
     - name: Build and upload to PyPI (master branch)
-      if: github.ref == 'refs/heads/master' && github.event_name == 'release' && github.event.action == 'created'
+      if: github.ref == 'refs/heads/master'
       run: |
         python -m build
         twine upload --repository-url https://upload.pypi.org/legacy/ --username __token__ --password ${{ secrets.PYPI_TOKEN }} dist/*
