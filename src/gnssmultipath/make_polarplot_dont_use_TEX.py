@@ -298,7 +298,7 @@ def plot_SNR_wrt_elev_dont_use_TEX(analysisResults,GNSS_obs, GNSSsystems, obsCod
             ## -- Subplot 2
             ax[1].grid(True,linewidth=0.3)
             ax[1].set_xlim([0,90])
-            ax[1].set_title("Signal to noise ratio (SNR) as funtion elevation angle for \n Signal: %s (%s)" % (range1_code, system), va='bottom',fontsize=22)
+            ax[1].set_title("Signal to noise ratio (SNR) as funtion of elevation angle for \n Signal: %s (%s)" % (range1_code, system), va='bottom',fontsize=22)
             ax[1].set_ylim(0,np.nanmax(SNR)+10)
             ax[1].set_xlabel('Elevation angle [degree]',fontsize=18,labelpad=10)
             ax[1].set_ylabel('[dB-Hz]',fontsize=18,labelpad=10)
