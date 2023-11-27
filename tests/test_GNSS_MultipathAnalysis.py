@@ -68,6 +68,7 @@ def test_compute_azimut_elev(X, Y, Z, xm, ym, zm, expected_output):
 os.chdir(os.path.join(project_path,'src'))
 
 @pytest.mark.filterwarnings("ignore::RuntimeWarning")
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_GNSS_MultipathAnalysis_sp3_file():
     """
     Test the results from OPEC2022 and sp3 files
@@ -100,7 +101,7 @@ def test_GNSS_MultipathAnalysis_sp3_file():
 
 
 
-
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 @pytest.mark.filterwarnings("ignore::RuntimeWarning")
 def test_GNSS_MultipathAnalysis_broadcast_navfile():
     """
