@@ -2,6 +2,8 @@ from numpy import fix,array,log,fmod,arctan,arctan2,arcsin,sqrt,sin,cos,pi,arang
 import numpy as np
 from datetime import datetime,timedelta
 from datetime import date
+from typing import List, Union, Literal
+from numpy import ndarray
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -92,6 +94,62 @@ def Nrad(a,b,lat):
     e2 = (a**2 - b**2)/a**2
     N = a/(1 - e2*sin(lat)**2)**(1/2)
     return N
+
+
+
+def compute_satellite_azimut_and_elevation_angle(X, Y, Z, xm, ym, zm):
+    """
+    Computes the satellites azimute and elevation angle based on satellitte and
+    receiver ECEF-coordinates. Utilizes vectorization (no for loops) for
+    better performance.
+
+    Unit: Degree.
+
+    Parameters
+    ----------
+    X : Satellite X-coordinate (numpy array)
+    Y : Satellite Y-coordinate (numpy array)
+    Z : Satellite Z-coordinate (numpy array)
+    xm : Reciever X-coordinate (numpy array)
+    ym : Reciever Y-coordinate (numpy array)
+    zm : Reciever X-coordinate (numpy array)
+
+    Returns
+    -------
+    az : Azimut angle in degrees  (numpy array)
+    elev: Elevation angle in degrees  (numpy array)
+
+
+    NOT IN USE AT THE MOMENT
+    """
+
+    ## -- WGS 84 ellipsoid:
+    a   =  6378137.0         # semi-major ax
+    b   =  6356752.314245    # semi minor ax
+
+    # Compute latitude and longitude for the receiver
+    lat,lon,h = ECEF2geodb(a,b,xm,ym,zm)
+
+    # Find coordinate difference between satellite and receiver
+    dX = (X - xm)
+    dY = (Y - ym)
+    dZ = (Z - zm)
+
+    # Convert from ECEF to ENU (east,north, up)
+    east, north, up = np.vectorize(ECEF2enu)(lat,lon,dX,dY,dZ)
+
+    # Calculate azimuth angle and correct for quadrants
+    azimuth = np.rad2deg(np.arctan(east/north))
+    azimuth = np.where((east > 0) & (north < 0) | ((east < 0) & (north < 0)), azimuth + 180, azimuth)
+    azimuth = np.where((east < 0) & (north > 0), azimuth + 360, azimuth)
+
+    # Calculate elevation angle
+    elevation = np.rad2deg(np.arctan(up / np.sqrt(east**2 + north**2)))
+    elevation = np.where((elevation <= 0) | (elevation >= 90), np.nan, elevation) # Set elevation angle to NaN if not in the range (0, 90)
+
+    return azimuth, elevation
+
+
 
 
 
@@ -186,6 +244,14 @@ def date2gpstime(year,month,day,hour,minute,seconds):
     tow = tow_0 + hour*3600 + minute*60 + seconds
 
     return week, tow
+
+
+def filter_array_on_system(eph_data,system):
+    """
+    Filtering the array with ephemerids based on system code "G", "E" "C" etc.
+    """
+    mask = np.char.startswith(eph_data[:,0],system)
+    return eph_data[mask]
 
 
 def extract_nav_message(data,PRN,tidspunkt):
@@ -537,6 +603,44 @@ def gpstime2date(week, tow):
 
     date_ = [year, month, day, hour, min_, sec]
     return date_
+
+
+
+def gpstime2date_arrays(week: Union[List[int], np.ndarray], tow: Union[List[float], np.ndarray]) -> np.ndarray:
+    """
+    Calculates date from GPS-week number and "time-of-week" to Gregorian calendar.
+    NOT IN USE AT THE MOMENT
+
+    Parameters
+    ----------
+    week : array/list, GPS-week numbers.
+    tow  : array/list, "Time of week" values.
+
+    Returns
+    -------
+    dates : array, An array of dates given in the Gregorian calendar ([year, month, day, hour, min, sec]).
+    """
+    # Convert week and tow to regular Python lists
+    week = week.tolist()
+    tow = tow.tolist()
+    total_seconds = [w * 7 * 24 * 3600 + t for w, t in zip(week, tow)] # Calculate the time since the GPS epoch (6th January 1980) for each week and tow
+    delta = [timedelta(seconds=s) for s in total_seconds] # Calculate the timedelta from the GPS epoch for each week and tow
+    gps_epoch = datetime(1980, 1, 6) # The GPS reference epoch
+    dates = [gps_epoch + d for d in delta] # Calculate the final date by adding the timedelta to the GPS epoch
+    date_array = np.array([[date.year, date.month, date.day, date.hour, date.minute, date.second] for date in dates]) # Create an array by extracting date components
+
+    return date_array
+
+
+
+def date2gpstime_vectorized(gregorian_date_array):
+    """
+    Convert from gregorian dates to GPS time by using
+    np.vectorization.
+    """
+    years, months, days, hours, minutes, seconds = gregorian_date_array.astype(float).astype(int).T
+    weeks, tows = np.vectorize(date2gpstime)(years, months, days, hours, minutes, seconds)
+    return np.round(weeks), np.round(tows)
 
 
 

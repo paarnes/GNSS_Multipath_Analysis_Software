@@ -107,8 +107,8 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
     fid = open(outputFilename, 'w+')
 
     fid.write('GNSS_MultipathAnalysis\n')
-    fid.write('Software version: 1.2.0\n')
-    fid.write('Last software version release: 12/03/2023\n\n')
+    fid.write('Software version: 1.4.3\n')
+    fid.write('Last software version release: 26/11/2023\n\n')
     fid.write('Software developed by Per Helge Aarnes (per.helge.aarnes@gmail.com) \n\n')
     fid.write('RINEX observation filename:\t\t %s\n' % (rinex_obs_filename))
     if sp3_filename is not None:
@@ -373,7 +373,7 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                     nSlips30_40msg              = nSlips30_40msg + '%8d|' % (current_code_struct['cycle_slip_distribution']['n_slips_30_40'])
                     nSlips40_50msg              = nSlips40_50msg + '%8d|' % (current_code_struct['cycle_slip_distribution']['n_slips_40_50'])
                     nSlipsOver50msg             = nSlipsOver50msg + '%8d|' % (current_code_struct['cycle_slip_distribution']['n_slips_over50'])
-                    nSlipsNaNmsg                = nSlipsNaNmsg + '%8d|' % (current_code_struct['cycle_slip_distribution']['n_slips_NaN'])
+                    # nSlipsNaNmsg                = nSlipsNaNmsg + '%8d|' % (current_code_struct['cycle_slip_distribution']['n_slips_NaN'])
 
             fid.write(topline + '\n')
             fid.write(headermsg + '\n')
@@ -392,8 +392,8 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
             fid.write(bottomline + '\n')
             fid.write(nSlipsOver50msg + '\n')
             fid.write(bottomline + '\n')
-            fid.write(nSlipsNaNmsg + '\n')
-            fid.write(bottomline + '\n')
+            # fid.write(nSlipsNaNmsg + '\n')
+            # fid.write(bottomline + '\n')
             fid.write(slipRatiomsg + '\n')
             fid.write(bottomline + '\n')
 

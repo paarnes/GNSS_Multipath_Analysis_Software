@@ -96,35 +96,35 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
     --------------------------------------------------------------------------------------------------------------------------
      OUTPUTS
 
-     ion_delay_phase1:     matrix containing estimates of ionospheric delays
+     ion_delay_phase1:     2D array containing estimates of ionospheric delays
                            on the first phase signal for each PRN, at each epoch.
 
-                           ion_delay_phase1(epoch, PRN)
+                           ion_delay_phase1[epoch, PRN]
 
-     multipath_range1:     matrix containing estimates of multipath delays
+     multipath_range1:     2D array containing estimates of multipath delays
                            on the first range signal for each PRN, at each epoch.
 
                            multipath_range2(epoch, PRN)
 
-     multipath_range2:     matrix containing estimates of multipath delays
+     multipath_range2:     2D array containing estimates of multipath delays
                            on the second range signal for each PRN, at each epoch.
 
-                           multipath_range2(epoch, PRN)
+                           multipath_range2[epoch, PRN]
 
-     range1_slip_periods:  cell, each cell element contains one matrix for
+     range1_slip_periods:  array, each cell element contains one matrix for
                            every PRN. Each matrix contains epochs of range1
                            slip starts in first column and slip ends in second
                            column.
 
-     range1_observations:  matrix. Contains all range1 observations for all
+     range1_observations:  2D array. Contains all range1 observations for all
                            epochs and for all SVs.
 
-                           range1_observations(epoch, PRN)
+                           range1_observations[epoch, PRN]
 
-     phase1_observations:  matrix. Contains all phase1 observations for all
+     phase1_observations:  2D array. Contains all phase1 observations for all
                            epochs and for all SVs.
 
-                           range1_observations(epoch, PRN)
+                           phase1_observations[epoch, PRN]
 
      success:              boolean, 1 if no error occurs, 0 otherwise
 
@@ -155,108 +155,75 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
                                     # the range1/phase1 signal
 
     ## -- Initialize data matrices
-    ion_delay_phase1        = np.zeros([nepochs, max_sat+1]) # Addin 1 to since python is nullindexed
+    ion_delay_phase1        = np.zeros([nepochs, max_sat+1])
     multipath_range1        = np.zeros([nepochs, max_sat+1])
     # multipath_range2        = np.zeros([nepochs, max_sat+1]) # kommenterte bort 23.01.2023
     N1_pseudo_estimate      = np.zeros([nepochs, max_sat+1])
     missing_obs_overview    = np.zeros([nepochs, max_sat+1])
     missing_range1_overview = np.zeros([nepochs, max_sat+1])
 
-    ## -- Initialize cell for storing phase slip periods
-    ambiguity_slip_periods = {}
-    ## -- Initialize cell for storing slip periods for only range1/phase1
+    ambiguity_slip_periods = {int(key): [] for key in range(1,  max_sat+1)} # Initialize cell for storing phase slip periods
+    range1_slip_periods = {int(key): [] for key in range(1,  max_sat+1)} # Initialize cell for storing slip periods for only range1/phase1
 
-    range1_slip_periods = {}
-
-    ## -- Make estimates of delays
-    for epoch in np.arange(0,nepochs):
-        ## -- Calculate how many satelites with observations in current epoch
-        n_sat = int(GNSS_SVs[epoch,0])
-        ## - Iterate over all satellites of current epoch
-        for i in np.arange(0,n_sat):
-            PRN = int(GNSS_SVs[epoch, 1+i]) # Get PRN ## KANSJE FJERNE +1??? for å få med PRN 11
-
-            if FDMA_used:
-                carrier_freq1 = carrier_freq1_list[PRN]
-                carrier_freq2 = carrier_freq2_list[PRN]
-                alpha = carrier_freq1**2/carrier_freq2**2 # amplfication factor
+    if FDMA_used: # denne er inødnendig etter vektoriseringen
+        carrier_freq1 = carrier_freq1_list
+        carrier_freq2 = carrier_freq2_list
+        alpha = carrier_freq1**2/carrier_freq2**2 # amplfication factor
 
 
-            ## -- Get observations
-            range1 = GNSS_obs[epoch+1][PRN, ismember(obsCodes[currentGNSSsystem],range1_Code)]
-            range2 = GNSS_obs[epoch+1][PRN, ismember(obsCodes[currentGNSSsystem],range2_Code)]
+    #  Get observations
+    range1 = create_array_for_current_obscode(GNSS_obs, ismember(obsCodes[currentGNSSsystem],range1_Code))
+    range2 = create_array_for_current_obscode(GNSS_obs, ismember(obsCodes[currentGNSSsystem],range2_Code))
 
-            phase1 = GNSS_obs[epoch+1][PRN, ismember(obsCodes[currentGNSSsystem],phase1_Code)]*c/carrier_freq1
-            phase2 = GNSS_obs[epoch+1][PRN, ismember(obsCodes[currentGNSSsystem],phase2_Code)]*c/carrier_freq2
+    phase1 = create_array_for_current_obscode(GNSS_obs, ismember(obsCodes[currentGNSSsystem],phase1_Code))*c/carrier_freq1
+    phase2 = create_array_for_current_obscode(GNSS_obs, ismember(obsCodes[currentGNSSsystem],phase2_Code))*c/carrier_freq2
 
-            if any([str(range1), str(range2), str(phase1), str(phase2)]) == '[]':
-                print('ERROR(estimateSignalDelays): Some observations are missing. Check for missing data in RINEX observation file!')
-                success = 0
-                return success
+    if all(v is None for v in [range1, range2, phase1, phase2]):
+        print('ERROR(estimateSignalDelays): Some observations are missing. Check for missing data in RINEX observation file!')
+        success = 0
+        return success
 
 
-            ## -- If any of the four observations are missing, ie 0, estimate remains 0 for that epoch and satellite
-            if [range1, range2, phase1, phase2].count(0) == 0:
-                ## -- Calculate estimate for Ionospheric delay on phase 1 signal
-                ion_delay_phase1[epoch, PRN] = 1/(alpha-1)*(phase1-phase2)
-                ## -- Calculate multipath on both code signals
-                multipath_range1[epoch,PRN] = range1 - (1 + 2/(alpha-1))*phase1 + (2/(alpha-1))*phase2
-                # multipath_range2[epoch,PRN] = range2 - (2*alpha/(alpha-1))*phase1 + ((2*alpha)/(alpha-1) - 1)*phase2 ## kommenterte bort 23.01.2023
-                N1_pseudo_estimate[epoch, PRN] = phase1 - range1
-            else:
-                ## Flag epoch and PRN as missing obs
-                missing_obs_overview[epoch, PRN] = 1
-                if range1 == 0 or phase1 == 0:
-                    missing_range1_overview[epoch, PRN] = 1
-                else:
-                    N1_pseudo_estimate[epoch, PRN] = phase1 - range1
+    ## -- Calculate estimate for Ionospheric delay on phase 1 signal
+    ion_delay_phase1 = 1/(alpha-1)*(phase1-phase2)
+    ## -- Calculate multipath on both code signals
+    multipath_range1 = range1 - (1 + 2/(alpha-1))*phase1 + (2/(alpha-1))*phase2
+    # multipath_range2[epoch,PRN] = range2 - (2*alpha/(alpha-1))*phase1 + ((2*alpha)/(alpha-1) - 1)*phase2 ## kommenterte bort 23.01.2023
+    N1_pseudo_estimate = phase1 - range1
+
+    # If any of the four observations are missing, ie np.nan, estimate remains 0 for that epoch and satellite
+    missing_obs_overview = find_missing_observation(range1, range2, array3=phase1, array4=phase2)
+    missing_range1_overview = find_missing_observation(range1,phase1)
+
+    ## -- Get first and last epoch with observations for current PRN
+    epoch_first_obs = find_epoch_of_first_obs(ion_delay_phase1)
+    epoch_last_obs = find_epoch_of_last_obs(ion_delay_phase1)
+
+    ## -- Get first and last epoch with range 1 observations for current PRN
+    epoch_first_range1obs = find_epoch_of_first_obs(N1_pseudo_estimate)
+    epoch_last_range1obs =  find_epoch_of_last_obs(N1_pseudo_estimate)
+
+    range1_slip_epochs = detectCycleSlips(N1_pseudo_estimate, missing_range1_overview, epoch_first_range1obs, epoch_last_range1obs, tInterval, phaseCodeLimit) # detect cycle slips for current epoch for range1/phase1 only
+    ionosphere_slip_epochs = detectCycleSlips(ion_delay_phase1, missing_obs_overview, epoch_first_obs, epoch_last_obs, tInterval, ionLimit) # detect cycle slips for current epoch for either range1/phase1 signal, range2/phase2 signal, or both
 
 
     ## -- Detect and correct for ambiguity slips
     for PRN in np.arange(0,max_sat):
         PRN = PRN + 1
-        ## -- Get first and last epoch with observations for current PRN
-        if len(np.nonzero(ion_delay_phase1[:,PRN])[0]) != 0:
-            epoch_first_obs = np.nonzero(ion_delay_phase1[:,PRN])[0][0]
-            epoch_last_obs = np.nonzero(ion_delay_phase1[:,PRN])[0][-1]
-        else:
-            epoch_first_obs = np.nonzero(ion_delay_phase1[:,PRN])[0]
-            epoch_last_obs = np.nonzero(ion_delay_phase1[:,PRN])[0]
+        if np.isnan(epoch_first_obs[PRN]):
+            continue  # Skip the current iteration if it's np.nan
+        epoch_first_obs_prn = int(epoch_first_obs[PRN])
+        epoch_last_obs_prn = int(epoch_last_obs[PRN])
 
-
-        ## -- Get first and last epoch with range 1 observations for current PRN
-        if len(np.nonzero(N1_pseudo_estimate[:,PRN])[0]) != 0:
-            epoch_first_range1obs =  np.nonzero(N1_pseudo_estimate[:,PRN])[0][0]
-            epoch_last_range1obs =  np.nonzero(N1_pseudo_estimate[:,PRN])[0][-1]
-        else:
-            epoch_first_range1obs =  np.nonzero(N1_pseudo_estimate[:,PRN])[0]
-            epoch_last_range1obs =  np.nonzero(N1_pseudo_estimate[:,PRN])[0]
-
-        ## -- Run function to detect cycle slips for current epoch for range1/phase1 only
-        range1_slip_epochs = detectCycleSlips(N1_pseudo_estimate[:, PRN], missing_range1_overview[:, PRN],epoch_first_range1obs, epoch_last_range1obs, tInterval, phaseCodeLimit)
-        # Run function to detect cycle slips for current epoch for either range1/phase1 signal, range2/phase2 signal, or both
-        ionosphere_slip_epochs = detectCycleSlips(ion_delay_phase1[:, PRN], missing_obs_overview[:, PRN],epoch_first_obs, epoch_last_obs, tInterval, ionLimit)
-        ## -- Make combined array of slip epochs from both lin. combinations used to detects slips
-        ambiguity_slip_epochs = np.union1d(range1_slip_epochs, ionosphere_slip_epochs)
-        ## -- Organize slips detected on range1/phase1 signal only
-        range1_slip_periods[PRN],_ = orgSlipEpochs(range1_slip_epochs)
-        ## -- Orginize combined slips detected on range1/phase1 signal only
-        ambiguity_slip_periods[PRN], n_slip_periods = orgSlipEpochs(ambiguity_slip_epochs)
-
-        # Set all zero estimates to NaN so that epochs with missing observations are not corrected
-        ion_delay_phase1[ion_delay_phase1[:, PRN]==0, PRN] = np.nan
-        multipath_range1[multipath_range1[:, PRN]==0, PRN] = np.nan
-        # multipath_range2[multipath_range2[:, PRN]==0, PRN] = np.nan ## 23.01.2023 kommenterer bort
+        ambiguity_slip_epochs = np.union1d(np.array(range1_slip_epochs[str(PRN)]),np.array(ionosphere_slip_epochs[str(PRN)])) # Make combined array of slip epochs from both lin. combinations used to detects slips
+        range1_slip_periods[int(PRN)],_ = orgSlipEpochs(np.array(range1_slip_epochs[str(PRN)])) # Organize slips detected on range1/phase1 signal only
+        ambiguity_slip_periods[int(PRN)], n_slip_periods = orgSlipEpochs(ambiguity_slip_epochs) # Orginize combined slips detected on range1/phase1 signal only
 
         ## If there are no slips then there is only one "ambiguity period". All estimates are therefore reduced by the same relative value
-        if len(ambiguity_slip_periods[PRN]) == 0:
-            # if len(list(epoch_first_obs)) == 0:
-            if epoch_first_obs.size == 0: # added 18.02.2023 because of error when running on RINEX v2 (should be like this either way!)
-                pass
-            else:
-                ion_delay_phase1[epoch_first_obs::, PRN] = ion_delay_phase1[epoch_first_obs::, PRN] - ion_delay_phase1[epoch_first_obs, PRN]
-                multipath_range1[epoch_first_obs::, PRN] = multipath_range1[epoch_first_obs::, PRN] - np.nanmean(multipath_range1[epoch_first_obs::, PRN])
-                # multipath_range2[epoch_first_obs::, PRN] = multipath_range2[epoch_first_obs::, PRN] - np.mean(np.nonzero(multipath_range2[epoch_first_obs::, PRN]))
+        if len(ambiguity_slip_periods[int(PRN)]) == 0:
+            ion_delay_phase1[epoch_first_obs_prn::, PRN] = ion_delay_phase1[epoch_first_obs_prn::, PRN] - ion_delay_phase1[epoch_first_obs_prn, PRN]
+            multipath_range1[epoch_first_obs_prn::, PRN] = multipath_range1[epoch_first_obs_prn::, PRN] - np.nanmean(multipath_range1[epoch_first_obs_prn::, PRN])
+            # multipath_range2[epoch_first_obs::, PRN] = multipath_range2[epoch_first_obs::, PRN] - np.mean(np.nonzero(multipath_range2[epoch_first_obs::, PRN]))
         else:
             ## -- Set all estimates of epochs with cycle slips to nan
             for slip_period in np.arange(0,n_slip_periods):
@@ -267,22 +234,22 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
                     multipath_range1[slip_start, PRN] = np.nan
                     # multipath_range2[slip_start, PRN] = np.nan
                 else:
-                    ion_delay_phase1[slip_start:slip_end+1, PRN] = np.nan # + 1 because a[2:3] gives one element. Matlab a(2:3) gives 2 element.
-                    multipath_range1[slip_start:slip_end+1, PRN] = np.nan # if error msg here, try add "if slip_end != epoch_last_obs else epoch_last_obs" in the slicing (oneliner)
+                    ion_delay_phase1[slip_start:slip_end+1, PRN] = np.nan
+                    multipath_range1[slip_start:slip_end+1, PRN] = np.nan
                     # multipath_range2[slip_start:slip_end+1, PRN] = np.nan
 
             ## Extract start and end of each segment and correct multipath and ionosphere estimates for each segment
-            for ambiguity_period in np.arange(0,n_slip_periods+1): # removed + 1 cause of indexproblem 29.11
+            for ambiguity_period in np.arange(0,n_slip_periods+1):
                 if ambiguity_period == 0:
-                    ambiguity_period_start  = epoch_first_obs
-                    ambiguity_period_end    = int(ambiguity_slip_periods[PRN][0,0])   #INK -1 igjen???
+                    ambiguity_period_start  = epoch_first_obs_prn
+                    ambiguity_period_end    = int(ambiguity_slip_periods[PRN][0,0])
                 ## -- If last ambiguity period
                 elif ambiguity_period == n_slip_periods: # removed + 1
                     ambiguity_period_start       = int(ambiguity_slip_periods[PRN][-1,1] + 1)
-                    ambiguity_period_end         = epoch_last_obs +1
+                    ambiguity_period_end         = epoch_last_obs_prn +1
 
                     ## If last epoch with observation is a slip, then there is no  last ambiguity period
-                    if ambiguity_period_start > epoch_last_obs:
+                    if ambiguity_period_start > epoch_last_obs_prn:
                         ambiguity_period_start = []
                         ambiguity_period_end = []
 
@@ -313,17 +280,13 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
                     # multipath_range2[ambiguity_period_start, PRN] = multipath_range2[ambiguity_period_start, PRN] -\
                         # np.nanmean(multipath_range2[ambiguity_period_start, PRN])
 
-        ## -- Get range1 and phase 1 observations for all epochs and PRN
-        range1_observations =  np.zeros([nepochs, max_sat+1])
-        phase1_observations =  np.zeros([nepochs, max_sat+1])
-        for ep in np.arange(0, len(GNSS_obs)):
-            for PRN in np.arange(0,max_sat):
-                range1_observations[ep,PRN] = GNSS_obs[ep+1][PRN,ismember(obsCodes[currentGNSSsystem],range1_Code)]
-                phase1_observations[ep,PRN] = GNSS_obs[ep+1][PRN,ismember(obsCodes[currentGNSSsystem],phase1_Code)]
-
+    # Create array of all code and phase observation for the current obscodes
+    range1_observations = create_array_for_current_obscode(GNSS_obs, ismember(obsCodes[currentGNSSsystem],range1_Code))
+    phase1_observations = create_array_for_current_obscode(GNSS_obs, ismember(obsCodes[currentGNSSsystem],phase1_Code))
 
     # return ion_delay_phase1, multipath_range1, multipath_range2, ambiguity_slip_periods, range1_observations, phase1_observations, success # changeing from range1slip to amgiguity
-    return ion_delay_phase1, multipath_range1, range1_slip_periods,ambiguity_slip_periods, range1_observations, phase1_observations, success #removed multipath_range2
+    return ion_delay_phase1, multipath_range1, range1_slip_periods, ambiguity_slip_periods, range1_observations, phase1_observations, success #removed multipath_range2
+
 
 
 def ismember(list_,code):
@@ -334,4 +297,71 @@ def ismember(list_,code):
     if indx != []:
         indx = indx[0]
     return indx
+
+
+def create_array_for_current_obscode(GNSS_obs, obscode_idx):
+    """
+    Takes inn a dict of numpy arrays and returns a
+    numpy array where the keys are rows in the array.
+    Replaces all zeros with np.nan
+
+    """
+    try:
+        code_array = np.stack(list(GNSS_obs.values()))[:, :, obscode_idx]
+        code_array = np.squeeze(code_array)
+        code_array[code_array == 0] = np.nan
+    except:
+        code_array = None
+    return code_array
+
+
+
+def find_epoch_of_first_obs(ion_delay_phase1):
+    """
+    Finds the first epoch with observation and
+    stores the epoch/row index for each satellite as a single-column array.
+    A column with no observation at all, is stored as  np.nan
+    """
+    not_nan_indices = np.isfinite(ion_delay_phase1)
+    first_epochs_array = np.argmax(not_nan_indices, axis=0).astype(float)
+    no_true_columns = np.all(~not_nan_indices, axis=0) # Find columns with no True values and set their indices to np.nan
+    first_epochs_array[no_true_columns] = np.nan
+    return first_epochs_array
+
+
+def find_epoch_of_last_obs(ion_delay_phase1):
+    """
+    Finds the last epoch with observations and
+    stores the epoch/row index for each satellite as a single-column array.
+    A column with no observation at all, is stored as  np.nan
+    """
+    not_nan_indices = np.isfinite(ion_delay_phase1)
+    reversed_array = np.flip(not_nan_indices, axis=0) # Reverse the boolean array along the rows
+    last_epochs_array = not_nan_indices.shape[0] - 1 - np.argmax(reversed_array, axis=0).astype(float) # Find the indices of the first True element in each column
+    last_epochs_array[~np.any(not_nan_indices, axis=0)] =  np.nan # Mask columns with no True values with np.nan
+    return last_epochs_array
+
+
+
+def find_missing_observation(array1,array2,array3=None,array4=None):
+    """
+    Creates a array with overview of epoch and sats
+    that are missing observations.
+    """
+    if array3 is not None:
+        mask1 = np.isnan(array1).astype(int)
+        mask2 = np.isnan(array2).astype(int)
+        mask3 = np.isnan(array3).astype(int)
+        mask4 = np.isnan(array4).astype(int)
+        # Combine the masks to create the final result
+        missing_obs_overview = np.maximum.reduce([mask1, mask2, mask3, mask4])
+    else:
+        mask1 = np.isnan(array1).astype(int)
+        mask2 = np.isnan(array2).astype(int)
+        # Combine the masks to create the final result
+        missing_obs_overview = np.maximum.reduce([mask1, mask2])
+    return missing_obs_overview
+
+
+
 

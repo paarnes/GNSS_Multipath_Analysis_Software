@@ -25,8 +25,8 @@ def make_polarplot_dont_use_TEX(analysisResults, graph_dir):
         curr_sys = GNSS_Name2Code[system]
         bands_curr_sys = analysisResults[system]['Bands']
         try:
-            sat_elevation = analysisResults['Sat_position'][curr_sys]['Elevation']
-            sat_azimut = analysisResults['Sat_position'][curr_sys]['Azimut']
+            sat_elevation = analysisResults['Sat_position'][curr_sys]['elevation']
+            sat_azimut = analysisResults['Sat_position'][curr_sys]['azimuth']
         except:
             logger.warning("INFO(GNSS_MultipathAnalysis): Polarplot of multipath is not possible for %s. Satellite azimuth and elevation angles are missing.", system)
             continue
@@ -164,8 +164,8 @@ def make_polarplot_SNR_dont_use_TEX(analysisResults, GNSS_obs,GNSSsystems, obsCo
     for system in analysisResults['GNSSsystems']:
         curr_sys = GNSS_Name2Code[system]
         try:
-            sat_elevation = analysisResults['Sat_position'][curr_sys]['Elevation']
-            sat_azimut = analysisResults['Sat_position'][curr_sys]['Azimut']
+            sat_elevation = analysisResults['Sat_position'][curr_sys]['elevation']
+            sat_azimut = analysisResults['Sat_position'][curr_sys]['azimuth']
         except:
             logger.warning(f"INFO(GNSS_MultipathAnalysis): Polarplot of SNR is not possible for {system}. Satellite azimuth and elevation angles are missing." )
             continue
@@ -258,7 +258,7 @@ def plot_SNR_wrt_elev_dont_use_TEX(analysisResults,GNSS_obs, GNSSsystems, obsCod
     for system in analysisResults['GNSSsystems']:
         curr_sys = GNSS_Name2Code[system]
         try:
-            sat_elevation = analysisResults['Sat_position'][curr_sys]['Elevation']
+            sat_elevation = analysisResults['Sat_position'][curr_sys]['elevation']
             sat_elevation[(sat_elevation < 0) | (sat_elevation > 90)] = np.nan # removes elevation angels when the sat not visable (below the horizon)
         except:
             logger.warning("INFO(GNSS_MultipathAnalysis): Plot of SNR wrt elevation angle is not possible for %s. Satellite azimuth and elevation angles are missing.", system)
@@ -298,7 +298,7 @@ def plot_SNR_wrt_elev_dont_use_TEX(analysisResults,GNSS_obs, GNSSsystems, obsCod
             ## -- Subplot 2
             ax[1].grid(True,linewidth=0.3)
             ax[1].set_xlim([0,90])
-            ax[1].set_title("Signal to noise ratio (SNR) as funtion elevation angle for \n Signal: %s (%s)" % (range1_code, system), va='bottom',fontsize=22)
+            ax[1].set_title("Signal to noise ratio (SNR) as funtion of elevation angle for \n Signal: %s (%s)" % (range1_code, system), va='bottom',fontsize=22)
             ax[1].set_ylim(0,np.nanmax(SNR)+10)
             ax[1].set_xlabel('Elevation angle [degree]',fontsize=18,labelpad=10)
             ax[1].set_ylabel('[dB-Hz]',fontsize=18,labelpad=10)

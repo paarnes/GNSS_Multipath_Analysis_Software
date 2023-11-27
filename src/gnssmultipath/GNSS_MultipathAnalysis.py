@@ -9,6 +9,7 @@ import os
 import warnings
 import logging
 import time
+from typing import Union, List
 import numpy as np
 from tqdm import tqdm
 from gnssmultipath.readRinexObs import readRinexObs
@@ -26,31 +27,30 @@ warnings.filterwarnings("ignore")
 
 
 
-def GNSS_MultipathAnalysis(rinObsFilename,
-                          broadcastNav1=None,
-                          broadcastNav2=None,
-                          broadcastNav3=None,
-                          broadcastNav4=None,
-                          sp3NavFilename_1=None,
-                          sp3NavFilename_2=None,
-                          sp3NavFilename_3=None,
-                          desiredGNSSsystems=None,
-                          phaseCodeLimit= None,
-                          ionLimit=None,
-                          cutoff_elevation_angle=None,
-                          outputDir=None,
-                          plotEstimates= None,
-                          plot_polarplot=None,
-                          include_SNR=None,
-                          save_results_as_pickle = True,
-                          nav_data_rate=60,
-                          tLim_R   = None,
-                          tLim_GEC = None,
-                          includeResultSummary= None,
-                          includeCompactSummary=None,
-                          includeObservationOverview=None,
-                          includeLLIOverview= None,
-                          use_LaTex =None
+def GNSS_MultipathAnalysis(rinObsFilename: str,
+                          broadcastNav1: Union[str, None] = None,
+                          broadcastNav2: Union[str, None] = None,
+                          broadcastNav3: Union[str, None] = None,
+                          broadcastNav4: Union[str, None] = None,
+                          sp3NavFilename_1: Union[str, None] = None,
+                          sp3NavFilename_2: Union[str, None] = None,
+                          sp3NavFilename_3: Union[str, None] = None,
+                          desiredGNSSsystems: Union[List[str], None] = None,
+                          phaseCodeLimit: Union[float, int, None] = None,
+                          ionLimit: Union[float, None] = None,
+                          cutoff_elevation_angle: Union[int, None] = None,
+                          outputDir: Union[str, None] = None,
+                          plotEstimates: bool = True,
+                          plot_polarplot: bool = True,
+                          include_SNR: bool = True,
+                          save_results_as_pickle: bool = True,
+                          save_results_as_compressed_pickle: bool = False,
+                          nav_data_rate: int = 60,
+                          includeResultSummary: Union[bool, None] = None,
+                          includeCompactSummary: Union[bool, None] = None,
+                          includeObservationOverview: Union[bool, None] = None,
+                          includeLLIOverview: Union[bool, None] = None,
+                          use_LaTex: bool = True
                           ):
 
     """
@@ -59,16 +59,17 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     Made by: Per Helge Aarnes
     E-mail: per.helge.aarnes@gmail.com
 
-    Based on the Matlab software GNSS_Reciever_QC_2020 made by Bjørn-Eirik Roald.
+    GNSS_MultipathAnalysis is a software for analyzing the multipath effect on Global Navigation Satellite Systems (GNSS) and
+    is based on the MATLAB software "GNSS_Receiver_QC_2020" made by Bjørn-Eirik Roald.
+    This is the main function of the software that, through the help of other functions:
 
-    The main function of the software that, through the help of other functions:
-
-      - reads RINEX 3 observation files
-      - reads SP3 satellite navigation files
+      - reads RINEX observation files
+      - reads SP3 satellite navigation files (if a SP3 file is fed in)
+      - reads rinex navigation files (if a rinex navigation file is fed in)
       - computes elevation angles of satellites for every epoch
-      - makes estimates of multipath, ionospheric delay, and ambiguity slips
-          for all signals in RINEX 3 observation file
-      - plots estimates in graphs, if user desired it to
+      - makes estimates of multipath, ionospheric delay, and cycle slips
+          for all signals in RINEX observation file
+      - plots estimates if user choose to do it
       - computes and stores statistics on estimates
       - writes an output files containing results
 
@@ -76,9 +77,9 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     further more functions. The function called upon directly in
     GNSS_MultipathAnalysis are:
 
-      - readRinexObs304.py
+      - readRinexObs.py
       - computeSatElevations.py
-      - readFrequencyOverview.py
+      - computeSatElevAzimuth_fromNav.py
       - signalAnalysis.py
       - plotEstimates.py
       - make_barplot.py
@@ -86,7 +87,9 @@ def GNSS_MultipathAnalysis(rinObsFilename,
       - writeOutputFile.py
 
     --------------------------------------------------------------------------------------------------------------------------
+    
     INPUTS:
+    ------
 
     rinObsFilename:           string. Path to RINEX 3 observation file
 
@@ -128,12 +131,15 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     include_SNR:              boolean. If not defined, SNR from Rinex obs file will NOT be used (optional)
 
     save_results_as_pickle:   boolean. If True, the results will be stored as dictionary in form of a binary pickle file. Default set to True.
+    
+
+    save_results_as_compressed_pickle : boolean. If True, the results will be stored as dictionary in form of a binary compressed pickle file (zstd compression). Default set to False.
 
 
     nav_data_rate:            integer. The desired data rate of ephemerides given in minutes. Default is 60 min. The purpose with this
-                                parameter is to speed up processing time. Both reading the RINEX navigation file and looping through the
-                                ephemerides aftwerward will be significatnly faster by increasing this value. Note: A too high value will
-                                degrade the accuracy of the interploated satellite coordinates.
+                              parameter is to speed up processing time. Both reading the RINEX navigation file and looping through the
+                              ephemerides aftwerward will be significatnly faster by increasing this value. Note: A too high value will
+                              degrade the accuracy of the interploated satellite coordinates.
 
     includeResultSummary:     boolean. 1 if user desires output file to
                               include more detailed overview of statistics,
@@ -143,9 +149,12 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     includeCompactSummary:    boolean. 1 if user desired output file to
                               include more compact overview og statistics. (optional)
 
-    includeObservationOverview:     boolean. 1 if user desires output file to
-                                      include overview of obseration types observed
-                                      by each satellite. 0 otherwise (optional)
+    includeObservationOverview: boolean. 1 if user desires output file to
+                                include overview of obseration types observed
+                                by each satellite. 0 otherwise (optional)
+                                      
+    use_LaTex:                 boolean. Will use TeX as an interpreter in plots. Default set to true. "Requires TeX installed on computer".
+   
     --------------------------------------------------------------------------------------------------------------------------
     OUTPUTS:
 
@@ -178,36 +187,26 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     if sp3NavFilename_3 is None:
         sp3NavFilename_3 = ""
     if phaseCodeLimit is None:
-        phaseCodeLimit = 0
+        phaseCodeLimit =  4/60 *100
 
     if ionLimit is None:
-        ionLimit = 0
+        ionLimit = 4/60 
 
     if cutoff_elevation_angle is None:
         cutoff_elevation_angle = 0
 
-    ## -- Create output file
+    #  Create output file
     if outputDir is None:
         outputDir = 'Output_Files'
 
     if not os.path.isdir(outputDir):
         os.mkdir(outputDir)
 
-    ## --Unless graph directory already exists, create directory
+    # Unless graph directory already exists, create directory
     graphDir = outputDir + '/Graphs'
     if not os.path.isdir(graphDir):
         os.mkdir(graphDir)
 
-    if plotEstimates is None:
-        plotEstimates = 1
-
-    if plot_polarplot is None:
-        plot_polarplot = 1
-
-    if tLim_R is None:
-        tLim_R = 1800 # 30 min
-    if tLim_GEC is None:
-        tLim_GEC = 7200 # 2 hours
 
     if includeResultSummary is None:
         includeResultSummary = 1
@@ -227,30 +226,28 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     else:
         includeAllGNSSsystems   = 0
 
-    if use_LaTex is None:
-        use_LaTex = True
 
     ## ---  Control of the user input arguments
-    if type(sp3NavFilename_1) != str:
+    if not isinstance(sp3NavFilename_1, str):
         print('ERROR(GNSS_MultipathAnalysis): The input variable sp3NavFilename_1 must be a string\n' \
             'Argument is now of type %s\n' %  (type(sp3NavFilename_1)))
         analysisResults = np.nan
         return
 
-    if type(sp3NavFilename_2) != str:
+    if not isinstance(sp3NavFilename_2, str):
         print('ERROR(GNSS_MultipathAnalysis): The input variable sp3NavFilename_2 must be a string\n' \
             'Argument is now of type %s\n' %  (type(sp3NavFilename_2)))
         analysisResults = np.nan
         return
 
 
-    if type(sp3NavFilename_3) != str:
+    if not isinstance(sp3NavFilename_3, str):
         print('ERROR(GNSS_MultipathAnalysis): The input variable sp3NavFilename_3must be a string\n' \
             'Argument is now of type %s\n' %  (type(sp3NavFilename_3)))
         analysisResults = np.nan
         return
 
-    if type(rinObsFilename) != str:
+    if not isinstance(rinObsFilename, str):
         print('ERROR(GNSS_MultipathAnalysis): The input variable rinObsFilename must be a string\n' \
             'Argument is now of type %s\n' %  (type(rinObsFilename)))
         analysisResults = np.nan
@@ -272,6 +269,11 @@ def GNSS_MultipathAnalysis(rinObsFilename,
 
     if not os.path.isfile(sp3NavFilename_3) and len(sp3NavFilename_3) != 0:
         print('WARNING: Third SP3 Navigation file can not be found.\n')
+        
+    
+    # Check for conflicting save options
+    if save_results_as_pickle and save_results_as_compressed_pickle:
+        save_results_as_pickle = False
 
 
     latex_installed = True
@@ -300,14 +302,13 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     ## --- Read observation file
     includeAllObsCodes  = 0
 
-    if include_SNR is None:
-        desiredObsCodes = ["C", "L"] # only code and phase observations
-    elif include_SNR is True:
+    if include_SNR:
         desiredObsCodes = ["C", "L", "S"]
+    else: 
+        desiredObsCodes = ["C", "L"] # only code and phase observations
+
 
     desiredObsBands = list(np.arange(1,10)) # all carrier bands. Tot 9, but arange stops at 8 -> 10
-
-
     readSS = 1
     readLLI = 1
 
@@ -326,7 +327,7 @@ def GNSS_MultipathAnalysis(rinObsFilename,
             nepochs, time_epochs, max_sat, sp3NavFilename_1, sp3NavFilename_2, sp3NavFilename_3)
     else:
         nav_files = [broadcastNav1,broadcastNav2,broadcastNav3,broadcastNav4]
-        sat_pos, glo_fcn = computeSatElevAzimuth_fromNav(nav_files, approxPosition, GNSS_SVs, GNSS_obs, time_epochs, nav_data_rate, tLim_GEC,tLim_R)
+        sat_pos, glo_fcn = computeSatElevAzimuth_fromNav(nav_files, approxPosition, GNSS_SVs, time_epochs, nav_data_rate)
 
         ## -- Build same struture for satellit elevation angles if broadcast nav defined
         sat_elevation_angles = {}
@@ -334,15 +335,15 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         for sys in np.arange(0,len(GNSSsystems)):
             currentGNSSsystem = GNSSsystems[sys+1]
             if currentGNSSsystem != 'C':
-                sat_elevation_angles[sys] = sat_pos_dummy[currentGNSSsystem]['Elevation'][:,0:37]
+                sat_elevation_angles[sys] = sat_pos_dummy[currentGNSSsystem]['elevation'][:,0:37]
             else:
-                sat_elevation_angles[sys] = sat_pos_dummy[currentGNSSsystem]['Elevation']
+                sat_elevation_angles[sys] = sat_pos_dummy[currentGNSSsystem]['elevation']
 
         ## - Check for missing systems in navigation file, and remove if found
         missing_sys = []
         dummy_GNSSsystems = GNSSsystems.copy()
         for key,sys in dummy_GNSSsystems.items():
-            if len(sat_pos[sys]['Position']) == 0:
+            if len(sat_pos[sys]['position']) == 0:
                 del sat_pos[sys]
                 del GNSSsystems[key]
                 missing_sys.append(sys)
@@ -412,22 +413,18 @@ def GNSS_MultipathAnalysis(rinObsFilename,
 
     ### --- Build the dicture of the dict used for storing results ----
 
-    ## --initialize variable storing total number of observation codes processed
+    ## --Initialize variable storing total number of observation codes processed
     nCodes_Total = 0
-    ## -- initialize results dictionary
+    ## -- Initialize results dictionary
     analysisResults = {}
     analysisResults['nGNSSsystem'] = nGNSSsystems
     analysisResults['GNSSsystems'] = list(GNSSsystems.values())
     # for sys in range(0,nGNSSsystems):
-    for sys in np.arange(0,nGNSSsystems):
-        ## -- Full name of current GNSS system
-        GNSSsystemName = GNSSsystemCode2Fullname[GNSSsystems[sys+1]]
-        ## -- Include full name of current GNSS system
-        analysisResults[GNSSsystemName] =  {}
-        ## -- Initialize dict for current GNSS system
-        current_sys_dict = {}
-        ## -- Initialize observationOverview field as a dict
-        current_sys_dict['observationOverview'] = {}
+    for sys in np.arange(0, nGNSSsystems):
+        GNSSsystemName = GNSSsystemCode2Fullname[GNSSsystems[sys+1]] # Full name of current GNSS system
+        analysisResults[GNSSsystemName] = {}  # Include full name of current GNSS system
+        current_sys_dict = {} # Initialize dict for current GNSS system
+        current_sys_dict['observationOverview'] = {} # Initialize observationOverview field as a dict
         ## -- Extract the possible bands of current GNSS system, example GPS: 1,2,5
         GNSSsystemPossibleBands = GNSSsystem2BandsMap[GNSSsystemName]
         nPossibleBands = len(GNSSsystemPossibleBands)
@@ -620,9 +617,9 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         if sp3NavFilename_1 != '':
             try:
                 sat_pos[currentGNSSsystem] = {}
-                sat_pos[currentGNSSsystem]['Position']  = sat_coordinates[currentGNSSsystem]
-                sat_pos[currentGNSSsystem]['Azimut']    = sat_azimut_angles[sys]
-                sat_pos[currentGNSSsystem]['Elevation'] = sat_elevation_angles[sys]
+                sat_pos[currentGNSSsystem]['position']  = sat_coordinates[currentGNSSsystem]
+                sat_pos[currentGNSSsystem]['azimuth']    = sat_azimut_angles[sys]
+                sat_pos[currentGNSSsystem]['elevation'] = sat_elevation_angles[sys]
             except:
                 pass
 
@@ -699,8 +696,8 @@ def GNSS_MultipathAnalysis(rinObsFilename,
         for sys in analysisResults['GNSSsystems']:
             curr_sys = GNSS_Name2Code[sys]
             try:
-                azimut_currentSys = analysisResults['Sat_position'][curr_sys]['Azimut']
-                elevation_currentSys = analysisResults['Sat_position'][curr_sys]['Elevation']
+                azimut_currentSys = analysisResults['Sat_position'][curr_sys]['azimuth']
+                elevation_currentSys = analysisResults['Sat_position'][curr_sys]['elevation']
                 print('INFO: Making a regular polar plot for showing azimut and elevation angle for each satellite. Please wait...')
                 if use_LaTex:
                     try:
@@ -761,6 +758,11 @@ def GNSS_MultipathAnalysis(rinObsFilename,
     ## -- Saving the workspace as a binary pickle file ---
     if save_results_as_pickle:
         pickle_filename = 'analysisResults.pkl'
+        results_name = os.path.join(outputDir, pickle_filename)
+        PickleHandler.write_zstd_pickle(analysisResults, results_name)
+        print(f'INFO: The analysis results has been written to the file {pickle_filename}.\n')
+    elif save_results_as_compressed_pickle:
+        pickle_filename = 'analysisResults.pkl.zst'
         results_name = os.path.join(outputDir, pickle_filename)
         PickleHandler.write_zstd_pickle(analysisResults, results_name)
         print(f'INFO: The analysis results has been written to the file {pickle_filename}.\n')

@@ -1,12 +1,24 @@
 """
-This module is using pytest to run tests on the software. Each pull request to the master branch will
-trigger a workflow that run these tests.
+This module is using pytest to run tests on the software.
+Each pull request to the master branch will trigger
+a workflow that run these tests.
 
 Made by: Per Helge Aarnes
 E-mail: per.helge.aarnes@gmail.com
+
+Example on how to run the tests:
+
+To run all tests:
+    pytest test_GNSS_MultipathAnalysis.py  -vv
+
+To run a specific test:
+    pytest test_GNSS_MultipathAnalysis.py::test_GNSS_MultipathAnalysis_sp3_file  -vv
+
+To run a specific test in debug mode to see where it fails:
+    pytest test_GNSS_MultipathAnalysis.py::test_GNSS_MultipathAnalysis_sp3_file  -vv --pdb  (type "quit" to exit the debug mode)
+
 """
 
-import pickle
 import sys
 import os
 import pytest
@@ -17,6 +29,7 @@ sys.path.append(os.path.join(project_path,'src'))
 
 from gnssmultipath import GNSS_MultipathAnalysis
 from gnssmultipath.Geodetic_functions import ECEF2geodb, ECEF2enu, compute_azimut_elev
+from gnssmultipath.PickleHandler import PickleHandler
 
 
 test_data_ECEF2geodb = [
@@ -51,13 +64,11 @@ def test_compute_azimut_elev(X, Y, Z, xm, ym, zm, expected_output):
     result = compute_azimut_elev(X, Y, Z, xm, ym, zm)
     assert result == pytest.approx(expected_output, abs=1e-4)
 
-def read_pickle(file_path):
-    with open(file_path, 'rb') as file:
-        data = pickle.load(file)
-    return data
-
 
 os.chdir(os.path.join(project_path,'src'))
+
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_GNSS_MultipathAnalysis_sp3_file():
     """
     Test the results from OPEC2022 and sp3 files
@@ -70,18 +81,15 @@ def test_GNSS_MultipathAnalysis_sp3_file():
                                     plotEstimates=False,
                                     plot_polarplot=False)
 
-    expected_result = read_pickle(expected_res)
+    expected_result = PickleHandler.read_zstd_pickle(expected_res)
     # Compare the result with the expected result
-    assert_almost_equal(expected_result['Sat_position']['G']['Position'][2],  result['Sat_position']['G']['Position'][2],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['G']['Position'][4],  result['Sat_position']['G']['Position'][4],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['G']['Position'][30],  result['Sat_position']['G']['Position'][30],decimal=4)
-
-    assert_almost_equal(expected_result['Sat_position']['G']['Azimut'],  result['Sat_position']['G']['Azimut'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['E']['Azimut'],  result['Sat_position']['E']['Azimut'],decimal=4)
-
-    assert_almost_equal(expected_result['Sat_position']['G']['Elevation'],  result['Sat_position']['G']['Elevation'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['C']['Azimut'],  result['Sat_position']['C']['Azimut'],decimal=4)
-
+    assert_almost_equal(expected_result['Sat_position']['G']['position'][2],  result['Sat_position']['G']['position'][2],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['G']['position'][4],  result['Sat_position']['G']['position'][4],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['G']['position'][30],  result['Sat_position']['G']['position'][30],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['G']['azimuth'],  result['Sat_position']['G']['azimuth'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['E']['azimuth'],  result['Sat_position']['E']['azimuth'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['G']['elevation'],  result['Sat_position']['G']['elevation'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['C']['azimuth'],  result['Sat_position']['C']['azimuth'],decimal=4)
     assert_almost_equal(expected_result['GPS']['Band_1']['C1C']['rms_multipath_range1_averaged'], result['GPS']['Band_1']['C1C']['rms_multipath_range1_averaged'], decimal=4)
     assert_almost_equal(expected_result['GPS']['Band_1']['C1C']['elevation_weighted_average_rms_multipath_range1'], result['GPS']['Band_1']['C1C']['elevation_weighted_average_rms_multipath_range1'], decimal=4)
 
@@ -89,6 +97,12 @@ def test_GNSS_MultipathAnalysis_sp3_file():
 
 
 
+
+
+
+
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
 def test_GNSS_MultipathAnalysis_broadcast_navfile():
     """
     Test the results from OPEC2022 and use of broadcast ephemerids
@@ -101,32 +115,32 @@ def test_GNSS_MultipathAnalysis_broadcast_navfile():
     result = GNSS_MultipathAnalysis(rinObsFilename=rinObs_file, broadcastNav1=broadNav_file,
                                     plotEstimates=False,
                                     plot_polarplot=False,
-                                    nav_data_rate=0)
+                                    nav_data_rate=120)
 
-    expected_result = read_pickle(expected_res)
+    expected_result = PickleHandler.read_zstd_pickle(expected_res)
     # Compare the result with the expected result
-    assert_almost_equal(expected_result['Sat_position']['G']['Position']['1'],  result['Sat_position']['G']['Position']['1'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['G']['Position']['8'],  result['Sat_position']['G']['Position']['8'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['G']['Position']['10'], result['Sat_position']['G']['Position']['10'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['R']['Position']['1'],  result['Sat_position']['R']['Position']['1'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['R']['Position']['7'],  result['Sat_position']['R']['Position']['7'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['R']['Position']['8'],  result['Sat_position']['R']['Position']['8'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['E']['Position']['1'],  result['Sat_position']['E']['Position']['1'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['E']['Position']['3'],  result['Sat_position']['E']['Position']['3'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['E']['Position']['8'],  result['Sat_position']['E']['Position']['8'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['C']['Position']['5'],  result['Sat_position']['C']['Position']['5'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['C']['Position']['6'],  result['Sat_position']['C']['Position']['6'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['C']['Position']['9'],  result['Sat_position']['C']['Position']['9'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['G']['position']['1'],  result['Sat_position']['G']['position']['1'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['G']['position']['8'],  result['Sat_position']['G']['position']['8'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['G']['position']['10'], result['Sat_position']['G']['position']['10'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['R']['position']['1'],  result['Sat_position']['R']['position']['1'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['R']['position']['7'],  result['Sat_position']['R']['position']['7'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['R']['position']['8'],  result['Sat_position']['R']['position']['8'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['E']['position']['1'],  result['Sat_position']['E']['position']['1'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['E']['position']['3'],  result['Sat_position']['E']['position']['3'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['E']['position']['8'],  result['Sat_position']['E']['position']['8'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['C']['position']['5'],  result['Sat_position']['C']['position']['5'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['C']['position']['6'],  result['Sat_position']['C']['position']['6'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['C']['position']['9'],  result['Sat_position']['C']['position']['9'],decimal=4)
 
-    assert_almost_equal(expected_result['Sat_position']['G']['Azimut'],  result['Sat_position']['G']['Azimut'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['R']['Azimut'],  result['Sat_position']['R']['Azimut'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['E']['Azimut'],  result['Sat_position']['E']['Azimut'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['C']['Azimut'],  result['Sat_position']['C']['Azimut'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['G']['azimuth'],  result['Sat_position']['G']['azimuth'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['R']['azimuth'],  result['Sat_position']['R']['azimuth'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['E']['azimuth'],  result['Sat_position']['E']['azimuth'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['C']['azimuth'],  result['Sat_position']['C']['azimuth'],decimal=4)
 
-    assert_almost_equal(expected_result['Sat_position']['G']['Elevation'],  result['Sat_position']['G']['Elevation'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['R']['Elevation'],  result['Sat_position']['R']['Elevation'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['E']['Elevation'],  result['Sat_position']['E']['Elevation'],decimal=4)
-    assert_almost_equal(expected_result['Sat_position']['C']['Elevation'],  result['Sat_position']['C']['Elevation'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['G']['elevation'],  result['Sat_position']['G']['elevation'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['R']['elevation'],  result['Sat_position']['R']['elevation'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['E']['elevation'],  result['Sat_position']['E']['elevation'],decimal=4)
+    assert_almost_equal(expected_result['Sat_position']['C']['elevation'],  result['Sat_position']['C']['elevation'],decimal=4)
 
     assert_almost_equal(expected_result['GPS']['Band_1']['C1C']['rms_multipath_range1_averaged'], result['GPS']['Band_1']['C1C']['rms_multipath_range1_averaged'], decimal=4)
     assert_almost_equal(expected_result['GPS']['Band_1']['C1C']['elevation_weighted_average_rms_multipath_range1'], result['GPS']['Band_1']['C1C']['elevation_weighted_average_rms_multipath_range1'], decimal=4)
