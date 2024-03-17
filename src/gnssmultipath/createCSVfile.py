@@ -134,7 +134,8 @@ class createCSVfile:
             self.set_float_fmt_dataframe(df)
 
             # Remove rows where all values except PRN and time are np.nan
-            df.dropna(subset=df.columns[3:], how='all', inplace=True)
+            df[df.columns[2:]] = df[df.columns[2:]].apply(pd.to_numeric, errors='coerce') # Convert selected columns to numeric
+            df.dropna(subset=['Elevation'], inplace=True) # drop rows where the satellite is below the horizon
             output_file = os.path.join(self.output_dir, f"{sys_name}_results.csv")
             print(f'INFO: The result CSV file {output_file} has been written')
             df.to_csv(output_file, index=False, sep=self.column_delimiter)
