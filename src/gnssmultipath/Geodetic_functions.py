@@ -632,6 +632,27 @@ def gpstime2date_arrays(week: Union[List[int], np.ndarray], tow: Union[List[floa
     return date_array
 
 
+def convert_to_datetime_vectorized(time_datetime: np.ndarray) -> list:
+    """
+    Convert numpy array of datetime components to datetime strings with specified format.
+    """
+    # Convert datetime components to datetime objects
+    datetimes = [datetime(*components) for components in time_datetime]
+    # Format datetime objects to strings
+    datetime_strings = np.array([dt.strftime("%Y-%m-%d %H:%M:%S") for dt in datetimes]).tolist()
+    return datetime_strings
+
+
+def gpstime_to_utc_datefmt(time_epochs_gpstime: np.ndarray) -> list:
+    """
+    Coverters form GPS time to UTC with formatting.
+    Ex output: "2022-01-01 02:23:30".
+    
+    """
+    time_datetime = gpstime2date_arrays(*time_epochs_gpstime.T)
+    return convert_to_datetime_vectorized(time_datetime)
+
+
 
 def date2gpstime_vectorized(gregorian_date_array):
     """
