@@ -13,11 +13,13 @@ from typing import Union, List
 import numpy as np
 from tqdm import tqdm
 from gnssmultipath.readRinexObs import readRinexObs
+from gnssmultipath.Geodetic_functions import gpstime_to_utc_datefmt
 from gnssmultipath.computeSatElevations import computeSatElevations
 from gnssmultipath.computeSatElevAzimuth_fromNav import computeSatElevAzimuth_fromNav
 from gnssmultipath.signalAnalysis import signalAnalysis
 from gnssmultipath.detectClockJumps import detectClockJumps
 from gnssmultipath.writeOutputFile import writeOutputFile
+from gnssmultipath.createCSVfile import createCSVfile
 from gnssmultipath.make_polarplot import make_polarplot,make_skyplot, make_polarplot_SNR, plot_SNR_wrt_elev
 from gnssmultipath.make_polarplot_dont_use_TEX import make_polarplot_dont_use_TEX, make_skyplot_dont_use_TEX, make_polarplot_SNR_dont_use_TEX, plot_SNR_wrt_elev_dont_use_TEX
 from gnssmultipath.plotResults import plotResults, plotResults_dont_use_TEX, make_barplot, make_barplot_dont_use_TEX
@@ -45,6 +47,8 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
                           include_SNR: bool = True,
                           save_results_as_pickle: bool = True,
                           save_results_as_compressed_pickle: bool = False,
+                          write_results_to_csv: bool = True,
+                          output_csv_delimiter: str = ';',
                           nav_data_rate: int = 60,
                           includeResultSummary: Union[bool, None] = None,
                           includeCompactSummary: Union[bool, None] = None,
@@ -134,6 +138,10 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
     
 
     save_results_as_compressed_pickle : boolean. If True, the results will be stored as dictionary in form of a binary compressed pickle file (zstd compression). Default set to False.
+    
+    write_results_to_csv: boolean. If True, a subset of the results will be exported as a CSV file. Default is True.
+    
+    output_csv_delimiter:     str. Set the delimiter of the CSV file. Default is semi colon (;). 
 
 
     nav_data_rate:            integer. The desired data rate of ephemerides given in minutes. Default is 60 min. The purpose with this
@@ -630,17 +638,19 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
         rinex_obs_filename = rinObsFilename.split('/')
         rinex_obs_filename = rinex_obs_filename[-1]
         analysisResults['ExtraOutputInfo']  = {}
-        analysisResults['ExtraOutputInfo']['rinex_obs_filename']  = rinex_obs_filename
-        analysisResults['ExtraOutputInfo']['markerName']          = markerName
-        analysisResults['ExtraOutputInfo']['rinexVersion']        = rinexVersion
-        analysisResults['ExtraOutputInfo']['rinexProgr']          = rinexProgr
-        analysisResults['ExtraOutputInfo']['recType']             = recType
-        analysisResults['ExtraOutputInfo']['tFirstObs']           = tFirstObs
-        analysisResults['ExtraOutputInfo']['tLastObs']            = tLastObs
-        analysisResults['ExtraOutputInfo']['tInterval']           = tInterval
-        analysisResults['ExtraOutputInfo']['GLO_Slot2ChannelMap'] = GLO_Slot2ChannelMap
-        analysisResults['ExtraOutputInfo']['nEpochs']             = nepochs
-        analysisResults['ExtraOutputInfo']['elevation_cutoff']    = cutoff_elevation_angle
+        analysisResults['ExtraOutputInfo']['rinex_obs_filename']   = rinex_obs_filename
+        analysisResults['ExtraOutputInfo']['markerName']           = markerName
+        analysisResults['ExtraOutputInfo']['rinexVersion']         = rinexVersion
+        analysisResults['ExtraOutputInfo']['rinexProgr']           = rinexProgr
+        analysisResults['ExtraOutputInfo']['recType']              = recType
+        analysisResults['ExtraOutputInfo']['tFirstObs']            = tFirstObs
+        analysisResults['ExtraOutputInfo']['tLastObs']             = tLastObs
+        analysisResults['ExtraOutputInfo']['tInterval']            = tInterval
+        analysisResults['ExtraOutputInfo']['time_epochs_gps_time'] = time_epochs
+        analysisResults['ExtraOutputInfo']['time_epochs_utc_time'] = gpstime_to_utc_datefmt(time_epochs)
+        analysisResults['ExtraOutputInfo']['GLO_Slot2ChannelMap']  = GLO_Slot2ChannelMap
+        analysisResults['ExtraOutputInfo']['nEpochs']              = nepochs
+        analysisResults['ExtraOutputInfo']['elevation_cutoff']     = cutoff_elevation_angle
 
         ## -- Store default limits or user set limits in dict
         if phaseCodeLimit == 0:
@@ -679,6 +689,8 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
     outputFilename = baseFileName.split('.')[0] +   '_Report.txt'
     writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSummary, includeCompactSummary, includeObservationOverview, includeLLIOverview)
     print('INFO: The output file %s has been written.\n' % (outputFilename))
+        
+    
     ## -- Make barplot if plotEstimates is True
     if plotEstimates:
         print('INFO: Making bar plot. Please wait...\n')
@@ -721,48 +733,58 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
             else:
                 make_polarplot_dont_use_TEX(analysisResults, graphDir)
 
-        if include_SNR:
-            # Seaching for SNR codes
-            for sys in GNSS_obs.keys():
-                GNSSsystemIndex = [k for k in GNSSsystems if GNSSsystems[k] == sys][0]
-                SNR_codes = [SNR_code for SNR_code in obsCodes[GNSSsystemIndex][sys] if 'S' in SNR_code[0]]
-            if len(SNR_codes) != 0:
-                print('INFO: Making a plot of the Signal To Noise Ration (SNR). Please wait ...')
-                if use_LaTex:
-                    try:
-                        make_polarplot_SNR(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir)
-                        plot_SNR_wrt_elev(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir,tInterval)
-                    except:
-                        make_polarplot_SNR_dont_use_TEX(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir)
-                        plot_SNR_wrt_elev_dont_use_TEX(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir,tInterval)
-                else:
+        
+    if include_SNR:
+        # Seaching for SNR codes
+        for sys in GNSS_obs.keys():
+            GNSSsystemIndex = [k for k in GNSSsystems if GNSSsystems[k] == sys][0]
+            SNR_codes = [SNR_code for SNR_code in obsCodes[GNSSsystemIndex][sys] if 'S' in SNR_code[0]]
+        if plotEstimates and len(SNR_codes) != 0:
+            print('INFO: Making a plot of the Signal To Noise Ration (SNR). Please wait ...')
+            if use_LaTex:
+                try:
+                    make_polarplot_SNR(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir)
+                    plot_SNR_wrt_elev(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir,tInterval)
+                except:
                     make_polarplot_SNR_dont_use_TEX(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir)
                     plot_SNR_wrt_elev_dont_use_TEX(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir,tInterval)
             else:
-                logger.warning("INFO(GNSS_MultipathAnalysis): There is no SNR codes available in the RINEX files. Plot of the Signal To Noise Ration is not possible.")
+                make_polarplot_SNR_dont_use_TEX(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir)
+                plot_SNR_wrt_elev_dont_use_TEX(analysisResults,GNSS_obs,GNSSsystems,obsCodes,graphDir,tInterval)
+        else:
+            logger.warning("INFO(GNSS_MultipathAnalysis): There is no SNR codes available in the RINEX files. Plot of the Signal To Noise Ration is not possible.")
 
-            for syst in GNSSsystems.keys():
-                curr_syst =GNSSsystemCode2Fullname[GNSSsystems[syst]]
-                analysisResults[curr_syst]['SNR']  = {}
-                curr_obscodes = obsCodes[syst][GNSSsystems[syst]]
-                snr_codes_idx =  [n for n, l in enumerate(curr_obscodes) if l.startswith('S')]
-                for code_idx in snr_codes_idx:
-                    signal = curr_obscodes[code_idx]
-                    curr_ban = [element for element in analysisResults[curr_syst].keys() if element.endswith(signal[1])][0]
-                    curr_signal = np.stack(list(GNSS_obs[GNSSsystems[syst]].values()))[:, :, code_idx]
-                    curr_signal = np.squeeze(curr_signal)
-                    analysisResults[curr_syst]['SNR'][signal] = curr_signal
+        for syst in GNSSsystems.keys():
+            curr_syst =GNSSsystemCode2Fullname[GNSSsystems[syst]]
+            analysisResults[curr_syst]['SNR']  = {}
+            curr_obscodes = obsCodes[syst][GNSSsystems[syst]]
+            snr_codes_idx =  [n for n, l in enumerate(curr_obscodes) if l.startswith('S')]
+            for code_idx in snr_codes_idx:
+                signal = curr_obscodes[code_idx]
+                curr_ban = [element for element in analysisResults[curr_syst].keys() if element.endswith(signal[1])][0]
+                curr_signal = np.stack(list(GNSS_obs[GNSSsystems[syst]].values()))[:, :, code_idx]
+                curr_signal = np.squeeze(curr_signal)
+                analysisResults[curr_syst]['SNR'][signal] = curr_signal
 
+
+    if write_results_to_csv:
+        result_dir = os.path.join(outputDir, "Result_files_CSV")
+        if not os.path.exists(result_dir):
+            os.makedirs(result_dir)
+        createCSV = createCSVfile(analysisResults, result_dir, output_csv_delimiter)
+        createCSV.write_results_to_csv()
 
 
     ## -- Saving the workspace as a binary pickle file ---
     if save_results_as_pickle:
         pickle_filename = 'analysisResults.pkl'
+        print(f'\nINFO: The analysis results are being written to the file {pickle_filename}. Please wait..')
         results_name = os.path.join(outputDir, pickle_filename)
         PickleHandler.write_zstd_pickle(analysisResults, results_name)
         print(f'INFO: The analysis results has been written to the file {pickle_filename}.\n')
     elif save_results_as_compressed_pickle:
         pickle_filename = 'analysisResults.pkl.zst'
+        print(f'\nINFO: The analysis results are being written to the file {pickle_filename}. Please wait..')
         results_name = os.path.join(outputDir, pickle_filename)
         PickleHandler.write_zstd_pickle(analysisResults, results_name)
         print(f'INFO: The analysis results has been written to the file {pickle_filename}.\n')
