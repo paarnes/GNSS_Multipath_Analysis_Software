@@ -46,7 +46,7 @@ class createCSVfile:
 
         for band in self.analysisResults[sys_name]["Bands"]:
             for code in self.analysisResults[sys_name][band]["Codes"]:
-                curr_code_data = self.analysisResults[sys_name][band].get(code, None)
+                curr_code_data = self.analysisResults[sys_name][band].get(code, None) if not isinstance(code, list) else None
                 if curr_code_data is not None:
                     rms_multipath_avg = np.round(curr_code_data["multipath_range1"], 4)
                 else:
