@@ -115,6 +115,7 @@ def test_GNSS_MultipathAnalysis_broadcast_navfile():
     result = GNSS_MultipathAnalysis(rinObsFilename=rinObs_file, broadcastNav1=broadNav_file,
                                     plotEstimates=False,
                                     plot_polarplot=False,
+                                    write_results_to_csv=False,
                                     nav_data_rate=120)
 
     expected_result = PickleHandler.read_zstd_pickle(expected_res)
