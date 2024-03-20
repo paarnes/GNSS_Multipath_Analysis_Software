@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gnssmultipath"
-version = "1.4.2"
+version = "1.4.4"
 authors = [
   { name="Per Helge Aarnes", email="per.helge.aarnes@gmail.com" },
 ]
