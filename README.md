@@ -21,14 +21,17 @@
 GNSS Multipath Analysis is a software tool for analyzing the multipath effect on Global Navigation Satellite Systems (GNSS). It is primarily based on the MATLAB software [GNSS_Receiver_QC_2020](https://gitlab.com/bjro/GNSS_reading_protocol/-/tree/main/GNSS_Receiver_QC_2020) by Bjørn-Eirik Roald, but has been adapted to Python and includes additional features.
 
 ## Features
-- Support for broadcasted ephemerides (not only SP3 files)
-- Compatibility with RINEX v2.xx observation files
-- Generates various plots (polar, SNR vs. time/elevation, etc.)
+- Supports broadcasted ephemerides (RINEX nagiation files) and SP3 files
+- Supports both RINEX v2.xx and v3.xx observation files
+- Generates various plots like:
+	- polarplots of SNR and multipath
+	- SNR vs. time/elevation
+	-
 - Extracts GLONASS FCN from RINEX navigation files
 - Cycle slip detection and multipath effect estimation
 - Results export to CSV and Pickle formats
 - Option to choose which navigation system to analyze
-- [More...](#the-steps-are)
+
 
 ## Installation
 
@@ -75,8 +78,13 @@ results = GNSS_MultipathAnalysis(rinex_obs_file=rinObs_file, sp3NavFilename_1=ri
 4. Satellites elevation and azimuth angles get computed.
 5. Cycle slip detection by using both ionospheric residuals and a code-phase combination. These linear combinations are given as
 
-$$\dot{I} = \frac{1}{\alpha-1}\left(\Phi_1 - \Phi_2\right)/\Delta t$$
-$$d\Phi_1R_1 = \Phi_1 - R_1$$
+$$
+\dot{I} = \frac{1}{\alpha-1}\left(\Phi_1 - \Phi_2\right)/\Delta t
+$$
+
+$$
+d\Phi_1R_1 = \Phi_1 - R_1
+$$
 
  The threshold values can be set by the user, and the default values are set to $0.0667 [\frac{m}{s}]$ and $6.67[\frac{m}{s}]$ for the ionospheric residuals and code-phase combination respectively.
 
@@ -133,8 +141,11 @@ for every estimates with elevation angle $\beta$ is below $30^{\circ}$ and $w =1
 10. The results in form of a report get written to a text file with the same name as the RINEX observation file.
 11. The estimated values are also written to a CSV file by default
 		<p align="center">
-			<img src="https://github.com/paarnes/GNSS_Multipath_Analysis_Software/blob/master/Results_example/result_table.PNG?raw=true" width="630"/>
+			<img src="https://github.com/paarnes/GNSS_Multipath_Analysis_Software/blob/master/Results_example/result_table.PNG?raw=true" width="830"/>
 		</p>
+
+## User arguments
+
 
 ## Some simple examples on how to use the Software:
 
