@@ -133,7 +133,7 @@ for every estimates with elevation angle $\beta$ is below $30^{\circ}$ and $w =1
 10. The results in form of a report get written to a text file with the same name as the RINEX observation file.
 11. The estimated values are also written to a CSV file by default
 		<p align="center">
-			<img src="https://github.com/paarnes/GNSS_Multipath_Analysis_Software/blob/master/Results_example/result_table.png?raw=true" width="630"/>
+			<img src="https://github.com/paarnes/GNSS_Multipath_Analysis_Software/blob/master/Results_example/result_table.PNG?raw=true" width="630"/>
 		</p>
 
 ## Some simple examples on how to use the Software:
@@ -147,7 +147,7 @@ SP3_file    = 'SP3_20220010000.eph'
 analysisResults = GNSS_MultipathAnalysis(rinex_obs_file=rinObs_file, sp3NavFilename_1=SP3_file)
 ```
 
-### Run a multipath analysis using a RINEX navigation file with SNR and a defined datarate for ephemerides
+### Run a multipath analysis using a RINEX navigation file with SNR, a defined datarate for ephemerides and with an elevation angle cut of at 10°
 ```python
 from gnssmultipath import GNSS_MultipathAnalysis
 
@@ -165,7 +165,6 @@ analysisResults = GNSS_MultipathAnalysis(rinex_obs_file=rinObs_file,
                                          nav_data_rate=nav_data_rate,
                                          cutoff_elevation_angle=cutoff_elevation_angle)
 ```
-
 ### Read a RINEX observation file
 ```python
 from gnssmultipath import readRinexObs
@@ -205,9 +204,6 @@ result_dict = PickleHandler.read_zstd_pickle(path_to_picklefile)
 - **Python Versions:** Compatible with Python 3.8 and above.
 - **Dependencies:** All dependencies will be automatically installed with `pip install gnssmultipath`.
 
-## Documentation
-
-Detailed documentation is available [here](https://gnssmultipath.readthedocs.io/).
 
 ## License
 
