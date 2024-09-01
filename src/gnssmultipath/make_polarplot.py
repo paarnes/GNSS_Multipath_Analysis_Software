@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib import rc
 from matplotlib.ticker import MaxNLocator
+from .plotResults import set_linewidt_for_each_object
 
 warnings.filterwarnings("ignore")
 logger = logging.getLogger(__name__)
@@ -135,8 +136,8 @@ def make_skyplot(azimut_currentSys, elevation_currentSys, GNSSsystemName,graph_d
     # ax.legend(fontsize=14,bbox_to_anchor=(1.40, 0.5),fancybox=True, shadow=True,ncol=2,loc='center right')
     legend = ax.legend(fontsize=14,bbox_to_anchor=(1.40, 0.5),fancybox=True, shadow=True,ncol=2,loc='center right')
     ## Set the linewidth of each legend object (then not dependent of linewith in plot)
-    for legobj in legend.legendHandles:
-        legobj.set_linewidth(3.5)
+    set_linewidt_for_each_object(legend, 3.5)
+
     filename = 'Skyplot_' + GNSSsystemName + '.png'
     filename2 = 'Skyplot_' + GNSSsystemName + '.pdf'
     # fig.savefig(graph_dir + "/" + filename, dpi=300, orientation='landscape')
@@ -293,8 +294,7 @@ def plot_SNR_wrt_elev(analysisResults,GNSS_obs, GNSSsystems, obsCodes, graphDir,
             ax[0].set_ylabel('[dB-Hz]',fontsize=18,labelpad=10)
             ax[0].tick_params(axis='both', labelsize=16)
             legend = ax[0].legend(loc='center right',fontsize=12,bbox_to_anchor=(1.25, 0.5), fancybox=True, shadow=True,ncol=2) # frame = legend.get_frame(); frame.set_facecolor((0.89701,0.79902,0.68137)); frame.set_edgecolor('black') #legend
-            for legobj in legend.legendHandles: # Set the linewidth of each legend object (then not dependent of linewith in plot)
-                legobj.set_linewidth(1.5)
+            set_linewidt_for_each_object(legend, 1.5)
 
 
             ## -- Subplot 2
@@ -313,8 +313,7 @@ def plot_SNR_wrt_elev(analysisResults,GNSS_obs, GNSSsystems, obsCodes, graphDir,
                     sat_el = sat_elevation[:,PRN]
                     ax[1].plot(sat_el, SNR_PRN, label='PRN%s' % (PRN),linewidth=0.7)
             legend = ax[1].legend(loc='center right',fontsize=12,bbox_to_anchor=(1.25, 0.5), fancybox=True, shadow=True,ncol=2) # frame = legend.get_frame(); frame.set_facecolor((0.89701,0.79902,0.68137)); frame.set_edgecolor('black') #legend
-            for legobj in legend.legendHandles:
-                legobj.set_linewidth(1.5)
+            set_linewidt_for_each_object(legend, 1.5)
 
 
             filename = 'SNR_' + system + "_" + range1_code + '.pdf'
