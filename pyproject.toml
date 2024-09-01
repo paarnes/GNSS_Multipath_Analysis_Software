@@ -28,12 +28,12 @@ classifiers = [
 
 license = { text = "MIT" }
 dependencies = [
-  "matplotlib==3.7.5"
-  "numpy==1.24.4"
-  "pandas==2.0.3"
-  "tqdm==4.66.5"
-  "zstandard==0.23.0"
-  "pytest"
+  "matplotlib==3.7.5",
+  "numpy==1.24.4",
+  "pandas==2.0.3",
+  "tqdm==4.66.5",
+  "zstandard==0.23.0",
+  "pytest",
   ]
 
 [project.urls]
