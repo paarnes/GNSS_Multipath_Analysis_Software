@@ -14,6 +14,26 @@ import pandas as pd
 
 warnings.filterwarnings("ignore")
 
+
+def set_linewidt_for_each_object(legend, line_width=1.5):
+    """
+    The function sets the line widt of each object in plot.
+
+    Sice matplotlib have changed they name from "legendHandles" to "legend_handles"
+    a try/except is required.
+    """
+    try:
+        # Attempt to use the newer attribute name
+        legend_handles = legend.legend_handles
+    except AttributeError:
+        # Fallback to the older attribute name if the newer one doesn't exist
+        legend_handles = legend.legendHandles
+
+    # Now you can safely iterate over legend_handles
+    for legobj in legend_handles:
+        legobj.set_linewidth(line_width)
+
+
 def plotResults(ion_delay_phase1, multipath_range1, sat_elevation_angles,\
     tInterval, currentGNSSsystem, range1_Code, range2_Code, phase1_Code, phase2_Code, graphDir):
     """
@@ -171,8 +191,7 @@ def plotResults(ion_delay_phase1, multipath_range1, sat_elevation_angles,\
     # ax3.tick_params(axis='both', labelsize=18)
     # legend = ax3.legend(loc='center right',fontsize=14,bbox_to_anchor=(1.28, 0.5), fancybox=True, shadow=True,ncol=2) # frame = legend.get_frame(); frame.set_facecolor((0.89701,0.79902,0.68137)); frame.set_edgecolor('black') #legend
     # ## Set the linewidth of each legend object (then not dependent of linewith in plot)
-    # for legobj in legend.legendHandles:
-    #     legobj.set_linewidth(1.5)
+    # set_linewidt_for_each_object(legend)
 
     # ax3.grid(color='k', linestyle='-', linewidth=0.1)
     # ax3.axhline(y=0.0, color='k', linestyle='-',linewidth=0.4)
@@ -227,8 +246,7 @@ def plotResults(ion_delay_phase1, multipath_range1, sat_elevation_angles,\
     # ax4.tick_params(axis='both', labelsize=18)
     # legend = ax4.legend(loc='center right',fontsize=14,bbox_to_anchor=(1.28, 0.5), fancybox=True, shadow=True,ncol=2) # frame = legend.get_frame(); frame.set_facecolor((0.89701,0.79902,0.68137)); frame.set_edgecolor('black') #legend
     # ## Set the linewidth of each legend object (then not dependent of linewith in plot)
-    # for legobj in legend.legendHandles:
-    #     legobj.set_linewidth(1.5)
+    # set_linewidt_for_each_object(legend)
 
     # ax4.grid(color='k', linestyle='-', linewidth=0.1)
     # ax4.axhline(y=0.0, color='k', linestyle='-',linewidth=1)
@@ -268,9 +286,9 @@ def plotResults(ion_delay_phase1, multipath_range1, sat_elevation_angles,\
     ax5[0].set_ylabel('$[m]$',fontsize=20,labelpad=10)
     ax5[0].tick_params(axis='both', labelsize=18)
     legend = ax5[0].legend(loc='center right',fontsize=12,bbox_to_anchor=(1.25, 0.5), fancybox=True, shadow=True,ncol=2) # frame = legend.get_frame(); frame.set_facecolor((0.89701,0.79902,0.68137)); frame.set_edgecolor('black') #legend
+    
     ## Set the linewidth of each legend object (then not dependent of linewith in plot)
-    for legobj in legend.legendHandles:
-        legobj.set_linewidth(1.5)
+    set_linewidt_for_each_object(legend)
 
     ax5[0].grid(color='k', linestyle='-', linewidth=0.08)
     ax5[0].axhline(y=0.0, color='k', linestyle='-',linewidth=1)
@@ -309,8 +327,7 @@ def plotResults(ion_delay_phase1, multipath_range1, sat_elevation_angles,\
     ax5[1].tick_params(axis='both', labelsize=18)
     legend = ax5[1].legend(loc='center right',fontsize=12,bbox_to_anchor=(1.25, 0.5), fancybox=True, shadow=True,ncol=2) # frame = legend.get_frame(); frame.set_facecolor((0.89701,0.79902,0.68137)); frame.set_edgecolor('black') #legend
     ## Set the linewidth of each legend object (then not dependent of linewith in plot)
-    for legobj in legend.legendHandles:
-        legobj.set_linewidth(1.5)
+    set_linewidt_for_each_object(legend)
 
     ax5[1].grid(color='k', linestyle='-', linewidth=0.08)
     ax5[1].axhline(y=0.0, color='k', linestyle='-',linewidth=1)
@@ -536,8 +553,7 @@ def plotResults_dont_use_TEX(ion_delay_phase1, multipath_range1, sat_elevation_a
     # ax3.tick_params(axis='both', labelsize=18)
     # legend = ax3.legend(loc='center right',fontsize=14,bbox_to_anchor=(1.28, 0.5), fancybox=True, shadow=True,ncol=2) # frame = legend.get_frame(); frame.set_facecolor((0.89701,0.79902,0.68137)); frame.set_edgecolor('black') #legend
     # ## Set the linewidth of each legend object (then not dependent of linewith in plot)
-    # for legobj in legend.legendHandles:
-    #     legobj.set_linewidth(1.5)
+    # set_linewidt_for_each_object(legend)
 
     # ax3.grid(color='k', linestyle='-', linewidth=0.1)
     # ax3.axhline(y=0.0, color='k', linestyle='-',linewidth=0.4)
@@ -592,8 +608,7 @@ def plotResults_dont_use_TEX(ion_delay_phase1, multipath_range1, sat_elevation_a
     # ax4.tick_params(axis='both', labelsize=18)
     # legend = ax4.legend(loc='center right',fontsize=14,bbox_to_anchor=(1.28, 0.5), fancybox=True, shadow=True,ncol=2) # frame = legend.get_frame(); frame.set_facecolor((0.89701,0.79902,0.68137)); frame.set_edgecolor('black') #legend
     # ## Set the linewidth of each legend object (then not dependent of linewith in plot)
-    # for legobj in legend.legendHandles:
-    #     legobj.set_linewidth(1.5)
+    # set_linewidt_for_each_object(legend)
 
     # ax4.grid(color='k', linestyle='-', linewidth=0.1)
     # ax4.axhline(y=0.0, color='k', linestyle='-',linewidth=1)
@@ -632,9 +647,9 @@ def plotResults_dont_use_TEX(ion_delay_phase1, multipath_range1, sat_elevation_a
     ax5[0].set_ylabel('[m]',fontsize=20,labelpad=10)
     ax5[0].tick_params(axis='both', labelsize=18)
     legend = ax5[0].legend(loc='center right',fontsize=12,bbox_to_anchor=(1.25, 0.5), fancybox=True, shadow=True,ncol=2) # frame = legend.get_frame(); frame.set_facecolor((0.89701,0.79902,0.68137)); frame.set_edgecolor('black') #legend
+
     ## Set the linewidth of each legend object (then not dependent of linewith in plot)
-    for legobj in legend.legendHandles:
-        legobj.set_linewidth(1.5)
+    set_linewidt_for_each_object(legend)
 
     ax5[0].grid(color='k', linestyle='-', linewidth=0.08)
     ax5[0].axhline(y=0.0, color='k', linestyle='-',linewidth=1)
@@ -671,8 +686,7 @@ def plotResults_dont_use_TEX(ion_delay_phase1, multipath_range1, sat_elevation_a
     ax5[1].tick_params(axis='both', labelsize=18)
     legend = ax5[1].legend(loc='center right',fontsize=12,bbox_to_anchor=(1.25, 0.5), fancybox=True, shadow=True,ncol=2) # frame = legend.get_frame(); frame.set_facecolor((0.89701,0.79902,0.68137)); frame.set_edgecolor('black') #legend
     ## Set the linewidth of each legend object (then not dependent of linewith in plot)
-    for legobj in legend.legendHandles:
-        legobj.set_linewidth(1.5)
+    set_linewidt_for_each_object(legend)
 
     ax5[1].grid(color='k', linestyle='-', linewidth=0.08)
     ax5[1].axhline(y=0.0, color='k', linestyle='-',linewidth=1)

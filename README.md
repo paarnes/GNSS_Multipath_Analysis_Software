@@ -1,35 +1,82 @@
 # GNSS Multipath Analysis
+
 [![Python application](https://github.com/paarnes/GNSS_Multipath_Analysis_Software/actions/workflows/run-tests.yml/badge.svg)](https://github.com/paarnes/GNSS_Multipath_Analysis_Software/actions/workflows/run-tests.yml)
 [![PyPI version](https://badge.fury.io/py/gnssmultipath.svg)](https://badge.fury.io/py/gnssmultipath)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+## Table of Contents
+- [Introduction](#introduction)
+- [Features](#features)
+- [Installation](#installation)
+  - [Prerequisites](#prerequisites)
+  - [Installing LaTeX (optional)](#installing-latex-optional)
+- [How to run it](#how-to-run-it)
+- [Compatibility](#compatibility)
+- [License](#license)
+- [User arguments](#user-arguments)
+- [Examples](#some-simple-examples-on-how-to-use-the-software)
+   - [Run a multipath analysis using a SP3 file and only mandatory arguments](#run-a-multipath-analysis-using-a-sp3-file-and-only-mandatory-arguments)
+   - [Run a multipath analysis using a RINEX navigation file with SNR, a defined datarate for ephemerides and with an elevation angle cut off at 10°](#run-a-multipath-analysis-using-a-rinex-navigation-file-with-snr-a-defined-datarate-for-ephemerides-and-with-an-elevation-angle-cut-off-at-10°)
+   - [Run analysis with several navigation files](#run-analysis-with-several-navigation-files)
+   - [Run analysis without making plots](#run-analysis-without-making-plots)
+   - [Run analysis and use the Zstandard compression algorithm (ZSTD) to compress the pickle file storing the results](#run-analysis-and-use-the-zstandard-compression-algorithm-zstd-to-compress-the-pickle-file-storing-the-results)
+   - [Read a RINEX observation file](#read-a-rinex-observation-file)
+   - [Read a RINEX navigation file (v.3)](#read-a-rinex-navigation-file-v3)
+   - [Read in the results from an uncompressed Pickle file](#read-in-the-results-from-an-uncompressed-pickle-file)
+   - [Read in the results from a compressed Pickle file](#read-in-the-results-from-a-compressed-pickle-file)
 
-GNSS_MultipathAnalysis is a software for analyzing the multipath effect on Global Navigation Satellite Systems (GNSS). This software is largely based on the MATLAB software [GNSS_Receiver_QC_2020](https://gitlab.com/bjro/GNSS_reading_protocol/-/tree/main/GNSS_Receiver_QC_2020) made by Bjørn-Eirik Roald. Mainly it follows the same logic, just with Python syntax. However, there are added some other features like for instance:
-* Possible to use broadcasted ephemerides (not only SP3 files)
-* Also support RINEX v2.xx observation files
-* Makes polar plot of each satellite for each system
-* Makes polar plot that shows the multipath effect as function of azimuth and elevation angle.
-* Plots the Signal-To-Noise Ratio (SNR) wrt to time and elevation angle
-* Extracts GLONASS FCN from RINEX navigation file
-* Makes polar plot that shows the Signal-To-Noise Ratio (SNR) as function of azimuth and elevation angle
-* Possible to choose which navigation system to run analysis on (not hardcoded anymore)
-* Summary of the number of cycle slips detected in total (both ionospheric residuals and code- phase difference)
+## Introduction
 
-A considerable part of the results has been validated by comparing the results with estimates from RTKLIB. This software will be further developed, and feedback and suggestions are therefore gratefully received. Don't hesitate to report if you find bugs or missing functionality. Either by e-mail or by raising an issue here in GitHub.
+GNSS Multipath Analysis is a software tool for analyzing the multipath effect on Global Navigation Satellite Systems (GNSS). It is primarily based on the MATLAB software [GNSS_Receiver_QC_2020](https://gitlab.com/bjro/GNSS_reading_protocol/-/tree/main/GNSS_Receiver_QC_2020) by Bjørn-Eirik Roald, but has been adapted to Python and includes additional features.
 
-The main function is called "GNSS_MultipathAnalysis.py" and takes in different arguments. Two arguments are mandatory:
-* A RINEX Observation file
-* A sp3/eph file containing precise satellite coordinates or a RINEX 3 navigation file
+## Features
+- Supports broadcasted ephemerides (RINEX nagiation files) and SP3 files
+- Supports both RINEX v2.xx and v3.xx observation files
+- Generates various plots like:
+	- Ionospheric delay wrt time and zenith mapped ionospheric delay (combined)
+	- The Multipath effect plotted wrt time and elevation angle (combined)
+	- Barplot showing RMS values for each signal and system
+	- Polar plot of the multipath effect and the Signal to nosie ratio (SNR)
+	- polarplots of SNR and multipath
+	- SNR vs. time/elevation
+	-
+- Extracts GLONASS FCN from RINEX navigation files
+- Cycle slip detection and multipath effect estimation
+- Results export to CSV and Pickle formats
+- Option to choose which navigation system to analyze
 
-The rest of the arguments are optional. Their default values are described in the function description. By default, this software will provide the results in forms of plots and an analysis report as a text file. In addition, it exports the results as a pickle file which can be imported as a dictionary in python for instance.
 
 ## Installation
 
-The software can be installed using `pip` in the terminal:
-```
-$ pip install gnssmultipath
+To install the software to your Python environment using ``pip``:
+
+```bash
+pip install gnssmultipath
 ```
 
-Note: In the example plots, TEX is used to get prettier text formatting. However, this requires TEX/LaTex to be installed on your computer. The program will first try to use TEX, and if it's not possible, standard text formatting will be used. So TEX/LaTex is not required to run the program and make plots.
+### Prerequisites
+- **Python >=3.8**: Ensure you have Python 3.8 or newer installed.
+- **LaTeX** (optional): Required for generating plots with LaTeX formatting.
+
+### Installing LaTeX (optional)
+- On Ubuntu: `sudo apt-get install texlive-full`
+- On Windows: Download and install from [MiKTeX](https://miktex.org/download)
+- On MacOS: ` brew install --cask mactex`
+
+## How to Run It
+
+To run the GNSS Multipath Analysis, import the main function and specify the RINEX observation and navigation/SP3 files you want to use. To perform the analysis with default settings and by using a navigation file:
+
+```python
+from gnssmultipath import GNSS_MultipathAnalysis
+
+outputdir = 'path_to_your_output_dir'
+rinObs_file = 'your_observation_file.XXO'
+rinNav_file = 'your_navigation_file.XXN'
+analysisResults = GNSS_MultipathAnalysis(rinObs_file,
+                                         broadcastNav1=rinNav_file,
+                                         outputDir=outputdir)
+```
 
 ## The steps are:
 1. Reads in the RINEX observation file
@@ -37,16 +84,35 @@ Note: In the example plots, TEX is used to get prettier text formatting. However
 3. If a navigation file is provided, the satellite coordinates will be transformed from Kepler-elements to ECEF for GPS, Galileo and BeiDou. For GLONASS the navigation file is containing a state vector. The coordinates then get interpolated to the current epoch by solving the differential equation using a 4th order Runge-Kutta. If a SP3 file is provided, the interpolation is done by a barycentric Lagrange interpolation.
 4. Satellites elevation and azimuth angles get computed.
 5. Cycle slip detection by using both ionospheric residuals and a code-phase combination. These linear combinations are given as
-$$\dot{I} = \frac{1}{\alpha-1}\left(\Phi_1 - \Phi_2\right)/\Delta t$$
-$$d\Phi_1R_1 = \Phi_1 - R_1$$
+
+$$
+\dot{I} = \frac{1}{\alpha-1}\left(\Phi_1 - \Phi_2\right)/\Delta t
+$$
+
+$$
+d\Phi_1R_1 = \Phi_1 - R_1
+$$
+
  The threshold values can be set by the user, and the default values are set to $0.0667 [\frac{m}{s}]$ and $6.67[\frac{m}{s}]$ for the ionospheric residuals and code-phase combination respectively.
 
 6. Multipath estimates get computed by making a linear combination of the code and phase observation. PS: A dual frequency receiver is necessary because observations from two different bands/frequency are needed.
+
 $$MP_1 = R_1 - \left(1+\frac{2}{\alpha - 1}\right)\Phi_1 + \left(\frac{2}{\alpha - 1}\right)\Phi_2$$
-where $R_1$ is the code observation on band 1, $\Phi_1$ and $\Phi_2$ is phase observation on band 1 and band 2 respectively. Furthermore $\alpha$ is the ratio between the two frequency squared $\alpha=\frac{{f}^2_1}{{f}^2_2}$
+
+where $R_1$ is the code observation on band 1, $\Phi_1$ and $\Phi_2$ is phase observation on band 1 and band 2 respectively. Furthermore $\alpha$ is the ratio between the two frequency squared 
+
+$$\alpha=\frac{{f}^2_1}{{f}^2_2}$$
+
 7. Based on the multipath estimates computed in step 6, both weighted and unweighted RMS-values get computed. The RMS value has unit _meter_, and is given by
+
 $$RMS=\sqrt{\frac{\sum\limits_{i=1}^{N_{sat}}\sum\limits_{j=1}^{N_{epohcs}} MP_{ij}}{N_{est}}}$$
-For the weighted RMS value, the satellite elevation angle is used in a weighting function defined as $$w =\frac{1}{4sin^2\beta}$$ for every estimates with elevation angle $\beta$ is below $30^{\circ}$ and $w =1$ for $\beta > 30^{\circ}$.
+
+For the weighted RMS value, the satellite elevation angle is used in a weighting function defined as 
+
+$$w =\frac{1}{4sin^2\beta}$$ 
+
+for every estimates with elevation angle $\beta$ is below $30^{\circ}$ and $w =1$ for $\beta > 30^{\circ}$.
+
 8. Several plot will be generated (if not set to FALSE):
     * Ionospheric delay wrt time and zenith mapped ionospheric delay (combined)
 		<p align="center">
@@ -80,83 +146,225 @@ For the weighted RMS value, the satellite elevation angle is used in a weighting
 		</p>
 9. Exporting the results as a pickle file which easily can be imported into python as a dictionary
 10. The results in form of a report get written to a text file with the same name as the RINEX observation file.
+11. The estimated values are also written to a CSV file by default
+		<p align="center">
+			<img src="https://github.com/paarnes/GNSS_Multipath_Analysis_Software/blob/master/Results_example/result_table.PNG?raw=true" width="830"/>
+		</p>
+
+## User arguments
+
+The `GNSS_MultipathAnalysis` function accepts several keyword arguments that allow for detailed customization of the analysis process. Below is a list of the first five arguments:
+
+- **rinObsFilename** (`str`):  
+  Path to the RINEX 3 observation file. This is a required argument.
+
+- **broadcastNav1** (`Union[str, None]`, optional):  
+  Path to the first RINEX navigation file. Default is `None`.
+
+- **broadcastNav2** (`Union[str, None]`, optional):  
+  Path to the second RINEX navigation file (if available). Default is `None`.
+
+- **broadcastNav3** (`Union[str, None]`, optional):  
+  Path to the third RINEX navigation file (if available). Default is `None`.
+
+- **broadcastNav4** (`Union[str, None]`, optional):  
+  Path to the fourth RINEX navigation file (if available). Default is `None`.
+
+<details>
+  <summary>More...</summary>
+
+  - **sp3NavFilename_1** (`Union[str, None]`, optional):  
+    Path to the first SP3 navigation file. Default is `None`.
+
+  - **sp3NavFilename_2** (`Union[str, None]`, optional):  
+    Path to the second SP3 navigation file (optional). Default is `None`.
+
+  - **sp3NavFilename_3** (`Union[str, None]`, optional):  
+    Path to the third SP3 navigation file (optional). Default is `None`.
+
+  - **desiredGNSSsystems** (`Union[List[str], None]`, optional):  
+    List of GNSS systems to include in the analysis. For example, `['G', 'R']` to include only GPS and GLONASS. Default is all systems (`None`).
+
+  - **phaseCodeLimit** (`Union[float, int, None]`, optional):  
+    Critical limit that indicates cycle slip for phase-code combination in m/s. If set to `0`, the default value of `6.667 m/s` will be used. Default is `None`.
+
+  - **ionLimit** (`Union[float, None]`, optional):  
+    Critical limit indicating cycle slip for the rate of change of the ionospheric delay in m/s. If set to `0`, the default value of `0.0667 m/s` will be used. Default is `None`.
+
+  - **cutoff_elevation_angle** (`Union[int, None]`, optional):  
+    Cutoff angle for satellite elevation in degrees. Estimates with elevation angles below this value will be excluded. Default is `None`.
+
+  - **outputDir** (`Union[str, None]`, optional):  
+    Path to the directory where output files should be saved. If not specified, the output will be generated in a sub-directory within the current working directory. Default is `None`.
+
+  - **plotEstimates** (`bool`, optional):  
+    Whether to plot the estimates. Default is `True`.
+
+  - **plot_polarplot** (`bool`, optional):  
+    Whether to generate polar plots. Default is `True`.
+
+  - **include_SNR** (`bool`, optional):  
+    If set to `True`, the Signal-to-Noise Ratio (SNR) from the RINEX observation file will be included in the analysis. Default is `True`.
+
+  - **save_results_as_pickle** (`bool`, optional):  
+    If `True`, the results will be saved as a binary pickle file. Default is `True`.
+
+  - **save_results_as_compressed_pickle** (`bool`, optional):  
+    If `True`, the results will be saved as a binary compressed pickle file using zstd compression. Default is `False`.
+
+  - **write_results_to_csv** (`bool`, optional):  
+    If `True`, a subset of the results will be exported as a CSV file. Default is `True`.
+
+  - **output_csv_delimiter** (`str`, optional):  
+    The delimiter to use for the CSV file. Default is a semicolon (`;`).
+
+  - **nav_data_rate** (`int`, optional):  
+    The desired data rate for ephemerides in minutes. A higher value speeds up processing but may reduce accuracy. Default is `60` minutes.
+
+  - **includeResultSummary** (`Union[bool, None]`, optional):  
+    Whether to include a detailed summary of statistics in the output file, including for individual satellites. Default is `None`.
+
+  - **includeCompactSummary** (`Union[bool, None]`, optional):  
+    Whether to include a compact overview of statistics in the output file. Default is `None`.
+
+  - **includeObservationOverview** (`Union[bool, None]`, optional):  
+    Whether to include an overview of observation types for each satellite in the output file. Default is `None`.
+
+  - **includeLLIOverview** (`Union[bool, None]`, optional):  
+    Whether to include an overview of LLI (Loss of Lock Indicator) data in the output file. Default is `None`.
+
+  - **use_LaTex** (`bool`, optional):  
+    If `True`, LaTeX will be used for rendering text in plots, requiring LaTeX to be installed on your system. Default is `True`.
+
+</details>
 
 
-## How to run it
-An example file on how to call the program is located [here](https://github.com/paarnes/GNSS_Multipath_Analysis_Software/blob/master/src/Examples_on_how_to_run_it.ipynb). This will show some examples
-on how to run the analysis with different user defined arguments, how to read in the resultfile (pickle file), and in addition it shows how to use only the RINEX
-reading routine.
+### Output
 
-### Some simple examples on how to use the software:
+- **analysisResults** (`dict`):  
+  A dictionary containing the results of the analysis for all GNSS systems.
 
-#### Run a multipath analysis using a SP3 file and only mandatory arguments
-```
+
+
+## Compatibility
+- **Python Versions:** Compatible with Python 3.8 and above.
+- **Dependencies:** All dependencies will be automatically installed with `pip install gnssmultipath`.
+
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+
+
+
+## Some simple examples on how to use the software:
+
+### Run a multipath analysis using a SP3 file and only mandatory arguments
+```python
 from gnssmultipath import GNSS_MultipathAnalysis
 
 rinObs_file = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04'
 SP3_file    = 'SP3_20220010000.eph'
-analysisResults = GNSS_MultipathAnalysis(rinex_obs_file, sp3NavFilename_1 = SP3_file)
+analysisResults = GNSS_MultipathAnalysis(rinex_obs_file=rinObs_file, sp3NavFilename_1=SP3_file)
 ```
 
-#### Run a multipath analysis using a RINEX navigation file with SNR and a defined datarate for ephemerides
-```
+### Run a multipath analysis using a RINEX navigation file with SNR, a defined datarate for ephemerides and with an elevation angle cut off at 10°
+```python
 from gnssmultipath import GNSS_MultipathAnalysis
 
 # Input arguments
 rinObs_file = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04'
-rinNav_file = 'BRDC00IGS_R_20220010000_01D_MN.rnx
-output_folder = 'C:\Users\xxxx\Results_Multipath'
-cutoff_elevation_angle = 10 # drop satellites lower than 10 degrees
-nav_data_rate = 60 # desired datarate for ephemerides (to improve speed)
+rinNav_file = 'BRDC00IGS_R_20220010000_01D_MN.rnx'
+output_folder = 'C:/Users/xxxx/Results_Multipath'
+cutoff_elevation_angle = 10  # drop satellites lower than 10 degrees
+nav_data_rate = 60  # desired datarate for ephemerides (to improve speed)
 
-analysisResults = GNSS_MultipathAnalysis(rinex_obs_file,
-					broadcastNav1=rinNav_file,
-					include_SNR = True,
-					outputDir = output_folder,
-					nav_data_rate = nav_data_rate,
-					cutoff_elevation_angle = cutoff_elevation_angle)
+analysisResults = GNSS_MultipathAnalysis(rinex_obs_file=rinObs_file,
+                                         broadcastNav1=rinNav_file,
+                                         include_SNR=True,
+                                         outputDir=output_folder,
+                                         nav_data_rate=nav_data_rate,
+                                         cutoff_elevation_angle=cutoff_elevation_angle)
 ```
 
-#### Read a RINEX observation file
+
+### Run analysis with several navigation files
+
+```python
+from gnssmultipath import GNSS_MultipathAnalysis
+
+outputdir = 'path_to_your_output_dir'
+rinObs = "OPEC00NOR_S_20220010000_01D_30S_MO_3.04_croped.rnx"
+
+# Define the path to your RINEX navigation file
+rinNav1 = "OPEC00NOR_S_20220010000_01D_CN.rnx"
+rinNav2 = "OPEC00NOR_S_20220010000_01D_EN.rnx"
+rinNav3 = "OPEC00NOR_S_20220010000_01D_GN.rnx"
+rinNav4 = "OPEC00NOR_S_20220010000_01D_RN.rnx"
+
+analysisResults = GNSS_MultipathAnalysis(rinObs,
+                                         broadcastNav1=rinNav1,
+                                         broadcastNav2=rinNav2,
+                                         broadcastNav3=rinNav3,
+                                         broadcastNav4=rinNav4,
+                                         outputDir=outputdir)
 ```
+
+
+
+### Run analysis without making plots
+```python
+from gnssmultipath import GNSS_MultipathAnalysis
+
+rinObs_file = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04'
+SP3_file    = 'SP3_20220010000.eph'
+analysisResults = GNSS_MultipathAnalysis(rinex_obs_file=rinObs_file, sp3NavFilename_1=SP3_file, plotEstimates=False)
+```
+
+### Run analysis and use the Zstandard compression algorithm (ZSTD) to compress the pickle file storing the results
+```python
+from gnssmultipath import GNSS_MultipathAnalysis
+
+rinObs_file = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04'
+SP3_file    = 'SP3_20220010000.eph'
+analysisResults = GNSS_MultipathAnalysis(rinex_obs_file=rinObs_file, sp3NavFilename_1=SP3_file, save_results_as_compressed_pickle=True)
+```
+
+
+### Read a RINEX observation file
+```python
 from gnssmultipath import readRinexObs
 
 rinObs_file = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04'
-GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems,\
-		obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType,\
-		rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, success = \
-		readRinexObs(rinObs_file)
-
+GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems, \
+        obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType, \
+        rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, success = \
+        readRinexObs(rinObs_file)
 ```
 
-
-#### Read a RINEX navigation file (v.3)
-```
+### Read a RINEX navigation file (v.3)
+```python
 from gnssmultipath import Rinex_v3_Reader
 
 rinNav_file = 'BRDC00IGS_R_20220010000_01D_MN.rnx'
 navdata = Rinex_v3_Reader().read_rinex_nav(rinNav_file, data_rate=60)
-
 ```
 
-#### Read in the results from a uncompressed pickle file
-
-```
+### Read in the results from an uncompressed Pickle file
+```python
 from gnssmultipath import PickleHandler
 
 path_to_picklefile = 'analysisResults.pkl'
 result_dict = PickleHandler.read_pickle(path_to_picklefile)
-
-
 ```
 
-#### Read in the results from a compressed pickle file
-```
+### Read in the results from a compressed Pickle file
+```python
 from gnssmultipath import PickleHandler
 
 path_to_picklefile = 'analysisResults.pkl'
 result_dict = PickleHandler.read_zstd_pickle(path_to_picklefile)
-
 ```
 
 
