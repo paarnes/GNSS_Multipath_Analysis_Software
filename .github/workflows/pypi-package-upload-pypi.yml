@@ -34,17 +34,16 @@ jobs:
     - name: Update version in pyproject.toml
       run: sed -i "s/version = \".*\"/version = \"${{ steps.increment_version.outputs.version }}\"/" pyproject.toml
 
-    - name: Commit changes to pyproject.toml
+    - name: Commit and push changes of pyproject.toml 
       run: |
-        git config --local user.email "per.helge.aarnes@gmail.com"
-        git config --local user.name "Per Helge Aarnes"
+        git config user.name github-actions and push
+        git config user.email github-actions@github.com
         git add pyproject.toml
         git commit -m "Bump version to ${{ steps.increment_version.outputs.version }}"
+        git push origin HEAD:${{ github.ref }}
 
-    - name: Push changes to the branch
-      run: git push origin HEAD:${{ github.event.release.target_commitish }}
 
     - name: Build and upload to PyPI
       run: |
         python -m build
-        twine upload --repository-url https://upload.pypi.org/legacy/ --username __token__ --password ${{ secrets.PYPI_TOKEN }} dist/*
+        twine upload --password ${{ secrets.PYPI_TOKEN }} dist/*
