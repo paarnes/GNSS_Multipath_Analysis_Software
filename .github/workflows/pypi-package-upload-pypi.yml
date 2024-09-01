@@ -41,12 +41,10 @@ jobs:
         git add pyproject.toml
         git commit -m "Bump version to ${{ steps.increment_version.outputs.version }}"
 
-    - name: Push changes to the master branch
-      run: git push origin HEAD:${{ github.ref }}
-      # if: github.ref == 'refs/heads/master'
+    - name: Push changes to the branch
+      run: git push origin HEAD:${{ github.event.release.target_commitish }}
 
-    - name: Build and upload to PyPI (master branch)
-      # if: github.ref == 'refs/heads/master'
+    - name: Build and upload to PyPI
       run: |
         python -m build
         twine upload --repository-url https://upload.pypi.org/legacy/ --username __token__ --password ${{ secrets.PYPI_TOKEN }} dist/*
