@@ -38,8 +38,8 @@ GNSS Multipath Analysis is a software tool for analyzing the multipath effect on
 	- Barplot showing RMS values for each signal and system
 	- Polar plot of the multipath effect and the Signal to nosie ratio (SNR)
 	- polarplots of SNR and multipath
-	- SNR vs. time/elevation
-	-
+	- Polar plot of each observed satellite in the system
+  -	SNR vs. time/elevation
 - Extracts GLONASS FCN from RINEX navigation files
 - Cycle slip detection and multipath effect estimation
 - Results export to CSV and Pickle formats
