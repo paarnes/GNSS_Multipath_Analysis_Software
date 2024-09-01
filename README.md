@@ -15,7 +15,15 @@
 - [License](#license)
 - [User arguments](#user-arguments)
 - [Examples](#some-simple-examples-on-how-to-use-the-software)
-
+   - [Run a multipath analysis using a SP3 file and only mandatory arguments](#run-a-multipath-analysis-using-a-sp3-file-and-only-mandatory-arguments)
+   - [Run a multipath analysis using a RINEX navigation file with SNR, a defined datarate for ephemerides and with an elevation angle cut off at 10°](#run-a-multipath-analysis-using-a-rinex-navigation-file-with-snr-a-defined-datarate-for-ephemerides-and-with-an-elevation-angle-cut-off-at-10°)
+   - [Run analysis with several navigation files](#run-analysis-with-several-navigation-files)
+   - [Run analysis without making plots](#run-analysis-without-making-plots)
+   - [Run analysis and use the Zstandard compression algorithm (ZSTD) to compress the pickle file storing the results](#run-analysis-and-use-the-zstandard-compression-algorithm-zstd-to-compress-the-pickle-file-storing-the-results)
+   - [Read a RINEX observation file](#read-a-rinex-observation-file)
+   - [Read a RINEX navigation file (v.3)](#read-a-rinex-navigation-file-v3)
+   - [Read in the results from an uncompressed Pickle file](#read-in-the-results-from-an-uncompressed-pickle-file)
+   - [Read in the results from a compressed Pickle file](#read-in-the-results-from-a-compressed-pickle-file)
 
 ## Introduction
 
@@ -261,7 +269,7 @@ SP3_file    = 'SP3_20220010000.eph'
 analysisResults = GNSS_MultipathAnalysis(rinex_obs_file=rinObs_file, sp3NavFilename_1=SP3_file)
 ```
 
-### Run a multipath analysis using a RINEX navigation file with SNR, a defined datarate for ephemerides and with an elevation angle cut of at 10°
+### Run a multipath analysis using a RINEX navigation file with SNR, a defined datarate for ephemerides and with an elevation angle cut off at 10°
 ```python
 from gnssmultipath import GNSS_MultipathAnalysis
 
@@ -281,6 +289,30 @@ analysisResults = GNSS_MultipathAnalysis(rinex_obs_file=rinObs_file,
 ```
 
 
+### Run analysis with several navigation files
+
+```python
+from gnssmultipath import GNSS_MultipathAnalysis
+
+outputdir = 'path_to_your_output_dir'
+rinObs = "OPEC00NOR_S_20220010000_01D_30S_MO_3.04_croped.rnx"
+
+# Define the path to your RINEX navigation file
+rinNav1 = "OPEC00NOR_S_20220010000_01D_CN.rnx"
+rinNav2 = "OPEC00NOR_S_20220010000_01D_EN.rnx"
+rinNav3 = "OPEC00NOR_S_20220010000_01D_GN.rnx"
+rinNav4 = "OPEC00NOR_S_20220010000_01D_RN.rnx"
+
+analysisResults = GNSS_MultipathAnalysis(rinObs,
+                                         broadcastNav1=rinNav1,
+                                         broadcastNav2=rinNav2,
+                                         broadcastNav3=rinNav3,
+                                         broadcastNav4=rinNav4,
+                                         outputDir=outputdir)
+```
+
+
+
 ### Run analysis without making plots
 ```python
 from gnssmultipath import GNSS_MultipathAnalysis
@@ -288,6 +320,15 @@ from gnssmultipath import GNSS_MultipathAnalysis
 rinObs_file = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04'
 SP3_file    = 'SP3_20220010000.eph'
 analysisResults = GNSS_MultipathAnalysis(rinex_obs_file=rinObs_file, sp3NavFilename_1=SP3_file, plotEstimates=False)
+```
+
+### Run analysis and use the Zstandard compression algorithm (ZSTD) to compress the pickle file storing the results
+```python
+from gnssmultipath import GNSS_MultipathAnalysis
+
+rinObs_file = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04'
+SP3_file    = 'SP3_20220010000.eph'
+analysisResults = GNSS_MultipathAnalysis(rinex_obs_file=rinObs_file, sp3NavFilename_1=SP3_file, save_results_as_compressed_pickle=True)
 ```
 
 
