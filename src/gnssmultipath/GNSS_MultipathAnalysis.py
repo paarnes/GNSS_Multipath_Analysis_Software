@@ -55,7 +55,7 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
                           includeObservationOverview: Union[bool, None] = None,
                           includeLLIOverview: Union[bool, None] = None,
                           use_LaTex: bool = True
-                          ):
+                          ) -> dict:
 
     """
     GNSS Multipath Analysis
@@ -167,6 +167,9 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
     OUTPUTS:
 
     analysisResults:          A dictionary that contains alls results of all analysises, for all GNSS systems.
+    
+
+    The software is also returning results file. A report provided as a text file, and a CSV file with the estimated values.
     --------------------------------------------------------------------------------------------------------------------------
     """
     start_time = time.time()
@@ -780,7 +783,7 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
         pickle_filename = 'analysisResults.pkl'
         print(f'\nINFO: The analysis results are being written to the file {pickle_filename}. Please wait..')
         results_name = os.path.join(outputDir, pickle_filename)
-        PickleHandler.write_zstd_pickle(analysisResults, results_name)
+        PickleHandler.write_pickle(analysisResults, results_name)
         print(f'INFO: The analysis results has been written to the file {pickle_filename}.\n')
     elif save_results_as_compressed_pickle:
         pickle_filename = 'analysisResults.pkl.zst'
