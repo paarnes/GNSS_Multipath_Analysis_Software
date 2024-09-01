@@ -11,12 +11,13 @@ RUN if [ "${NODE_VERSION}" != "none" ]; then su vscode -c "umask 0002 && . /usr/
   RUN pip3 --disable-pip-version-check --no-cache-dir install -r /tmp/pip-tmp/requirements.txt \
     && rm -rf /tmp/pip-tmp
 
-
+RUN python -m pip install --upgrade pip
+RUN python -m pip install notebook jupyterlab
 
 # [Optional] Uncomment this section to install additional OS packages.
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
-     && apt-get -y install --no-install-recommends libpq-dev gdal-bin libgdal-dev  
-     # <your-package-list-here> 
+     && apt-get -y install --no-install-recommends libpq-dev gdal-bin libgdal-dev
+     # <your-package-list-here>
 
 # [Optional] Uncomment this line to install global node packages.
 # RUN su vscode -c "source /usr/local/share/nvm/nvm.sh && npm install -g <your-package-here>" 2>&1
