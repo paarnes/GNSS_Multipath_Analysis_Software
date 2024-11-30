@@ -6,7 +6,7 @@ E-mail: per.helge.aarnes@gmail.com
 """
 
 
-from typing import Literal, Optional, List, Union
+from typing import Literal, Optional, List, Union, Tuple
 import numpy as np
 from numpy import ndarray
 from tqdm import tqdm
@@ -502,6 +502,53 @@ class SatelliteEphemerisToECEF:
 
         return self.sat_coord
 
+
+    @staticmethod
+    def compute_azimuth_and_elevation_static(
+        X: np.ndarray,
+        Y: np.ndarray,
+        Z: np.ndarray,
+        x_rec: float,
+        y_rec: float,
+        z_rec: float
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Computes the azimuth and elevation angles of satellites relative to the receiver.
+
+        Parameters:
+        -----------
+        X, Y, Z     : ndarray
+                      Satellite ECEF coordinates (arrays of the same size)
+        x_rec, y_rec, z_rec : float
+                              Receiver ECEF coordinates (single values)
+
+        Returns:
+        --------
+        azimuth, elevation : tuple of ndarray
+                             Azimuth and elevation angles (in degrees) for each satellite
+        """
+        # Calculate differences
+        dX = X - x_rec
+        dY = Y - y_rec
+        dZ = Z - z_rec
+
+        # Compute the receiver's geodetic latitude and longitude using WGS-84 ellipsoid parameters
+        a = 6378137.0  # Semi-major axis (meters)
+        b = 6356752.314245  # Semi-minor axis (meters)
+        lat_rec, lon_rec, _ = ECEF2geodb(a, b, x_rec, y_rec, z_rec)
+
+        # Convert differences to local ENU (East, North, Up) coordinates
+        east, north, up = np.vectorize(ECEF2enu)(lat_rec, lon_rec, dX, dY, dZ)
+
+        # Calculate azimuth angle and correct for quadrants
+        azimuth = np.rad2deg(np.arctan(east / north))
+        azimuth = np.where((east > 0) & (north < 0) | ((east < 0) & (north < 0)), azimuth + 180, azimuth)
+        azimuth = np.where((east < 0) & (north > 0), azimuth + 360, azimuth)
+    
+        # Calculate elevation angle
+        elevation = np.rad2deg(np.arctan(up / np.sqrt(east**2 + north**2)))
+
+        return azimuth, elevation
 
 
     def get_sat_ecef_coordinates(self, desired_time:ndarray, time_fmt:Literal["TOW", "GREGORIAN"] = 'TOW', PRN: Optional[str] = None) -> ndarray:
