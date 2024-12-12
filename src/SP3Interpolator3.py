@@ -16,13 +16,13 @@ class SP3Interpolator:
     an additional correction for Earth's rotation when interpolated directly.
     """
     
-    
-    def __init__(self, sp3_dataframe, epoch_interval, receiver_position:tuple=None):
+    def __init__(self, sp3_dataframe, epoch_interval, receiver_position: tuple = None):
         """
         Initializes the SP3 Interpolator with the provided SP3 DataFrame.
 
         :param sp3_dataframe: Pandas DataFrame containing SP3 data (columns: ['Epoch', 'Satellite', 'X', 'Y', 'Z', 'Clock Bias']).
         :param epoch_interval: Interval between each epoch in seconds.
+        :param receiver_position: Tuple of receiver ECEF coordinates (x, y, z) in meters. Defaults to None.
         """
         self.sp3_dataframe = sp3_dataframe
         self.epoch_interval = epoch_interval
@@ -39,7 +39,6 @@ class SP3Interpolator:
         base_time = datetime(2000, 1, 1)
         delta = epoch - base_time
         return delta.total_seconds()
-    
 
     @staticmethod
     def interppol(x, y, n):
@@ -57,45 +56,162 @@ class SP3Interpolator:
                 y_copy[i] = (x[i + j] * y_copy[i] - x[i] * y_copy[i + 1]) / (x[i + j] - x[i])
         return y_copy[0]
 
-    def interpolate(self, satellite, target_epoch, n_interpol_points:int=7):
+    def interpolate_all_satellites(self, time_epochs, gnss_systems, n_interpol_points=7):
         """
-        Interpolates the satellite position at the target_epoch.
+        Interpolates satellite positions for all systems and satellites for given time epochs.
 
-        :param satellite: Satellite identifier (e.g., 'G01').
-        :param target_epoch: Target epoch as a datetime object.
-        :return: Interpolated satellite position (x, y, z).
+        :param time_epochs: Array of observation times in GPS time format (week, TOW). 
+                            Ex:
+                                array([[  2190.        , 518400.0],
+                                       [  2190.        , 518430.0],
+                                       [  2190.        , 518460.0]])
+        :param gnss_systems: List of GNSS systems to include (e.g., ['G', 'R', 'E']).
+        :param n_interpol_points: Number of nearest points for interpolation.
+        :return: Dictionary containing interpolated positions for each GNSS system and satellite at each epoch.
         """
-        # Convert target_epoch into seconds since the reference epoch
-        target_epoch_seconds = self.epoch_to_seconds(target_epoch)
 
-        # Filter the DataFrame for the specific satellite
-        satellite_data = self.sp3_dataframe[self.sp3_dataframe['Satellite'] == satellite].copy()
+        # Convert GPS time to datetime objects
+        observation_times = gpstime2date_arrays(time_epochs[:, 0], time_epochs[:, 1])
 
-        # Convert the 'Epoch' column to seconds since the reference epoch
-        satellite_data['Epoch_Seconds'] = satellite_data['Epoch'].apply(self.epoch_to_seconds)
+        # Convert observation times to seconds since the reference epoch
+        observation_seconds = np.array([self.epoch_to_seconds(datetime(*obs)) for obs in observation_times])
 
-        # Sort by epoch to ensure consistent ordering
-        satellite_data = satellite_data.sort_values(by='Epoch_Seconds')
+        # Create a dictionary to store results for all GNSS systems
+        interpolated_positions = {}
 
-        # Select the nearest epochs
-        satellite_data['Time_Diff'] = np.abs(satellite_data['Epoch_Seconds'] - target_epoch_seconds)
-        nearest_points = satellite_data.nsmallest(n_interpol_points, 'Time_Diff')  # Use n_interpol_points points for cubic interpolation
+        # Progress bar setup
+        total_satellites = sum(
+            len(self.sp3_dataframe[self.sp3_dataframe['Satellite'].str[0] == gnss]['Satellite'].unique())
+            for gnss in gnss_systems
+        )
+        bar_format = '{desc}: {percentage:3.0f}%|{bar}| ({n_fmt}/{total_fmt})'
+        pbar = tqdm(total=total_satellites, desc="Interpolating satellite coordinates", position=0, leave=True, bar_format=bar_format)
 
-        # Ensure sufficient points are available
-        if len(nearest_points) < 4:
-            raise ValueError(f"Insufficient data points for interpolation of {satellite} at {target_epoch}.")
+        # Loop through each GNSS system
+        for gnss in gnss_systems:
+            # Filter the SP3 DataFrame to include only the current GNSS system
+            gnss_data = self.sp3_dataframe[self.sp3_dataframe['Satellite'].str[0] == gnss]
 
-        # Prepare data for interpolation
-        time_diffs = nearest_points['Epoch_Seconds'].to_numpy() - target_epoch_seconds
-        positions = nearest_points[['X', 'Y', 'Z']].to_numpy()
+            # Initialize dictionary for the current GNSS system
+            interpolated_positions[gnss] = {}
 
-        # Interpolate positions using Neville's algorithm
-        interpolated_positions = np.zeros(3)
-        for i in range(3):
-            interpolated_positions[i] = self.interppol(time_diffs, positions[:, i], len(time_diffs))
-            
-    
+            # Interpolate for each satellite in the current GNSS system
+            for satellite in gnss_data['Satellite'].unique():
+                # Filter data for the current satellite
+                satellite_data = gnss_data[gnss_data['Satellite'] == satellite].copy()
+
+                # Convert the 'Epoch' column to seconds since the reference epoch
+                satellite_data['Epoch_Seconds'] = satellite_data['Epoch'].apply(self.epoch_to_seconds)
+
+                # Sort by epoch to ensure consistent ordering
+                satellite_data = satellite_data.sort_values(by='Epoch_Seconds')
+
+                # Extract satellite data for vectorized processing
+                satellite_seconds = satellite_data['Epoch_Seconds'].to_numpy()
+                satellite_positions = satellite_data[['X', 'Y', 'Z']].to_numpy()
+
+                # Compute time differences for all observation times
+                time_diffs = np.abs(satellite_seconds[:, None] - observation_seconds)
+
+                # Find the indices of the nearest points for each observation time
+                nearest_indices = np.argsort(time_diffs, axis=0)[:n_interpol_points, :]
+
+                # Prepare arrays for interpolation
+                interpolated_positions_sat = np.zeros((len(observation_seconds), 3))  # (epochs, X/Y/Z)
+
+                for obs_idx in range(len(observation_seconds)):
+                    # Select nearest points for the current observation time
+                    idx = nearest_indices[:, obs_idx]
+                    nearest_times = satellite_seconds[idx]
+                    nearest_positions = satellite_positions[idx]
+
+                    # Interpolate positions using Neville's algorithm
+                    time_diff = nearest_times - observation_seconds[obs_idx]
+                    for i in range(3):  # X, Y, Z
+                        interpolated_positions_sat[obs_idx, i] = self.interppol(
+                            time_diff, nearest_positions[:, i], len(nearest_times)
+                        )
+
+                # Add to the results dictionary under the current GNSS system
+                interpolated_positions[gnss][satellite] = interpolated_positions_sat
+                pbar.update(1)
+
+        pbar.close()
         return interpolated_positions
+
+
+
+
+
+# def interpolate_all_satellites(sp3_dataframe, time_epochs, gnss_systems, n_interpol_points=7):
+#     """
+#     Interpolates satellite positions for all systems and satellites for given time epochs.
+
+#     :param sp3_dataframe: Pandas DataFrame containing SP3 data (columns: ['Epoch', 'Satellite', 'X', 'Y', 'Z', 'Clock Bias']).
+#     :param time_epochs: Array of observation times in GPS time format (week, TOW).
+#     :param gnss_systems: List of GNSS systems to include (e.g., ['G', 'R', 'E']).
+#     :param n_interpol_points: Number of nearest points for interpolation.
+#     :return: Dictionary containing interpolated positions for each GNSS system and satellite at each epoch.
+#     """
+
+#     # Convert GPS time to datetime objects
+#     observation_times = gpstime2date_arrays(time_epochs[:, 0], time_epochs[:, 1])
+
+#     # Create a dictionary to store results for all GNSS systems
+#     interpolated_positions = {}
+
+#     # Loop through each GNSS system
+#     for gnss in gnss_systems:
+#         # Filter the SP3 DataFrame to include only the current GNSS system
+#         gnss_data = sp3_dataframe[sp3_dataframe['Satellite'].str[0] == gnss]
+
+#         # Initialize dictionary for the current GNSS system
+#         interpolated_positions[gnss] = {}
+
+#         # Interpolate for each satellite in the current GNSS system
+#         for satellite in gnss_data['Satellite'].unique():
+#             # Filter data for the current satellite
+#             satellite_data = gnss_data[gnss_data['Satellite'] == satellite].copy()
+
+#             # Convert the 'Epoch' column to seconds since the reference epoch
+#             satellite_data['Epoch_Seconds'] = satellite_data['Epoch'].apply(SP3Interpolator.epoch_to_seconds)
+
+#             # Sort by epoch to ensure consistent ordering
+#             satellite_data = satellite_data.sort_values(by='Epoch_Seconds')
+
+#             # Initialize list for this satellite's interpolated positions
+#             satellite_positions = []
+
+#             # Process each observation time
+#             for obs_time in observation_times:
+#                 obs_time = datetime(*obs_time)
+#                 # Convert observation time to seconds since the reference epoch
+#                 obs_time_seconds = SP3Interpolator.epoch_to_seconds(obs_time)
+
+#                 # Calculate time differences and find nearest points
+#                 satellite_data['Time_Diff'] = np.abs(satellite_data['Epoch_Seconds'] - obs_time_seconds)
+#                 nearest_points = satellite_data.nsmallest(n_interpol_points, 'Time_Diff')
+
+#                 # Ensure sufficient points for interpolation
+#                 if len(nearest_points) < 4:
+#                     satellite_positions.append([np.nan, np.nan, np.nan])  # Insufficient data
+#                     continue
+
+#                 # Prepare data for interpolation
+#                 time_diffs = nearest_points['Epoch_Seconds'].to_numpy() - obs_time_seconds
+#                 positions = nearest_points[['X', 'Y', 'Z']].to_numpy()
+
+#                 # Interpolate positions using Neville's algorithm
+#                 interpolated_position = np.zeros(3)
+#                 for i in range(3):
+#                     interpolated_position[i] = SP3Interpolator.interppol(time_diffs, positions[:, i], len(time_diffs))
+
+#                 satellite_positions.append(interpolated_position)
+
+#             # Add to the results dictionary under the current GNSS system
+#             interpolated_positions[gnss][satellite] = np.array(satellite_positions)
+
+#     return interpolated_positions
 
 
 
@@ -111,82 +227,13 @@ def interpolate_all_satellites(sp3_dataframe, time_epochs, gnss_systems, n_inter
     :param n_interpol_points: Number of nearest points for interpolation.
     :return: Dictionary containing interpolated positions for each GNSS system and satellite at each epoch.
     """
+    from gnssmultipath.Geodetic_functions import gpstime2date_arrays
 
     # Convert GPS time to datetime objects
     observation_times = gpstime2date_arrays(time_epochs[:, 0], time_epochs[:, 1])
 
-    # Create a dictionary to store results for all GNSS systems
-    interpolated_positions = {}
-
-    # Loop through each GNSS system
-    for gnss in gnss_systems:
-        # Filter the SP3 DataFrame to include only the current GNSS system
-        gnss_data = sp3_dataframe[sp3_dataframe['Satellite'].str[0] == gnss]
-
-        # Initialize dictionary for the current GNSS system
-        interpolated_positions[gnss] = {}
-
-        # Interpolate for each satellite in the current GNSS system
-        for satellite in gnss_data['Satellite'].unique():
-            # Filter data for the current satellite
-            satellite_data = gnss_data[gnss_data['Satellite'] == satellite].copy()
-
-            # Convert the 'Epoch' column to seconds since the reference epoch
-            satellite_data['Epoch_Seconds'] = satellite_data['Epoch'].apply(SP3Interpolator.epoch_to_seconds)
-
-            # Sort by epoch to ensure consistent ordering
-            satellite_data = satellite_data.sort_values(by='Epoch_Seconds')
-
-            # Initialize list for this satellite's interpolated positions
-            satellite_positions = []
-
-            # Process each observation time
-            for obs_time in observation_times:
-                obs_time = datetime(*obs_time)
-                # Convert observation time to seconds since the reference epoch
-                obs_time_seconds = SP3Interpolator.epoch_to_seconds(obs_time)
-
-                # Calculate time differences and find nearest points
-                satellite_data['Time_Diff'] = np.abs(satellite_data['Epoch_Seconds'] - obs_time_seconds)
-                nearest_points = satellite_data.nsmallest(n_interpol_points, 'Time_Diff')
-
-                # Ensure sufficient points for interpolation
-                if len(nearest_points) < 4:
-                    satellite_positions.append([np.nan, np.nan, np.nan])  # Insufficient data
-                    continue
-
-                # Prepare data for interpolation
-                time_diffs = nearest_points['Epoch_Seconds'].to_numpy() - obs_time_seconds
-                positions = nearest_points[['X', 'Y', 'Z']].to_numpy()
-
-                # Interpolate positions using Neville's algorithm
-                interpolated_position = np.zeros(3)
-                for i in range(3):
-                    interpolated_position[i] = SP3Interpolator.interppol(time_diffs, positions[:, i], len(time_diffs))
-
-                satellite_positions.append(interpolated_position)
-
-            # Add to the results dictionary under the current GNSS system
-            interpolated_positions[gnss][satellite] = np.array(satellite_positions)
-
-    return interpolated_positions
-
-
-
-
-def interpolate_all_satellites_with_tqdm(sp3_dataframe, time_epochs, gnss_systems, n_interpol_points=7):
-    """
-    Interpolates satellite positions for all systems and satellites for given time epochs.
-
-    :param sp3_dataframe: Pandas DataFrame containing SP3 data (columns: ['Epoch', 'Satellite', 'X', 'Y', 'Z', 'Clock Bias']).
-    :param time_epochs: Array of observation times in GPS time format (week, TOW).
-    :param gnss_systems: List of GNSS systems to include (e.g., ['G', 'R', 'E']).
-    :param n_interpol_points: Number of nearest points for interpolation.
-    :return: Dictionary containing interpolated positions for each GNSS system and satellite at each epoch.
-    """
-
-    # Convert GPS time to datetime objects
-    observation_times = gpstime2date_arrays(time_epochs[:, 0], time_epochs[:, 1])
+    # Convert observation times to seconds since the reference epoch
+    observation_seconds = np.array([SP3Interpolator.epoch_to_seconds(datetime(*obs)) for obs in observation_times])
 
     # Create a dictionary to store results for all GNSS systems
     interpolated_positions = {}
@@ -196,10 +243,8 @@ def interpolate_all_satellites_with_tqdm(sp3_dataframe, time_epochs, gnss_system
         len(sp3_dataframe[sp3_dataframe['Satellite'].str[0] == gnss]['Satellite'].unique())
         for gnss in gnss_systems
     )
-    total_epochs = len(observation_times)
-    total_steps = total_satellites * total_epochs
-    bar_format = '{desc}: {percentage:3.0f}%|{bar}|'
-    pbar = tqdm(total=total_steps, desc="Interpolating satellite coordinates", position=0, leave=True, bar_format=bar_format)
+    bar_format = '{desc}: {percentage:3.0f}%|{bar}| ({n_fmt}/{total_fmt})'
+    pbar = tqdm(total=total_satellites, desc="Interpolating satellite coordinates", position=0, leave=True, bar_format=bar_format)
 
     # Loop through each GNSS system
     for gnss in gnss_systems:
@@ -220,43 +265,38 @@ def interpolate_all_satellites_with_tqdm(sp3_dataframe, time_epochs, gnss_system
             # Sort by epoch to ensure consistent ordering
             satellite_data = satellite_data.sort_values(by='Epoch_Seconds')
 
-            # Initialize list for this satellite's interpolated positions
-            satellite_positions = []
+            # Extract satellite data for vectorized processing
+            satellite_seconds = satellite_data['Epoch_Seconds'].to_numpy()
+            satellite_positions = satellite_data[['X', 'Y', 'Z']].to_numpy()
 
-            # Process each observation time
-            for obs_time in observation_times:
-                obs_time = datetime(*obs_time)
-                # Convert observation time to seconds since the reference epoch
-                obs_time_seconds = SP3Interpolator.epoch_to_seconds(obs_time)
+            # Compute time differences for all observation times
+            time_diffs = np.abs(satellite_seconds[:, None] - observation_seconds)
 
-                # Calculate time differences and find nearest points
-                satellite_data['Time_Diff'] = np.abs(satellite_data['Epoch_Seconds'] - obs_time_seconds)
-                nearest_points = satellite_data.nsmallest(n_interpol_points, 'Time_Diff')
+            # Find the indices of the nearest points for each observation time
+            nearest_indices = np.argsort(time_diffs, axis=0)[:n_interpol_points, :]
 
-                # Ensure sufficient points for interpolation
-                if len(nearest_points) < 4:
-                    satellite_positions.append([np.nan, np.nan, np.nan])  # Insufficient data
-                    pbar.update(1)
-                    continue
+            # Prepare arrays for interpolation
+            interpolated_positions_sat = np.zeros((len(observation_seconds), 3))  # (epochs, X/Y/Z)
 
-                # Prepare data for interpolation
-                time_diffs = nearest_points['Epoch_Seconds'].to_numpy() - obs_time_seconds
-                positions = nearest_points[['X', 'Y', 'Z']].to_numpy()
+            for obs_idx in range(len(observation_seconds)):
+                # Select nearest points for the current observation time
+                idx = nearest_indices[:, obs_idx]
+                nearest_times = satellite_seconds[idx]
+                nearest_positions = satellite_positions[idx]
 
                 # Interpolate positions using Neville's algorithm
-                interpolated_position = np.zeros(3)
-                for i in range(3):
-                    interpolated_position[i] = SP3Interpolator.interppol(time_diffs, positions[:, i], len(time_diffs))
-
-                satellite_positions.append(interpolated_position)
-                pbar.update(1)
+                time_diff = nearest_times - observation_seconds[obs_idx]
+                for i in range(3):  # X, Y, Z
+                    interpolated_positions_sat[obs_idx, i] = SP3Interpolator.interppol(
+                        time_diff, nearest_positions[:, i], len(nearest_times)
+                    )
 
             # Add to the results dictionary under the current GNSS system
-            interpolated_positions[gnss][satellite] = np.array(satellite_positions)
+            interpolated_positions[gnss][satellite] = interpolated_positions_sat
+            pbar.update(1)
 
     pbar.close()
     return interpolated_positions
-
 
 
 
@@ -293,30 +333,40 @@ if __name__ == "__main__":
     ### Interpolate
     # interpolator = SP3Interpolator(sp3_df, epochInterval_sp3)
     interpolator = SP3Interpolator(sp3_df, epochInterval_sp3)
-    
-    # Target epoch for interpolation
-    # target_epoch = datetime(2022, 1, 1, 0, 0, 0)
-    target_epoch = datetime(*desired_time)
-    
-    # Interpolate the position of satellite 'G01'
-    interpolated_position = interpolator.interpolate('G01', target_epoch)
-    print(f"Interpolated Position: {interpolated_position}")
-    
-    
-    print(f"Difference:\n{np.array(xyz_nav)[0:3] - np.atleast_2d(interpolated_position).T}")
-    
-    
-    #%%    
-    # Interpolate all satellites
-    interpolated_positions = interpolate_all_satellites(sp3_df, time_epochs, gnss_systems)
-    
-    # Print results for satellite 'G01'
-    satellite_id = 'G01'
-    print(f"Interpolated positions for {satellite_id}:")
-    print(interpolated_positions["G"][satellite_id])
 
-    diff = interpolated_positions["G"]["G01"] - results_rnav["Sat_position"]["G"]["position"]["1"][0:440]
-    print(diff)
+    
+    
+    
+    ## Interpolate single sataellite
+    # target_epoch = datetime(*desired_time) # Target epoch for interpolation
+    # Interpolate the position of satellite 'G01'
+    # interpolated_position = interpolator.interpolate('G01', target_epoch)
+    # print(f"Interpolated Position: {interpolated_position}")
+    # print(f"Difference:\n{np.array(xyz_nav)[0:3] - np.atleast_2d(interpolated_position).T}")
+    
+    
+    # Interpolate all satellites for all systems
+    interpolated_positions = interpolator.interpolate_all_satellites(time_epochs, gnss_systems)
+
+    
+    
+    
+    
+    
+    
+    #%%    USE FUNCTION 
+    # # Interpolate all satellites
+    # interpolated_positions = interpolate_all_satellites(sp3_df, time_epochs, gnss_systems)
+    
+    # # Print results for satellite 'G01'
+    # satellite_id = 'G01'
+    # print(f"Interpolated positions for {satellite_id}:")
+    # print(interpolated_positions["G"][satellite_id])
+
+    # diff = interpolated_positions["G"]["G01"] - results_rnav["Sat_position"]["G"]["position"]["1"][0:440]
+    # diff_E = interpolated_positions["E"]["E01"] - results_rnav["Sat_position"]["E"]["position"]["1"][0:440]
+    # diff_R = interpolated_positions["R"]["R01"] - results_rnav["Sat_position"]["R"]["position"]["1"][0:440]
+    # print(diff)
     
     
     
