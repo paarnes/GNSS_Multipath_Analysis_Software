@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Literal, Tuple
 from gnssmultipath import PickleHandler
 from gnssmultipath.readRinexObs import readRinexObs
-from gnssmultipath.read_SP3Nav_NEW import SP3Reader
+from gnssmultipath.SP3Reader import SP3Reader
 from gnssmultipath.SatelliteEphemerisToECEF import SatelliteEphemerisToECEF, Kepler2ECEF
 from gnssmultipath.Geodetic_functions import date2gpstime, date2gpstime_vectorized, gpstime2date_arrays
 from tqdm import tqdm
