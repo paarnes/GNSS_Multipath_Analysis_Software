@@ -69,10 +69,13 @@ class SP3Interpolator:
         :param output_format: Desired output format. Options are 'dict' (default) or 'dataframe'.
         :return: Interpolated positions in the specified output format.
         """
-        from gnssmultipath.Geodetic_functions import gpstime2date_arrays
+
     
         # Convert GPS time to datetime objects
-        observation_times = gpstime2date_arrays(time_epochs[:, 0], time_epochs[:, 1])
+        if len(time_epochs) > 2:
+            observation_times = gpstime2date_arrays(time_epochs[:, 0], time_epochs[:, 1])
+        else:
+            observation_times = gpstime2date_arrays(time_epochs[0], time_epochs[1])
     
         # Convert observation times to seconds since the reference epoch
         observation_seconds = np.array([self.epoch_to_seconds(datetime(*obs)) for obs in observation_times])
@@ -223,12 +226,12 @@ if __name__ == "__main__":
     
     # sat_coord_sp3, epoch_dates_sp3, navGNSSsystems_sp3, nEpochs_sp3, epochInterval_sp3, _= readSP3Nav(sp3)
     sp3_reader = SP3Reader(sp3, coords_in_meter=True, desiredGNSSsystems=gnss_systems)
-    sp3_df = sp3_reader.read_file()
+    sp3_df = sp3_reader.read()
     
     # Print metadata
     metadata = sp3_reader.get_metadata()
-    nEpochs_sp3 = metadata["Number of Epochs"]
-    epochInterval_sp3 = metadata["Epoch Interval (s)"]
+    nEpochs_sp3 = metadata["n_epochs"]
+    epochInterval_sp3 = metadata["epoch_interval_sec"]
     navGNSSsystems_sp3 = ["G"]
     
     ### Interpolate
