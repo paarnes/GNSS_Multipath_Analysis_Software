@@ -83,16 +83,43 @@ class SP3PositionEstimator:
                           np.abs(obs_time_epochs[:, 1] - desired_time[1, 0])
         return np.argmin(total_time_diff) + 1  # Observations are 1-indexed
 
-    def __extract_pseudoranges_and_satellites(self, idx_of_closest_eph):
-        """Extract valid pseudoranges and corresponding satellite indices."""
+    def __extract_pseudoranges_and_satellites(self, idx_of_closest_eph) -> Tuple[np.array, np.array]:
+        """
+        Extract valid pseudoranges and corresponding satellite indices.
+    
+        Filters out satellites that are not present in the SP3 file.
+    
+        Parameter:
+        ----------
+        idx_of_closest_eph: int. Index of the closest epoch in the observation file.
+    
+        Returns:
+        -------
+        prn_lst: np.ndarray. Valid satellite PRNs.
+        rji: np.ndarray. Corresponding pseudoranges for the valid satellites.
+        """
         pseudoranges = self.GNSS_obs[self.desired_sys][idx_of_closest_eph]
         sat_nr = np.where(pseudoranges[:, self.signal_idx] != 0.0)[0]
         rji = pseudoranges[sat_nr, self.signal_idx]
+        
+        # Construct PRN list for satellites in RINEX
+        prn_lst = [f"{self.desired_sys}{str(prn).zfill(2)}" for prn in sat_nr]
+    
+        # Filter out satellites not present in SP3 data
+        available_prns = self.sp3_df['Satellite'].unique()
+        valid_indices = [i for i, prn in enumerate(prn_lst) if prn in available_prns]
+    
+        # Update sat_nr and rji with valid indices only
+        sat_nr = sat_nr[valid_indices]
+        rji = rji[valid_indices]
+        
         return sat_nr, rji
     
-    def compute_relativistic_correction(self, sp3_interpolator, prn_lst, signal_transmission_time):
+    def __compute_relativistic_correction(self, sp3_interpolator, prn_lst, signal_transmission_time):
         """
         Compute relativistic corrections for the satellite clock bias.
+        
+        NOT IN USE.
     
         Parameters:
         ----------
@@ -108,6 +135,7 @@ class SP3PositionEstimator:
         
         t_delta_plus = np.array([self.desired_time[0], self.desired_time[1] + delta_t])
         t_delta_minus = np.array([self.desired_time[0], self.desired_time[1] - delta_t])
+        
         # Interpolate satellite positions at t+delta_t, t, and t-delta_t
         pos_plus = sp3_interpolator.interpolate_sat_coordinates(
             t_delta_plus, self.desired_sys
@@ -163,30 +191,25 @@ class SP3PositionEstimator:
             # Interpolate satellite positions
             
             signal_transmission_time = np.array([self.desired_time[0], self.desired_time[1] - rji[0] / c])
-            # dT_rel = self.compute_relativistic_correction(sp3_interpolator, prn_lst, signal_transmission_time)
+            # dT_rel = self.__compute_relativistic_correction(sp3_interpolator, prn_lst, signal_transmission_time)
             sat_positions = sp3_interpolator.interpolate_sat_coordinates(signal_transmission_time, self.desired_sys)
-            # sat_positions = sp3_interpolator.interpolate_sat_coordinates(self.desired_time, self.desired_sys) # gir mest nøyaktig svar uten klokkekorreksjon BRUK DENNE 03.01.2025
+            # sat_positions = sp3_interpolator.interpolate_sat_coordinates(self.desired_time, self.desired_sys) # gir mest nøyaktig hvis ikke mircosekundene tas med
+            
             
             sat_positions_tmp = sp3_interpolator.filter_by_prn(sat_positions, prn_lst)
             ordered_positions = sat_positions_tmp.set_index('Satellite').loc[prn_lst, ['X', 'Y', 'Z', 'Clock Bias']].reset_index()
             sat_positions = np.array(ordered_positions.iloc[:, 1:4])
             clock_biases = np.array(ordered_positions['Clock Bias'])
             X, Y, Z = sat_positions[:, 0], sat_positions[:, 1], sat_positions[:, 2]
-            
-            
+                        
             # Correct pseudoranges using satellite clock bias
             rji_corrected = rji + c * clock_biases
 
             # Compute pseudorange corrections
             diff = np.column_stack([X - x, Y - y, Z - z])
             rho = np.linalg.norm(diff, axis=1)
-            # l = rji - (rho + c * dTi0)
             l = rji_corrected - (rho + c * dTi0)
             
-            
-            # Compute pseudorange corrections
-            # rho = np.linalg.norm(np.column_stack([X - x, Y - y, Z - z]), axis=1)
-            # l = rji + c * dT_rel - (rho + c * dTi0)
             
             A = np.column_stack([-diff[:, 0] / rho, -diff[:, 1] / rho, -diff[:, 2] / rho, np.ones_like(rho)])
 
@@ -216,6 +239,8 @@ if __name__ == "__main__":
     sp3_file = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\SP3\Testfile_20220101.eph"
     rinex_obs_file = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles\OPEC00NOR_S_20220010000_01D_30S_MO_3.04_croped.rnx"
     desired_time = np.array([2022, 1, 1, 2, 0, 30.0000000])
+    # desired_time = np.array([2022, 1, 1, 2, 3, 30.0000000])
+    desired_time = np.array([2022, 1, 1, 0, 0, 30.0000000])
     desired_system = "G"  # GPS
     
     position_estimator = SP3PositionEstimator(sp3_file, rinex_obs_file, desired_time, desired_system)
