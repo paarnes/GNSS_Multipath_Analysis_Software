@@ -5,10 +5,8 @@ from typing import Literal
 from gnssmultipath.Geodetic_functions import date2gpstime, date2gpstime_vectorized
 from gnssmultipath.SatelliteEphemerisToECEF import SatelliteEphemerisToECEF, Kepler2ECEF
 from gnssmultipath.readRinexObs import readRinexObs
-import gnssmultipath.Geodetic_functions as geof
-from pyproj import Transformer
 from StatisticalAnalysis import StatisticalAnalysis
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Optional, Union
 
 
 warnings.filterwarnings("ignore")
@@ -18,61 +16,106 @@ c = 299792458  # Speed of light [m/s]
 
 
 
-
-
 class GNSSPositionEstimator:
     """
     A class to estimate the position of a GNSS receiver using pseudoranges and ephemeris data.
 
-    Parameters:
+    Example:
+    --------
+    .. code-block:: python
+
+        rinObs = "path/to/rinex_obs_file.rnx"
+        rinNav = "path/to/rinex_nav_file.rnx"
+        desired_time = np.array([2024, 1, 1, 12, 0, 0])  # Example date and time
+        desired_system = "G"  # Use GPS
+
+        GNSSPos = GNSSPositionEstimator(rinObs, rinNav, desired_time, desired_system)
+        estimated_position, stats = GNSSPos.estimate_position()
+
+
+
+    Parameter:
     ----------
-    rinex_obs_file: str. Path to the RINEX observation file containing pseudorange measurements.
-    rinex_nav_file: str. Path to the RINEX navigation file containing satellite ephemeris data.
-    desired_time: np.ndarray. Desired time for position estimation as a 1D array in the format
+    - rinex_obs_file: str. Path to the RINEX observation file containing pseudorange measurements.
+    - rinex_nav_file: str. Path to the RINEX navigation file containing satellite ephemeris data.
+    - desired_time: np.ndarray. Desired time for position estimation as a 1D array in the format
                   [year, month, day, hour, minute, second].
-    desired_system: Literal["G", "E", "C"], optional. GNSS system to use for position estimation.
+    - desired_system: Literal["G", "E", "R"], optional. GNSS system to use for position estimation.
                     Default is "G" (GPS).
                     - "G" = GPS
                     - "E" = Galileo
-                    - "C" = BeiDou
-    x_rec_approx: float, optional. Approximate receiver x-coordinate in ECEF (meters). Default is 0.0.
-    y_rec_approx: float, optional. Approximate receiver y-coordinate in ECEF (meters). Default is 0.0.
-    z_rec_approx: float, optional. Approximate receiver z-coordinate in ECEF (meters). Default is 0.0.
+                    - "R" = GLONASS
+    - x_rec_approx: float, optional. Approximate receiver x-coordinate in ECEF (meters). Default is 0.0.
+    - y_rec_approx: float, optional. Approximate receiver y-coordinate in ECEF (meters). Default is 0.0.
+    - z_rec_approx: float, optional. Approximate receiver z-coordinate in ECEF (meters). Default is 0.0.
 
-    Attributes:
+    Attribute:
     ----------
-    desired_time: np.ndarray. Desired GPS time for position estimation, converted to GPS week and seconds.
-    desired_sys: str. Selected GNSS system for position estimation.
-    navdata: SatelliteEphemerisToECEF. Object containing satellite ephemeris data for the chosen system.
-    GNSS_obs: dict. Pseudorange observations for all GNSS systems.
-    time_epochs: np.ndarray. Array of observation epochs (GPS time).
-    GNSSsystems: dict. Mapping of GNSS systems to indices.
-    obsCodes: dict. Observation codes for each GNSS system.
-    x_rec_approx: float. Approximate receiver x-coordinate in ECEF (meters).
-    y_rec_approx: float. Approximate receiver y-coordinate in ECEF (meters).
-    z_rec_approx: float. Approximate receiver z-coordinate in ECEF (meters).
-    gnss_index_mapper: dict. Mapping of GNSS system identifiers to their corresponding indices.
-    sys_idx: int. Index of the selected GNSS system in the observation data.
-    sys_obs_codes: list. Observation codes for the selected GNSS system.
-    signal_idx: int. Index of the first valid pseudorange signal in the observation codes.
+    - desired_time: np.ndarray. Desired GPS time for position estimation, converted to GPS week and seconds.
+    - desired_sys: str. Selected GNSS system for position estimation.
+    - navdata: SatelliteEphemerisToECEF. Object containing satellite ephemeris data for the chosen system.
+    - GNSS_obs: dict. Pseudorange observations for all GNSS systems.
+    - time_epochs: np.ndarray. Array of observation epochs (GPS time).
+    - GNSSsystems: dict. Mapping of GNSS systems to indices.
+    - obsCodes: dict. Observation codes for each GNSS system.
+    - x_rec_approx: float. Approximate receiver x-coordinate in ECEF (meters).
+    - y_rec_approx: float. Approximate receiver y-coordinate in ECEF (meters).
+    - z_rec_approx: float. Approximate receiver z-coordinate in ECEF (meters).
+    - gnss_index_mapper: dict. Mapping of GNSS system identifiers to their corresponding indices.
+    - sys_idx: int. Index of the selected GNSS system in the observation data.
+    - sys_obs_codes: list. Observation codes for the selected GNSS system.
+    - signal_idx: int. Index of the first valid pseudorange signal in the observation codes.
     """
 
-    def __init__(self, rinex_obs_file:str, rinex_nav_file:str, desired_time:np.array,
-                 desired_system:Literal["G","E","C"]="G",
-                 x_rec_approx:float=0.0, y_rec_approx:float=0.0, z_rec_approx:float=0.0):
 
+    def __init__(
+        self,
+        rinex_obs_file: Union[str, None] = None,
+        rinex_nav_file: Union[str, None] = None,
+        desired_time: np.ndarray = None,
+        desired_system: Literal["G", "E", "R"] = "G",
+        x_rec_approx: float = 0.0,
+        y_rec_approx: float = 0.0,
+        z_rec_approx: float = 0.0,
+        navdata: Optional[SatelliteEphemerisToECEF] = None,
+        GNSS_obs: Optional[dict] = None,
+        time_epochs: Optional[np.ndarray] = None,
+        GNSSsystems: Optional[dict] = None,
+        obsCodes: Optional[dict] = None,
+    ):
+        if "C" in desired_system:
+            raise ValueError("Using BeiDou to compute approximate position is not supported yet. Please choose another system.")
 
+        # Desired time in GPS format
         self.desired_time = np.atleast_2d(date2gpstime_vectorized(desired_time)).T
         self.desired_sys = desired_system
-        self.navdata = SatelliteEphemerisToECEF(rinex_nav_file, x_rec_approx, y_rec_approx, z_rec_approx, self.desired_sys)
-        self.GNSS_obs, _, _, _, self.time_epochs,_, self.GNSSsystems,\
-              self.obsCodes, _, _, _, _, _, _, _, _, _,\
-              _, _, _, _, _, _, _, _ = readRinexObs(rinex_obs_file)
 
+        # Handle satellite ephemeris data
+        if navdata:
+            self.navdata = navdata
+        elif rinex_nav_file:
+            self.navdata = SatelliteEphemerisToECEF(rinex_nav_file, x_rec_approx, y_rec_approx, z_rec_approx, self.desired_sys)
+        else:
+            raise ValueError("Either 'navdata' or 'rinex_nav_file' must be provided.")
+
+        # Handle GNSS observation data
+        if all(var is not None for var in [GNSS_obs, time_epochs, GNSSsystems, obsCodes]):
+            self.GNSS_obs = GNSS_obs
+            self.time_epochs = time_epochs
+            self.GNSSsystems = GNSSsystems
+            self.obsCodes = obsCodes
+        elif rinex_obs_file:
+            self.GNSS_obs, _, _, _, self.time_epochs, _, self.GNSSsystems, \
+                self.obsCodes, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ = readRinexObs(rinex_obs_file)
+        else:
+            raise ValueError("Either GNSS observation arrays or 'rinex_obs_file' must be provided.")
+
+        # Receiver approximate coordinates
         self.x_rec_approx = x_rec_approx
         self.y_rec_approx = y_rec_approx
         self.z_rec_approx = z_rec_approx
 
+        # GNSS system and signal indexing
         self.__gnss_index_mapper_dict = self.__gnss_index_mapper()
         self.sys_idx = self.__gnss_index_mapper_dict[self.desired_sys]
         self.sys_obs_codes = self.obsCodes[self.sys_idx][self.desired_sys]
@@ -122,9 +165,10 @@ class GNSSPositionEstimator:
 
 
     @staticmethod
-    def __compute_toc_for_single_ephemeris(ephemeris: np.ndarray):
+    def __get_gpstime_for_single_ephemeris(ephemeris: np.ndarray):
         """
-        Compute the time of clock (toc) for a single satellite.
+        Compute the gps time (gps week and time of week) from
+        the ephemerid for a single satellite.
 
         Parameters:
         -----------
@@ -134,7 +178,8 @@ class GNSSPositionEstimator:
 
         Returns:
         --------
-        toc: float. The computed `toc` value (time of clock correction).
+        tow: float. The computed `week` value (GPS week).
+        tow: float. The computed `tow` value (time of week).
         """
 
         year = int(ephemeris[1])  # Year from ephemeris
@@ -145,9 +190,9 @@ class GNSSPositionEstimator:
         second = float(ephemeris[6])  # Second
 
         # Convert date and time to GPS time
-        _, toc = date2gpstime(year, month, day, hour, minute, second)
+        week, tow = date2gpstime(year, month, day, hour, minute, second)
 
-        return toc
+        return week, tow
 
 
     def __extract_pseudoranges_and_satellites(self, idx_of_closest_eph):
@@ -186,7 +231,7 @@ class GNSSPositionEstimator:
     )  -> Tuple[float, float, float, float, np.ndarray, np.ndarray, np.ndarray, list]:
         """
         Filter out satellites with an elevation angle below 15 degrees and recompute the position and clock bias.
-        
+
         Parameters:
         ----------
         X, Y, Z: Arrays of satellite ECEF coordinates.
@@ -196,7 +241,7 @@ class GNSSPositionEstimator:
         x, y, z: Current receiver position.
         t: Current time.
         dTi0: Current clock bias.
-    
+
         Returns:
         -------
         Tuple containing the updated receiver position (x, y, z), clock bias (dTi0),
@@ -205,15 +250,15 @@ class GNSSPositionEstimator:
         """
         # Compute azimuth and elevation for all satellites
         azimuths, elevations = self.navdata.compute_azimuth_and_elevation_static(X, Y, Z, x, y, z)
-        
+
         # Filter satellites with elevation < 15 degrees
         active_sat_indices = np.where(elevations >= 15)[0]
         low_sat_indices = np.where(elevations < 15)[0]
         for i in low_sat_indices:
             PRN = f"{self.desired_sys}{str(sat_nr[i]).zfill(2)}"
             logger.info(f"\nINFO(GNSSPositionEstimator): {PRN} is exluded due to low elevation: {np.round(elevations[i],3)}°")
-            
-    
+
+
         # Update satellite-related data based on active satellites
         X = X[active_sat_indices]
         Y = Y[active_sat_indices]
@@ -221,7 +266,7 @@ class GNSSPositionEstimator:
         dT_rel = dT_rel[active_sat_indices]
         Rji = Rji[active_sat_indices]
         sat_nr = [sat_nr[i] for i in active_sat_indices]
-        
+
         # Recompute design matrix and observation corrections for active satellites
         diff = np.column_stack([X - x, Y - y, Z - z])  # Shape (num_sats, 3)
         rho = np.linalg.norm(diff, axis=1)
@@ -229,47 +274,73 @@ class GNSSPositionEstimator:
         day = -diff[:, 1] / rho
         daz = -diff[:, 2] / rho
         dadT = np.ones_like(rho)
-    
+
         l = Rji + c * dT_rel - (rho + c * dTi0)
         A = np.column_stack([dax, day, daz, dadT])
-    
+
         # Solve for corrections
         N = A.T @ A
         h = A.T @ l
         dx = np.linalg.solve(N, h)  # Solve for parameter updates
-    
+
         # Update receiver position and clock bias
         x += dx[0]
         y += dx[1]
         z += dx[2]
         dTi0 += dx[3] / c
-    
+
         # return X, Y, Z, dT_rel, sat_nr, x, y, z, dTi0, A,l,N,h
         return x, y, z, dTi0, A,l,N,h, sat_nr
+
+
+    def __compute_satellite_clock_error_polynomial(self, efemeris, t, toc) -> float:
+        """
+        Compute the satellite clock error for GPS, GALILEO, and BeiDou based on polynomial parameters.
+
+        Parameters:
+        -----------
+        efemeris: Ephemeris data for the satellite.
+        t: Current time.
+        toc: Ephemeris time of clock.
+
+        Returns:
+        --------
+        dTj: Satellite clock error (seconds).
+        """
+        a0 = float(efemeris[0][7])  # SV clock bias (seconds)
+        a1 = float(efemeris[0][8])  # SV clock drift (sec/sec)
+        a2 = float(efemeris[0][9])  # SV clock drift rate (sec/sec2)
+        T_GD = float(efemeris[0][32])  # TGD (seconds)
+
+        # Calculate satellite clock error
+        dTj = a0 + a1 * (t - toc) + a2 * (t - toc) ** 2 - T_GD
+        return dTj
+
+
+    def update_receiver_coordinates(self, x, y, z):
+        """Update receiver coordinates in the class attributes."""
+        self.navdata.x_rec = x
+        self.navdata.y_rec = y
+        self.navdata.z_rec = z
 
 
     def estimate_position(self, max_iterations:int = 15, tol:float = 1e-8) -> Tuple[np.ndarray, Dict[str, np.ndarray]]:
         """
         Estimate the receiver's position using a vectorized least-squares algorithm.
 
-        Parameters:
+        Parameter:
         ----------
-        max_iterations: int, optional. Maximum number of iterations for convergence (default is 15).
-        tol: float, optional. Convergence tolerance for position updates (default is 1e-8).
+        - max_iterations: int, optional. Maximum number of iterations for convergence (default is 15).
+        - tol: float, optional. Convergence tolerance for position updates (default is 1e-8).
 
-        Returns:
+        Return:
         -------
-        position: numpy.ndarray. Estimated receiver position in ECEF coordinates (x, y, z) and clock bias (dt).
+        - position: numpy.ndarray. Estimated receiver position in ECEF coordinates (x, y, z) and clock bias (dt).
         """
         x, y, z = self.x_rec_approx, self.y_rec_approx, self.z_rec_approx
         idx_of_closest_eph = self.__find_idx_of_epoch_closest_in_time(self.desired_time, self.time_epochs)
         sat_nr, rji = self.__extract_pseudoranges_and_satellites(idx_of_closest_eph)
 
-        # sat_nr = [32, 6, 25, 12, 14, 17, 19, 24]
-        # rji = np.array([23033856.605, 24571877.822, 23668552.454, 20673456.591,
-        #                   24594925.874, 22780048.894, 21428473.569, 20562322.798])
-        
-    
         num_sats = len(sat_nr)
         if num_sats < 4:
             raise ValueError("Insufficient satellites for position estimation (minimum 4 required).")
@@ -290,29 +361,31 @@ class GNSSPositionEstimator:
             for i, sat_num in enumerate(sat_nr):
                 PRN = f"{self.desired_sys}{str(sat_num).zfill(2)}"
                 efemeris = self.navdata.get_closest_ephemerides_for_PRN_at_time(PRN, self.desired_time[1])
-                toc = self.__compute_toc_for_single_ephemeris(efemeris[0])
-                # Extract satellite clock parameters
-                a0 = float(efemeris[0][7]) # SV clock bias (seconds)
-                a1 = float(efemeris[0][8]) # SV clock drift (sec/sec)
-                a2 = float(efemeris[0][9]) # SV clock drift rate (sec/sec2)
-                T_GD = float(efemeris[0][32]) # TGD (seconds)
+                _, tow = self.__get_gpstime_for_single_ephemeris(efemeris[0])
 
-                # Calculate satellite clock error
-                dTj[i] = a0 + a1 * (t - toc) + a2 * (t - toc) ** 2 - T_GD
+                # Select the correct clock error computation method based on satellite system
+                if self.desired_sys in ['G', 'E']:  # GPS, GALILEO, BeiDou
+                    dTj[i] = self.__compute_satellite_clock_error_polynomial(efemeris, t, tow)
 
-                # Correct observed pseudorange
-                Rji[i] = rji[i] + dTj[i] * c
+                    # Correct observed pseudorange
+                    Rji[i] = rji[i] + dTj[i] * c
 
-                # Compute time when signal left the satellite
-                Tj_GPS[i] = t - Rji[i] / c
+                    # Compute time when signal left the satellite
+                    Tj_GPS[i] = t - Rji[i] / c
 
-                # Compute satellite ECEF position and relativistic clock correction
-                X_, Y_, Z_, dT_rel_ = Kepler2ECEF(x, y, z).kepler2ecef(efemeris, Tj_GPS[i])
-                X[i], Y[i], Z[i], dT_rel[i]  = X_[0], Y_[0], Z_[0], dT_rel_[0]
-                
-                # GLONASS
-                # glo_1 = self.navdata.get_sat_ecef_coordinates(desired_time=np.array([Tj_GPS[i]]), PRN=PRN)
-                
+                    # Compute satellite ECEF position and relativistic clock correction
+                    X[i], Y[i], Z[i], dT_rel[i] = self.navdata.get_sat_ecef_coordinates(desired_time=np.array([Tj_GPS[i]]), PRN = PRN)
+                    # X[i], Y[i], Z[i], dT_rel[i] = Kepler2ECEF(x, y, z).kepler2ecef(efemeris, Tj_GPS[i])
+
+                else:
+                    # Correct observed pseudorange
+                    Rji[i] = rji[i] + dTj[i] * c
+
+                    # Compute time when signal left the satellite
+                    Tj_GPS[i] = t - Rji[i] / c
+
+                    # Compute satellite ECEF position and relativistic clock correction (dT_rel in this case is not only relativitic correction (GLONASS efemerids))
+                    X[i], Y[i], Z[i], dT_rel[i] = self.navdata.get_sat_ecef_coordinates(desired_time=np.array([Tj_GPS[i]]), PRN=PRN)
 
 
             # Compute the vector differences between receiver and satellite positions
@@ -339,14 +412,18 @@ class GNSSPositionEstimator:
             y += dx[1]
             z += dx[2]
             dTi0 += dx[3] / c
+            
+            # Update reciever coordiantes (class attributes)
+            self.update_receiver_coordinates(x, y, z)
 
             # Update iteration info
             iteration += 1
             logger.info(f"Iteration {iteration}: dx = {dx}")
+            # print(f"Iteration {iteration}: dx = {dx}") ### DELETE PRINT
             improvement = np.max(np.abs(dx))
-            
-            
-        
+
+
+
         # Try to filter low satellites and update position
         try:
             x, y, z, dTi0, A, l, N, h, sat_nr = self.__estimate_without_low_satellites(X, Y, Z, dT_rel, Rji, sat_nr, x, y, z, t, dTi0)
@@ -356,7 +433,7 @@ class GNSSPositionEstimator:
                 f"Error: {str(e)}"
             )
             pass
-           
+
         stats_report = StatisticalAnalysis(A,l,N,h).run_statistical_analysis()
 
         return np.array([x, y, z, dTi0]), stats_report
@@ -382,7 +459,9 @@ if __name__=="__main__":
     x_rec, y_rec, z_rec = fasit.T
     # desired_time = np.array([2022, 1, 1, 2, 20, 0.0000000])
     desired_time = np.array([2022, 1, 1, 0, 0, 30.0000000])
-    desired_system = "G"
+    # desired_time = np.array([2022, 1, 1, 0, 5, 0.0000000])
+    desired_system = "R"
+
 
 
     ### TEST
@@ -392,10 +471,13 @@ if __name__=="__main__":
     # x_rec, y_rec, z_rec = fasit.T
     # desired_time = np.array([2019, 6, 4, 7, 30, 0.0000000])
 
-    GNSSPos = GNSSPositionEstimator(rinObs, rinNav, desired_time, desired_system, x_rec_approx=x_rec, y_rec_approx=y_rec, z_rec_approx=z_rec)
+
+    # GNSSPos = GNSSPositionEstimator(rinObs, rinNav, desired_time, desired_system, x_rec_approx=x_rec, y_rec_approx=y_rec, z_rec_approx=z_rec)
     # GNSSPos = GNSSPositionEstimator(rinObs, rinNav, desired_time, desired_system, x_rec_approx=0, y_rec_approx=0, z_rec_approx=0)
-    estimated_position, stats = GNSSPos.estimate_position()
-    X,Y,Z,dT = estimated_position.T
+    # estimated_position, stats = GNSSPos.estimate_position()
+    # X,Y,Z,dT = estimated_position.T
+    # print(X,Y,Z,dT)
+    # print(f"\nDifference: {np.round(fasit- np.array([X,Y,Z]), 3)}")
     # fasit = np.array([3173289, 605742, 5481217])
 
 
@@ -403,11 +485,35 @@ if __name__=="__main__":
     # estimated__etrs89_nn2000 = np.array(Transformer.from_crs("EPSG:4936", "EPSG:5972").transform(X,Y,Z))
     # fasit_etrs89_nn2000 = Transformer.from_crs("EPSG:4936", "EPSG:5972").transform(*fasit.T)
 
-    print(X,Y,Z,dT)
-    print(f"\nDifference: {np.round(fasit- np.array([X,Y,Z]),3)}")
+    # print(X,Y,Z,dT)
+    # print(f"\nDifference: {np.round(fasit- np.array([X,Y,Z]), 3)}")
     # print(f"\nDifference in UTM Z32: {np.round(fasit_etrs89_nn2000 - estimated__etrs89_nn2000,3)}")
     # print(stats)
 
 
     # geof.ECEF2geodb(a=6378137, b=6356752.314245, X=X,Y=Y, Z=Z)
     # my_func = np.array(geof.ECEF2geodb(a=6378137, b=6356752.314245, X=X,Y=Y,Z=Z))
+
+
+    ## Example of not using file as input
+    fasit = np.array([3149785.9652, 598260.8822, 5495348.4927])
+    x_rec, y_rec, z_rec = fasit.T
+    desired_sys = "E"
+    desired_time = np.array([2022, 1, 1, 0, 0, 30.0000000])
+    navObj = SatelliteEphemerisToECEF(rinNav,  x_rec, y_rec, z_rec, desired_sys)
+    GNSS_obs, _, _, _, time_epochs, _, GNSSsystems, \
+        obsCodes, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ = readRinexObs(rinObs)
+
+    GNSSPos = GNSSPositionEstimator(desired_time=desired_time,
+                                    desired_system=desired_sys,
+                                    navdata=navObj,
+                                    GNSS_obs=GNSS_obs,
+                                    time_epochs=time_epochs,
+                                    GNSSsystems=GNSSsystems,
+                                    obsCodes=obsCodes)
+    estimated_position, stats = GNSSPos.estimate_position()
+    X,Y,Z,dT = estimated_position.T
+    print(X,Y,Z,dT)
+    print(f"\nDifference: {np.round(fasit- np.array([X,Y,Z]), 3)}")
+    print(f"Stats:\n{stats}")
+
