@@ -29,16 +29,16 @@ class GLOStateVec2ECEF:
         Function that use broadcast ephemerides (from rinex nav file) and interpolates to the
         desired time defined by "time_epochs" using 4th order Runge-kutta.
 
-        INPUT:
+        Parameter:
         ------
         ephemerides: A array with ephemerides for current satellite
         time_epochs: An n_obs X 2 sized array with weeks and tow read from the rinex observation file.
 
         Return:
         -------
-        pos            : The interpolated satellite coordiantes for the desired time defined by "time_epochs"
-        vel            : The satellite velocity for the desired time defined by "time_epochs"
-        clock_err      : The satellite clock error for the desired time defined by "time_epochs"
+        pos            : The interpolated satellite coordiantes for the desired time defined by "time_epochs" [m]
+        vel            : The satellite velocity for the desired time defined by "time_epochs" [m/s]
+        clock_err      : The satellite absolute clock error for the desired time defined by "time_epochs" [seconds]
         clock_rate_err : The satellite clock rate error for the desired time defined by "time_epochs"
 
         """
@@ -47,8 +47,8 @@ class GLOStateVec2ECEF:
 
         ## Read in data:
         week,toc = date2gpstime_vectorized(filtered_eph_data[:, 1:7].astype(int))
-        tauN = filtered_eph_data[:,6]   # SV clock bias (sec) (-TauN)
-        gammaN = filtered_eph_data[:,7] # SV relative frequency bias (+GammaN)
+        tauN = filtered_eph_data[:,7]   # SV clock bias (sec) (-TauN)
+        gammaN = filtered_eph_data[:,8] # SV relative frequency bias (+GammaN)
 
         tow_rec = np.round(time_epochs, 6)  # extracting tow
         x_te = filtered_eph_data[:,10]  # X-coordinates at t_e in PZ-90 [km]
@@ -190,12 +190,17 @@ class Kepler2ECEF:
     def kepler2ecef(self, filtered_eph_data, tow_rec):
         """
         The function calculates satellite coordinates and corrects for Earth's rotation. It transforms from Kepler elements to Earth-Centered, Earth-Fixed (ECEF) coordinates.
-        Supports GPS,Galileo and BeiDou
+        Supports GPS,Galileo and BeiDou.
+
+        Kepler-to-ECEF Earth Rotation Correction:
+        The Earth rotation correction ensures the satellite's position aligns with the time of signal transmission.
+        This is not necessary for SP3 files which already provide satellite positions in the Earth-Centered Earth-Fixed (ECEF) frame.
         """
         GM         = 3.986005e14      # Product of Earth's mass and the gravitational constant
         omega_e    = 7.2921151467e-5  # Earth's angular velocity [rad/second]
         c          = 299792458        # Speed of light [m/s]
 
+        gnss_sys = filtered_eph_data[0,0][0]
         filtered_eph_data[:,0] = np.nan  # Remove cell containing a string representing PRN with system code (to be able to convert array to float)
         filtered_eph_data = filtered_eph_data.astype(float)
 
@@ -215,7 +220,7 @@ class Kepler2ECEF:
         C_rs       = filtered_eph_data[:,11] # sine harmonic correction term to the orbit radius (C_rs)
         C_ic       = filtered_eph_data[:,19] # cosine harmonic correction term to the angle of inclination (C_ic)
         C_is       = filtered_eph_data[:,21] # sine harmonic correction term to the angle of inclination (C_is)
-        toe        = filtered_eph_data[:,18] # Reference "time of ephemeris" data (toe) (sec of GPS week)
+        toe        = filtered_eph_data[:,18] # Reference "time of ephemeris" data (toe) (sec of GPST,BDT,GLONASST or GST) week)
 
         n0  = np.sqrt(GM/A**3) # Computed mean motion (n0) [rad/second]
         t_k = tow_rec - toe # Time difference between reception time and ephemeris reference time
@@ -544,7 +549,7 @@ class SatelliteEphemerisToECEF:
         azimuth = np.rad2deg(np.arctan(east / north))
         azimuth = np.where((east > 0) & (north < 0) | ((east < 0) & (north < 0)), azimuth + 180, azimuth)
         azimuth = np.where((east < 0) & (north > 0), azimuth + 360, azimuth)
-    
+
         # Calculate elevation angle
         elevation = np.rad2deg(np.arctan(up / np.sqrt(east**2 + north**2)))
 
@@ -583,11 +588,12 @@ class SatelliteEphemerisToECEF:
         if PRN and 'R' not in PRN:
             filtered_eph_data = self.get_closest_ephemerides_for_PRN_at_time(PRN, desired_time)
             xs, ys, zs, dTrel = Kepler2ECEF(self.x_rec, self.y_rec, self.z_rec).kepler2ecef(filtered_eph_data,desired_time)
-            return np.array([xs, ys, zs]).T
+            return xs, ys, zs, dTrel
         elif PRN and 'R' in PRN:
             filtered_eph_data = self.get_closest_ephemerides_for_PRN_at_time(PRN, desired_time)
-            current_sat_coord,_,_,_ = GLOStateVec2ECEF().interpolate_glonass_coord_runge_kutta(filtered_eph_data, desired_time)
-            return current_sat_coord
+            sat_coords, sat_velocity, dT, dT_rate = GLOStateVec2ECEF().interpolate_glonass_coord_runge_kutta(filtered_eph_data, desired_time)
+            xs, ys, zs = sat_coords.T
+            return xs, ys, zs, dT
         else:
             bar_format = '{desc}:{percentage:3.0f}%|{bar}|({n_fmt}/{total_fmt} satellites)'
             desc = ', '.join(self.sys_names[:-1]) + (' and ' + self.sys_names[-1] if len(self.sys_names) > 1 else self.sys_names[0])
