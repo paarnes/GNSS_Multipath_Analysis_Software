@@ -609,7 +609,17 @@ def gpstime2date(week, tow):
 def gpstime2date_arrays(week: Union[List[int], np.ndarray], tow: Union[List[float], np.ndarray]) -> np.ndarray:
     """
     Calculates date from GPS-week number and "time-of-week" to Gregorian calendar.
-    NOT IN USE AT THE MOMENT
+
+    Example:
+    -------
+    .. code-block:: python
+
+    time_epochs = array([[  2190.        , 518399.99999988],
+                         [  2190.        , 518429.99999988],
+                         [  2190.        , 531539.99999988],
+                         [  2190.        , 531569.99999988]])
+
+    greg_time = gpstime2date_arrays(time_epochs[:,0], time_epochs[:,1])
 
     Parameters
     ----------
@@ -632,6 +642,51 @@ def gpstime2date_arrays(week: Union[List[int], np.ndarray], tow: Union[List[floa
     return date_array
 
 
+def gpstime2date_arrays_with_microsec(week: Union[List[int], np.ndarray], tow: Union[List[float], np.ndarray]) -> np.ndarray:
+    """
+    Calculates date from GPS-week number and "time-of-week" to Gregorian calendar with microsecond precision.
+
+    Example:
+    -------
+    .. code-block:: python
+
+    time_epochs = array([[  2190.        , 518399.99999988],
+                         [  2190.        , 518429.99999988],
+                         [  2190.        , 531539.99999988],
+                         [  2190.        , 531569.99999988]])
+
+    greg_time = gpstime2date_arrays(time_epochs[:,0], time_epochs[:,1])
+
+    Parameters
+    ----------
+    week : array/list, GPS-week numbers.
+    tow  : array/list, "Time of week" values.
+
+    Returns
+    -------
+    dates : array, An array of dates given in the Gregorian calendar ([year, month, day, hour, min, sec, microsec]).
+    """
+    # Convert week and tow to NumPy arrays for efficient processing
+    week = np.asarray(week, dtype=int)
+    tow = np.asarray(tow, dtype=float)
+
+    # Calculate the total seconds since GPS epoch
+    total_seconds = week * 7 * 24 * 3600 + tow
+
+    # Create a timedelta object for each time in total_seconds
+    gps_epoch = datetime(1980, 1, 6)  # The GPS reference epoch
+    deltas = [timedelta(seconds=s) for s in total_seconds]
+
+    # Calculate final dates and extract components
+    dates = [gps_epoch + delta for delta in deltas]
+    date_array = np.array([
+        [date.year, date.month, date.day, date.hour, date.minute, date.second, date.microsecond]
+        for date in dates
+    ])
+
+    return date_array
+
+
 def convert_to_datetime_vectorized(time_datetime: np.ndarray) -> list:
     """
     Convert numpy array of datetime components to datetime strings with specified format.
@@ -647,7 +702,7 @@ def gpstime_to_utc_datefmt(time_epochs_gpstime: np.ndarray) -> list:
     """
     Coverters form GPS time to UTC with formatting.
     Ex output: "2022-01-01 02:23:30".
-    
+
     """
     time_datetime = gpstime2date_arrays(*time_epochs_gpstime.T)
     return convert_to_datetime_vectorized(time_datetime)
@@ -696,7 +751,12 @@ def get_leap_seconds(week,tow):
 
 
 
+if __name__=="__main__":
+    time_epochs = array([[  2190.        , 518401.40],
+                         [  2190.        , 531570.00]])
 
+
+    date_array = gpstime2date_arrays_with_microsec(time_epochs[:,0], time_epochs[:,1])
 
 
 
