@@ -6,7 +6,7 @@ from gnssmultipath import PickleHandler
 from gnssmultipath.readRinexObs import readRinexObs
 from gnssmultipath.SP3Reader import SP3Reader
 from gnssmultipath.SatelliteEphemerisToECEF import SatelliteEphemerisToECEF, Kepler2ECEF
-from gnssmultipath.Geodetic_functions import date2gpstime, date2gpstime_vectorized, gpstime2date_arrays
+from gnssmultipath.Geodetic_functions import date2gpstime, date2gpstime_vectorized, gpstime2date_arrays, gpstime2date_arrays_with_microsec
 from tqdm import tqdm
 
 
@@ -72,9 +72,11 @@ class SP3Interpolator:
     
         # Convert GPS time to datetime objects
         if len(time_epochs) > 2:
-            observation_times = gpstime2date_arrays(time_epochs[:, 0], time_epochs[:, 1])
+            # observation_times = gpstime2date_arrays(time_epochs[:, 0], time_epochs[:, 1])
+            observation_times = gpstime2date_arrays_with_microsec(time_epochs[:, 0], time_epochs[:, 1])
         else:
-            observation_times = gpstime2date_arrays(time_epochs[0], time_epochs[1])
+            # observation_times = gpstime2date_arrays(time_epochs[0], time_epochs[1])
+            observation_times = gpstime2date_arrays_with_microsec(time_epochs[0], time_epochs[1])
     
         # Convert observation times to seconds since the reference epoch
         observation_seconds = np.array([self.epoch_to_seconds(datetime(*obs)) for obs in observation_times])
