@@ -13,8 +13,8 @@ from gnssmultipath import PickleHandler
 warnings.filterwarnings("ignore")
 
 
-    
-    
+
+
 
 class PreciseSatCoords:
     """
@@ -42,7 +42,7 @@ class PreciseSatCoords:
         _,_, _, _, self.time_epochs, _, self.GNSSsystems,\
         _, _, _, _, _, _, _, _, _, _,\
         _, _, _, _, _, _, _, _ = readRinexObs(rinex_obs_file)
-        
+
         self.gnss_systems = list(self.GNSSsystems.values())
 
         # Read SP3
@@ -56,8 +56,8 @@ class PreciseSatCoords:
     def interpolate_sp3(self):
         """
         Interpolate the precise satellite coordinates to the
-        GNSS observation time stamps. 
-        
+        GNSS observation time stamps.
+
         """
         sp3_interpol = SP3Interpolator(self.sp3_df, self.sp3_epoch_interval)
         sat_coords = sp3_interpol.interpolate_sat_coordinates(self.time_epochs, self.gnss_systems)
@@ -85,7 +85,7 @@ class PreciseSatCoords:
         # Initialize results
         results = []
 
-        
+
         # Progress bar setup
         bar_fmt = '{desc}: {percentage:3.0f}%|{bar}| ({n_fmt}/{total_fmt})'
         total_satellites = self.satcoords['Satellite'].nunique()
@@ -134,17 +134,17 @@ class PreciseSatCoords:
 
         return pd.DataFrame(results)
 
-    
+
     @staticmethod
-    def create_satellite_data_dict(interpolated_coords_df: pd.DataFrame, az_el_df: pd.DataFrame) -> Dict[str, Dict[str, np.ndarray]]:
+    def create_satellite_data_dict(interpol_coords_df: pd.DataFrame, azimuth_elevation_df: pd.DataFrame) -> Dict[str, Dict[str, np.ndarray]]:
         """
         Creates a dictionary with interpolated satellite coordinates, azimuth, and elevation data.
-    
+
         Parameter:
         ---------
         - interpolated_coords_df: DataFrame containing satellite coordinates with columns ['Epoch', 'Satellite', 'X', 'Y', 'Z'].
         - az_el_df: DataFrame containing azimuth and elevation angles with columns ['Epoch', 'Satellite', 'Azimuth', 'Elevation'].
-        
+
         Return:
         ------
 
@@ -159,28 +159,31 @@ class PreciseSatCoords:
                      ...
                  }
         """
-        
+        # Create copies of the input DataFrames to prevent modifications to the original data
+        interpol_coords_df = interpol_coords_df.copy()
+        azimuth_elevation_df = azimuth_elevation_df.copy()
+
         # Ensure Satellite column is consistent
-        interpolated_coords_df['PRN'] = interpolated_coords_df['Satellite'].str[1:].astype(int)
-        interpolated_coords_df['GNSS'] = interpolated_coords_df['Satellite'].str[0]
-    
-        az_el_df['PRN'] = az_el_df['Satellite'].str[1:].astype(int)
-        az_el_df['GNSS'] = az_el_df['Satellite'].str[0]
-    
+        interpol_coords_df['PRN'] = interpol_coords_df['Satellite'].str[1:].astype(int)
+        interpol_coords_df['GNSS'] = interpol_coords_df['Satellite'].str[0]
+
+        azimuth_elevation_df['PRN'] = azimuth_elevation_df['Satellite'].str[1:].astype(int)
+        azimuth_elevation_df['GNSS'] = azimuth_elevation_df['Satellite'].str[0]
+
         # Normalize Epoch values to range [0, num_epochs - 1]
-        unique_epochs = sorted(az_el_df['Epoch'].unique())
+        unique_epochs = sorted(azimuth_elevation_df['Epoch'].unique())
         epoch_map = {epoch: idx for idx, epoch in enumerate(unique_epochs)}
-        az_el_df['Normalized_Epoch'] = az_el_df['Epoch'].map(epoch_map)
-    
+        azimuth_elevation_df['Normalized_Epoch'] = azimuth_elevation_df['Epoch'].map(epoch_map)
+
         # Initialize dictionary structure
         satellite_data = {}
-    
+
         # Get GNSS systems
-        gnss_systems = interpolated_coords_df['GNSS'].unique()
-    
+        gnss_systems = interpol_coords_df['GNSS'].unique()
+
         # Initialize azimuth and elevation arrays for each GNSS
         num_epochs = len(unique_epochs)
-        
+
         for gnss in gnss_systems:
             max_prn = 40 if gnss != "C" else 100
             satellite_data[gnss] = {
@@ -188,22 +191,22 @@ class PreciseSatCoords:
                 'azimuth': np.full((num_epochs, max_prn + 1), np.nan),
                 'elevation': np.full((num_epochs, max_prn + 1), np.nan)
             }
-    
+
             # Filter GNSS-specific data
-            gnss_coords = interpolated_coords_df[interpolated_coords_df['GNSS'] == gnss]
-            gnss_az_el = az_el_df[az_el_df['GNSS'] == gnss]
-    
+            gnss_coords = interpol_coords_df[interpol_coords_df['GNSS'] == gnss]
+            gnss_az_el = azimuth_elevation_df[azimuth_elevation_df['GNSS'] == gnss]
+
             for prn in gnss_coords['PRN'].unique():
                 # Get PRN-specific coordinates
                 prn_coords = gnss_coords[gnss_coords['PRN'] == prn][['X', 'Y', 'Z']].to_numpy()
                 satellite_data[gnss]['coordinates'][str(prn)] = prn_coords
-    
+
                 # Populate azimuth and elevation arrays
                 prn_az_el = gnss_az_el[gnss_az_el['PRN'] == prn]
                 normalized_epochs = prn_az_el['Normalized_Epoch'].to_numpy()
                 satellite_data[gnss]['azimuth'][normalized_epochs, prn] = prn_az_el['Azimuth'].to_numpy()
                 satellite_data[gnss]['elevation'][normalized_epochs, prn] = prn_az_el['Elevation'].to_numpy()
-    
+
         return satellite_data
 
 
@@ -219,7 +222,7 @@ if __name__=="__main__":
     sp3 = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\SP3\Testfile_20220101.eph"
     results_rnav_PRN1 = PickleHandler.read_zstd_pickle(r"C:\Users\perhe\Desktop\TEST BROADCAST\analysisResults.pkl")
     x_rec_approx, y_rec_approx, z_rec_approx = [3149785.9652, 598260.8822, 5495348.4927]
-    
+
     sats_obj = PreciseSatCoords(sp3, rinObs)
     df_satcoords = sats_obj.satcoords
     df_az_el = sats_obj.compute_azimuth_and_elevation(receiver_position=(x_rec_approx, y_rec_approx, z_rec_approx))
