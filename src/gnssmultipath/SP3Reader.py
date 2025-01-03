@@ -3,30 +3,40 @@ import re
 from datetime import datetime
 
 class SP3Reader:
-    def __init__(self, filepath, coords_in_meter: bool = True, clock_bias_in_sec: bool = True, desiredGNSSsystems: list = ["G", "R", "E", "C"]):
+    def __init__(self, filepaths=None, coords_in_meter: bool = True, clock_bias_in_sec: bool = True, desiredGNSSsystems: list = ["G", "R", "E", "C"]):
         """
-        Initialize the SP3 reader with the file path and various options.
-        :param filepath: Path to the SP3 file.
+        Initialize the SP3 reader with file paths and various options.
+
+        :param filepaths: Single SP3 file path (string) or a list of SP3 file paths.
         :param coords_in_meter: Boolean to decide whether to scale coordinates to meters.
         :param clock_bias_in_sec: Boolean to convert clock bias to seconds.
         :param desiredGNSSsystems: List of GNSS systems to include (e.g., ["G", "R", "E", "C"]).
         """
-        self.filepath = filepath
+        if isinstance(filepaths, str):
+            self.filepaths = [filepaths]
+        elif isinstance(filepaths, list):
+            self.filepaths = filepaths
+        else:
+            self.filepaths = []
+
         self.coords_in_meter = coords_in_meter
         self.clock_bias_in_sec = clock_bias_in_sec
-        self.num_epochs = None
+        self.num_epochs = 0
         self.epoch_interval = None
         self.gnss_systems = set()
         self.desiredGNSSsystems = desiredGNSSsystems
 
-    def read_file(self):
+
+    def _read_file(self, filepath):
         """
-        Read the SP3 file, parse metadata, and extract satellite data into a pandas DataFrame.
+        Read a single SP3 file and extract satellite data into a pandas DataFrame.
+
+        :param filepath: Path to the SP3 file.
         :return: pandas DataFrame containing satellite ephemeris data.
         """
-        with open(self.filepath, 'r') as file:
+        with open(filepath, 'r') as file:
             lines = file.readlines()
-        
+
         satellite_data = []
         current_epoch = None
 
@@ -43,35 +53,53 @@ class SP3Reader:
             elif line.startswith('P'):
                 satellite = line[1:4]  # Satellite ID (e.g., G01)
                 gnss_system = satellite[0]  # GNSS system type (e.g., 'G' for GPS)
-                
+
                 # Skip satellite if not in desired GNSS systems
                 if gnss_system not in self.desiredGNSSsystems:
                     continue
-                
+
                 x = float(line[4:18].strip())  # X coordinate
                 y = float(line[18:32].strip())  # Y coordinate
                 z = float(line[32:46].strip())  # Z coordinate
                 clk = float(line[46:60].strip())  # Clock bias
-                
+
                 # Convert coordinates from kilometers to meters if required
                 if self.coords_in_meter:
                     x *= 1000
                     y *= 1000
                     z *= 1000
-                
+
                 # Convert clock bias to seconds if required and not a placeholder value
                 if self.clock_bias_in_sec and clk != 999999.999999:
                     clk *= 1e-6
-                
+
                 satellite_data.append([current_epoch, satellite, x, y, z, clk])
-        
+
         # Create a DataFrame
-        df = pd.DataFrame(
-            satellite_data, 
+        return pd.DataFrame(
+            satellite_data,
             columns=['Epoch', 'Satellite', 'X', 'Y', 'Z', 'Clock Bias']
         )
 
-        return df
+    def read(self):
+        """
+        Combines multiple SP3 files into a single DataFrame.
+
+        :return: DataFrame containing combined SP3 data from all files.
+        """
+        if not self.filepaths:
+            raise ValueError("No SP3 files provided for combination.")
+
+        combined_data = []
+        for filepath in self.filepaths:
+            file_data = self._read_file(filepath)
+            combined_data.append(file_data)
+
+        # Concatenate all DataFrames and sort by epoch
+        combined_df = pd.concat(combined_data, ignore_index=True)
+        combined_df.sort_values(by='Epoch', inplace=True)
+
+        return combined_df
 
     def _parse_header(self, line):
         """
@@ -79,7 +107,7 @@ class SP3Reader:
         :param line: Header line starting with '##'.
         """
         parts = line.split()
-        self.num_epochs = int(parts[1])
+        self.num_epochs += int(parts[1])
         self.epoch_interval = float(parts[3])
 
     def _parse_gnss_systems(self, line):
@@ -108,19 +136,28 @@ class SP3Reader:
         :return: Dictionary containing metadata.
         """
         return {
-            "Number of Epochs": self.num_epochs,
-            "Epoch Interval (s)": self.epoch_interval,
-            "GNSS Systems": sorted(self.gnss_systems)
+            "n_epochs": self.num_epochs,
+            "epoch_interval_sec": self.epoch_interval,
+            "gnss_systems_in_file": sorted(self.gnss_systems),
+            "desired_gnss_systems": self.desiredGNSSsystems
         }
 
-# Example usage
-file_path = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\SP3\Testfile_20220101.eph"
-sp3_reader = SP3Reader(file_path, coords_in_meter=True, desiredGNSSsystems=["G"])
-sp3_df = sp3_reader.read_file()
 
-# Print metadata
-metadata = sp3_reader.get_metadata()
-print("SP3 Metadata:", metadata)
+
+
+if __name__ == "__main__":
+
+    # Example usage
+    file_path = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\SP3\Testfile_20220101.eph"
+    file_path2 = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\SP3\com21910.eph"
+    file_paths = [file_path, file_path2]
+    desiredGNSSsystems= ["G", "R", "E", "C"]
+    sp3_reader = SP3Reader(file_paths, coords_in_meter=True, desiredGNSSsystems=desiredGNSSsystems)
+    sp3_df = sp3_reader.read()
+
+    # Print metadata
+    metadata = sp3_reader.get_metadata()
+    print("SP3 Metadata:", metadata)
 
 
 
