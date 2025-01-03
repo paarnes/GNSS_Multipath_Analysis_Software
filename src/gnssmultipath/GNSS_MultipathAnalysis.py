@@ -91,7 +91,7 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
       - writeOutputFile.py
 
     --------------------------------------------------------------------------------------------------------------------------
-    
+
     INPUTS:
     ------
 
@@ -135,13 +135,13 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
     include_SNR:              boolean. If not defined, SNR from Rinex obs file will NOT be used (optional)
 
     save_results_as_pickle:   boolean. If True, the results will be stored as dictionary in form of a binary pickle file. Default set to True.
-    
+
 
     save_results_as_compressed_pickle : boolean. If True, the results will be stored as dictionary in form of a binary compressed pickle file (zstd compression). Default set to False.
-    
+
     write_results_to_csv: boolean. If True, a subset of the results will be exported as a CSV file. Default is True.
-    
-    output_csv_delimiter:     str. Set the delimiter of the CSV file. Default is semi colon (;). 
+
+    output_csv_delimiter:     str. Set the delimiter of the CSV file. Default is semi colon (;).
 
 
     nav_data_rate:            integer. The desired data rate of ephemerides given in minutes. Default is 60 min. The purpose with this
@@ -160,9 +160,9 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
     includeObservationOverview: boolean. 1 if user desires output file to
                                 include overview of obseration types observed
                                 by each satellite. 0 otherwise (optional)
-                                      
+
     use_LaTex:                 boolean. Will use TeX as an interpreter in plots. Default set to true. "Requires TeX installed on computer".
-   
+
     --------------------------------------------------------------------------------------------------------------------------
     OUTPUTS:
 
@@ -198,7 +198,7 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
         phaseCodeLimit =  4/60 *100
 
     if ionLimit is None:
-        ionLimit = 4/60 
+        ionLimit = 4/60
 
     if cutoff_elevation_angle is None:
         cutoff_elevation_angle = 0
@@ -277,8 +277,8 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
 
     if not os.path.isfile(sp3NavFilename_3) and len(sp3NavFilename_3) != 0:
         print('WARNING: Third SP3 Navigation file can not be found.\n')
-        
-    
+
+
     # Check for conflicting save options
     if save_results_as_pickle and save_results_as_compressed_pickle:
         save_results_as_pickle = False
@@ -312,7 +312,7 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
 
     if include_SNR:
         desiredObsCodes = ["C", "L", "S"]
-    else: 
+    else:
         desiredObsCodes = ["C", "L"] # only code and phase observations
 
 
@@ -689,8 +689,8 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
     outputFilename = baseFileName.split('.')[0] +   '_Report.txt'
     writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSummary, includeCompactSummary, includeObservationOverview, includeLLIOverview)
     print('INFO: The output file %s has been written.\n' % (outputFilename))
-        
-    
+
+
     ## -- Make barplot if plotEstimates is True
     if plotEstimates:
         print('INFO: Making bar plot. Please wait...\n')
@@ -733,7 +733,7 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
             else:
                 make_polarplot_dont_use_TEX(analysisResults, graphDir)
 
-        
+
     if include_SNR:
         # Seaching for SNR codes
         for sys in GNSS_obs.keys():
@@ -780,7 +780,7 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
         pickle_filename = 'analysisResults.pkl'
         print(f'\nINFO: The analysis results are being written to the file {pickle_filename}. Please wait..')
         results_name = os.path.join(outputDir, pickle_filename)
-        PickleHandler.write_zstd_pickle(analysisResults, results_name)
+        PickleHandler.write_pickle(analysisResults, results_name)
         print(f'INFO: The analysis results has been written to the file {pickle_filename}.\n')
     elif save_results_as_compressed_pickle:
         pickle_filename = 'analysisResults.pkl.zst'
