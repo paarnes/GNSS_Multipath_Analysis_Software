@@ -10,20 +10,30 @@ from gnssmultipath.Geodetic_functions import date2gpstime, date2gpstime_vectoriz
 from tqdm import tqdm
 
 
+c = 299792458  # Speed of light [m/s]
+
 class SP3Interpolator:
     """
     SP3 files already provide satellite positions in the Earth-Centered Earth-Fixed (ECEF) frame.
     These positions are valid for the provided epoch timestamp and do not require
     an additional correction for Earth's rotation when interpolated directly.
+
+    Example:
+    -------
+    .. code-block:: python
+        interpolator = SP3Interpolator(sp3_df, epochInterval_sp3)
+        interpolated_positions = interpolator.interpolate_sat_coordinates(time_epochs, gnss_systems)
     """
 
     def __init__(self, sp3_dataframe, epoch_interval, receiver_position: tuple = None):
         """
         Initializes the SP3 Interpolator with the provided SP3 DataFrame.
 
-        :param sp3_dataframe: Pandas DataFrame containing SP3 data (columns: ['Epoch', 'Satellite', 'X', 'Y', 'Z', 'Clock Bias']).
-        :param epoch_interval: Interval between each epoch in seconds.
-        :param receiver_position: Tuple of receiver ECEF coordinates (x, y, z) in meters. Defaults to None.
+        Parameter:
+        ----------
+        - sp3_dataframe: Pandas DataFrame containing SP3 data (columns: ['Epoch', 'Satellite', 'X', 'Y', 'Z', 'Clock Bias']).
+        - epoch_interval: Interval between each epoch in seconds.
+        - receiver_position: Tuple of receiver ECEF coordinates (x, y, z) in meters. Defaults to None.
         """
         self.sp3_dataframe = sp3_dataframe
         self.epoch_interval = epoch_interval
@@ -34,8 +44,13 @@ class SP3Interpolator:
         """
         Convert an epoch (datetime object) into seconds since 2000-01-01.
 
-        :param epoch: Datetime object representing the epoch.
-        :return: Total seconds since the reference epoch (January 1st, 2000).
+        Parameter:
+        ----------
+        - epoch: Datetime object representing the epoch.
+
+        Return:
+        ------
+        Total seconds since the reference epoch (January 1st, 2000).
         """
         base_time = datetime(2000, 1, 1)
         delta = epoch - base_time
@@ -46,10 +61,15 @@ class SP3Interpolator:
         """
         Polynomial interpolation using Neville's algorithm.
 
-        :param x: Array of x values (time differences from the target epoch)
-        :param y: Array of y values (positions or velocities to interpolate)
-        :param n: Number of data points for interpolation
-        :return: Interpolated value
+        Parameter:
+        ----------
+        - x: Array of x values (time differences from the target epoch)
+        - y: Array of y values (positions or velocities to interpolate)
+        - n: Number of data points for interpolation
+
+        Return:
+        ------
+        - Interpolated value
         """
         y_copy = y.copy()  # Avoid modifying the original array
         for j in range(1, n):
@@ -57,17 +77,125 @@ class SP3Interpolator:
                 y_copy[i] = (x[i + j] * y_copy[i] - x[i] * y_copy[i + 1]) / (x[i + j] - x[i])
         return y_copy[0]
 
+    def compute_relativistic_correction_single_sat(self, prn, time_epochs):
+        """
+        Compute the relativistic clock correction for a single satellite.
+
+        Parameter:
+        ----------
+        - prn: PRN of the satellite (e.g., 'G12').
+        - time_epochs: Array of observation times in GPS time format (week, TOW).
+
+        Return:
+        ------
+        Relativistic clock correction values as a NumPy array.
+        """
+        delta_t = self.epoch_interval  # Time step for velocity approximation (seconds)
+
+        # Times for velocity computation
+        t_delta_plus = time_epochs + np.array([[0, delta_t]]).T
+        t_delta_minus = time_epochs - np.array([[0, delta_t]]).T
+
+        # Interpolate satellite positions at t+delta_t, t, and t-delta_t
+        pos_plus, _ = self.interpolate_single_satellite(prn, t_delta_plus)
+        pos_minus, _ = self.interpolate_single_satellite(prn, t_delta_minus)
+        pos_now, _ = self.interpolate_single_satellite(prn, time_epochs)
+
+        # Compute satellite velocities
+        velocities = (pos_plus - pos_minus) / (2 * delta_t)
+
+        # Compute relativistic corrections
+        corrections = -2 * np.sum(pos_now * velocities, axis=1) / c**2
+
+        return corrections
+
+    def interpolate_single_satellite(self, prn, time_epochs, n_interpol_points=7):
+        """
+        Interpolates satellite positions and clock biases for a single satellite specified by its PRN.
+
+        Parameter:
+        ----------
+        - prn: PRN of the satellite to interpolate (e.g., 'G12').
+        - time_epochs: Array of observation times in GPS time format (week, TOW).
+        - n_interpol_points: Number of nearest points for interpolation.
+
+        Return:
+        ------
+        - Interpolated positions and clock biases as a dictionary.
+        """
+        # Convert GPS time to datetime objects
+        if len(time_epochs) > 2:
+            observation_times = gpstime2date_arrays_with_microsec(time_epochs[:, 0], time_epochs[:, 1])
+        else:
+            observation_times = gpstime2date_arrays_with_microsec(time_epochs[0], time_epochs[1])
+
+        # Convert observation times to seconds since the reference epoch
+        observation_seconds = np.array([self.epoch_to_seconds(datetime(*obs)) for obs in observation_times])
+
+        # Filter the SP3 DataFrame to include only the specified satellite
+        satellite_data = self.sp3_dataframe[self.sp3_dataframe['Satellite'] == prn].copy()
+
+        if satellite_data.empty:
+            raise ValueError(f"No data found for satellite {prn}.")
+
+        # Convert the 'Epoch' column to seconds since the reference epoch
+        satellite_data['Epoch_Seconds'] = satellite_data['Epoch'].apply(self.epoch_to_seconds)
+
+        # Sort by epoch to ensure consistent ordering
+        satellite_data = satellite_data.sort_values(by='Epoch_Seconds')
+
+        # Extract satellite data for vectorized processing
+        satellite_seconds = satellite_data['Epoch_Seconds'].to_numpy()
+        satellite_positions = satellite_data[['X', 'Y', 'Z']].to_numpy()
+        satellite_clock_bias = satellite_data['Clock Bias'].to_numpy()
+
+        # Compute time differences for all observation times
+        time_diffs = np.abs(satellite_seconds[:, None] - observation_seconds)
+
+        # Find the indices of the nearest points for each observation time
+        nearest_indices = np.argsort(time_diffs, axis=0)[:n_interpol_points, :]
+
+        # Prepare arrays for interpolation
+        interpolated_positions = np.zeros((len(observation_seconds), 3))  # (epochs, X/Y/Z)
+        interpolated_clock_bias = np.zeros(len(observation_seconds))  # (epochs, Clock Bias)
+
+        for obs_idx in range(len(observation_seconds)):
+            # Select nearest points for the current observation time
+            idx = nearest_indices[:, obs_idx]
+            nearest_times = satellite_seconds[idx]
+            nearest_positions = satellite_positions[idx]
+            nearest_clock_biases = satellite_clock_bias[idx]
+
+            # Interpolate positions using Neville's algorithm
+            time_diff = nearest_times - observation_seconds[obs_idx]
+            for i in range(3):  # X, Y, Z
+                interpolated_positions[obs_idx, i] = self.interppol(
+                    time_diff, nearest_positions[:, i], len(nearest_times)
+                )
+
+            # Interpolate clock bias
+            interpolated_clock_bias[obs_idx] = self.interppol(
+                time_diff, nearest_clock_biases, len(nearest_times)
+            )
+
+        return interpolated_positions, interpolated_clock_bias
 
 
     def interpolate_sat_coordinates(self, time_epochs, gnss_systems, n_interpol_points=7, output_format: Literal["pd.DataFrame", "dict"] = "pd.DataFrame"):
         """
         Interpolates satellite positions and clock biases for all systems and satellites for given time epochs.
 
-        :param time_epochs: Array of observation times in GPS time format (week, TOW).
-        :param gnss_systems: List of GNSS systems to include (e.g., ['G', 'R', 'E']).
-        :param n_interpol_points: Number of nearest points for interpolation.
-        :param output_format: Desired output format. Options are 'dict' or 'dataframe'.
-        :return: Interpolated positions and clock biases in the specified output format.
+        Parameter:
+        ----------
+        - time_epochs: Array of observation times in GPS time format (week, TOW).
+        - gnss_systems: List of GNSS systems to include (e.g., ['G', 'R', 'E']).
+        - n_interpol_points: Number of nearest points for interpolation.
+        - output_format: Desired output format. Options are 'dict' or 'dataframe'.
+
+
+        Return:
+        -------
+        - Interpolated positions and clock biases in the specified output format.
         """
 
         # Convert GPS time to datetime objects
@@ -180,9 +308,14 @@ class SP3Interpolator:
         """
         Filters the interpolated data for specific PRN numbers.
 
-        :param interpolated_data: Interpolated data as a dictionary or DataFrame.
-        :param prn_list: List of PRN numbers to include (e.g., ['G01', 'E02', 'R03']).
-        :return: Filtered data as the same type as input (dict or DataFrame).
+        Parameter:
+        ----------
+        - interpolated_data: Interpolated data as a dictionary or DataFrame.
+        - prn_list: List of PRN numbers to include (e.g., ['G01', 'E02', 'R03']).
+
+        Return:
+        ------
+        - Filtered data as the same type as input (dict or DataFrame).
         """
         if isinstance(interpolated_data, pd.DataFrame):
             return interpolated_data[interpolated_data['Satellite'].str[0:].isin(prn_list)]
@@ -203,9 +336,14 @@ class SP3Interpolator:
         """
         Filters the interpolated data for specific GNSS systems.
 
-        :param interpolated_data: Interpolated data as a dictionary or DataFrame.
-        :param gnss_systems: List of GNSS systems to include (e.g., ['G', 'R', 'E']).
-        :return: Filtered data as the same type as input (dict or DataFrame).
+        Parameter:
+        ----------
+        - interpolated_data: Interpolated data as a dictionary or DataFrame.
+        - gnss_systems: List of GNSS systems to include (e.g., ['G', 'R', 'E']).
+
+        Return:
+        ------
+        - Filtered data as the same type as input (dict or DataFrame).
         """
         if isinstance(interpolated_data, pd.DataFrame):
             return interpolated_data[interpolated_data['Satellite'].str[0].isin(gnss_systems)]
