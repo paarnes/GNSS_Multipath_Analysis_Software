@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from datetime import timedelta, datetime
 from typing import Literal, Tuple, Dict, Optional, Union
-from gnssmultipath.Geodetic_functions import date2gpstime, date2gpstime_vectorized
+from gnssmultipath.Geodetic_functions import date2gpstime, date2gpstime_vectorized, compute_satellite_azimut_and_elevation_angle, gpstime2date_arrays_with_microsec
 from gnssmultipath.SP3Reader import SP3Reader
 from gnssmultipath.SP3Interpolator import SP3Interpolator
 from gnssmultipath.readRinexObs import readRinexObs
@@ -19,6 +19,8 @@ warnings.filterwarnings("ignore")
 logger = logging.getLogger(__name__)
 
 c = 299792458  # Speed of light [m/s]
+OMEGA_EARTH = 7.2921159e-5 # Earth's rotational speed in rad/s
+
 
 
 class SP3PositionEstimator:
@@ -56,11 +58,13 @@ class SP3PositionEstimator:
         time_epochs: Optional[np.ndarray] = None,
         GNSSsystems: Optional[dict] = None,
         obsCodes: Optional[dict] = None,
-        sp3_metadata_dict: Optional[dict] = None
+        sp3_metadata_dict: Optional[dict] = None,
+        elevation_cut_off_angle: Optional[int] = 10
     ):
         # Desired time in GPS format
         self.desired_time = np.atleast_2d(date2gpstime_vectorized(desired_time)).T
         self.desired_sys = desired_system
+        self.elevation_cut_off_angle = elevation_cut_off_angle
 
         # Load SP3 data
         if isinstance(sp3_data, str):
@@ -137,7 +141,83 @@ class SP3PositionEstimator:
 
         return sat_nr, rji
 
-    def __compute_relativistic_correction(self, sp3_interpolator, prn_lst, signal_transmission_time):
+    def __estimate_without_low_satellites(
+        self,
+        X: np.ndarray,
+        Y: np.ndarray,
+        Z: np.ndarray,
+        Rji: np.ndarray,
+        sat_nr: list,
+        x: float,
+        y: float,
+        z: float,
+        t: float,
+        dTi0: float
+    )  -> Tuple[float, float, float, float, np.ndarray, np.ndarray, np.ndarray, list]:
+        """
+        Filter out satellites with an elevation angle below the specified threshold and recompute the position and clock bias.
+
+        Parameters:
+        ----------
+        X, Y, Z: Arrays of satellite ECEF coordinates.
+        dT_rel: Array of relativistic clock corrections.
+        Rji: Array of corrected pseudoranges.
+        sat_nr: List of satellite numbers.
+        x, y, z: Current receiver position.
+        t: Current time.
+        dTi0: Current clock bias.
+
+        Returns:
+        -------
+        Tuple containing the updated receiver position (x, y, z), clock bias (dTi0),
+        the design matrix (A), the vector of observations (l), the normal matrix (N),
+        the observation vector (h), and the list of active satellite numbers.
+        """
+        # Compute azimuth and elevation for all satellites
+        azimuths, elevations = compute_satellite_azimut_and_elevation_angle(X, Y, Z, x, y, z)
+
+        # Filter satellites with elevation < 15 degrees for example
+        active_sat_indices = np.where(elevations >= self.elevation_cut_off_angle)[0]
+        low_sat_indices = np.where(elevations < self.elevation_cut_off_angle)[0]
+        for i in low_sat_indices:
+            PRN = f"{self.desired_sys}{str(sat_nr[i]).zfill(2)}"
+            logger.info(f"\nINFO(GNSSPositionEstimator): {PRN} is exluded due to low elevation: {np.round(elevations[i],3)}°")
+
+
+        # Update satellite-related data based on active satellites
+        X = X[active_sat_indices]
+        Y = Y[active_sat_indices]
+        Z = Z[active_sat_indices]
+        Rji = Rji[active_sat_indices]
+        sat_nr = [sat_nr[i] for i in active_sat_indices]
+
+        # Recompute design matrix and observation corrections for active satellites
+        diff = np.column_stack([X - x, Y - y, Z - z])  # Shape (num_sats, 3)
+        rho = np.linalg.norm(diff, axis=1)
+        dax = -diff[:, 0] / rho
+        day = -diff[:, 1] / rho
+        daz = -diff[:, 2] / rho
+        dadT = np.ones_like(rho)
+
+        l = Rji - (rho + c * dTi0)
+
+        A = np.column_stack([dax, day, daz, dadT])
+
+        # Solve for corrections
+        N = A.T @ A
+        h = A.T @ l
+        dx = np.linalg.solve(N, h)  # Solve for parameter updates
+
+        # Update receiver position and clock bias
+        x += dx[0]
+        y += dx[1]
+        z += dx[2]
+        dTi0 += dx[3] / c
+
+        # return X, Y, Z, sat_nr, x, y, z, dTi0, A,l,N,h
+        return x, y, z, dTi0, A,l,N,h, sat_nr
+
+    def compute_relativistic_correction(self, sp3_interpolator, prn_lst, signal_transmission_time):
         """
         Compute relativistic corrections for the satellite clock bias.
 
@@ -182,6 +262,62 @@ class SP3PositionEstimator:
         dT_rel = -2 * np.sum(positions * velocities, axis=1) / c**2
         return dT_rel
 
+
+    def update_receiver_coordinates(self, x, y, z):
+        """Update receiver coordinates in the class attributes."""
+        self.x_rec_approx = x
+        self.y_rec_approx = y
+        self.z_rec_approx = z
+
+
+    def apply_sagnac_correction(self, X_sat: float, Y_sat: float, Z_sat: float,
+                                X_rec: float, Y_rec: float, Z_rec: float) -> Tuple[float, float, float]:
+        """
+        Applies the Sagnac (Earth rotation) correction by rotating the satellite's
+        ECEF position from transmit-time frame to the receiver's receive-time frame.
+
+        Parameters
+        ----------
+        X_sat, Y_sat, Z_sat : float
+            Satellite ECEF coordinates at signal-transmission time (meters).
+        X_rec, Y_rec, Z_rec : float
+            Receiver ECEF coordinates at signal-reception time (meters).
+
+        Returns
+        -------
+        X_corr, Y_corr, Z_corr : float
+            The satellite ECEF coordinates after applying the Earth-rotation correction
+            to align them with Earth's orientation at receiver time.
+        """
+        # 1) Compute geometric range and travel time
+        dx = X_sat - X_rec
+        dy = Y_sat - Y_rec
+        dz = Z_sat - Z_rec
+        R = np.sqrt(dx*dx + dy*dy + dz*dz)  # 3D distance
+        dt = R / c                          # signal travel time
+
+        # 2) Rotation angle around the Z-axis
+        # Typically, we rotate by +Omega*dt if we want to bring satellite coords
+        # forward in time from transmit to receive epoch.
+        # Adjust sign if you see an opposite sign offset in your final solutions.
+        alpha = OMEGA_EARTH * dt
+
+        cos_alpha = np.cos(alpha)
+        sin_alpha = np.sin(alpha)
+
+        # 3) Apply rotation around Earth's Z-axis
+        # This rotates the point (X_sat, Y_sat) about Z by 'alpha'.
+        # X' = cos(alpha)*X - sin(alpha)*Y
+        # Y' = sin(alpha)*X + cos(alpha)*Y
+        # Z' = Z
+        # Here, we treat the satellite’s position as if Earth has rotated alpha from transmit to receive.
+        X_rot =  cos_alpha * X_sat + sin_alpha * Y_sat
+        Y_rot = -sin_alpha * X_sat + cos_alpha * Y_sat
+        Z_rot =  Z_sat  # no change in the Z coordinate for rotation about Z-axis
+
+        return X_rot, Y_rot, Z_rot
+
+
     def estimate_position(self, max_iterations: int = 15, tol: float = 1e-8) -> Tuple[np.ndarray, Dict[str, np.ndarray]]:
         """
         Estimate the receiver's position using a vectorized least-squares algorithm.
@@ -209,46 +345,77 @@ class SP3PositionEstimator:
         iteration = 0
         sp3_interpolator = SP3Interpolator(self.sp3_df, self.sp3_epoch_interval)
 
+        # Preallocate arrays for satellite data
+        t = self.desired_time[1]
+        X, Y, Z, dT_rel = np.zeros(num_sats), np.zeros(num_sats), np.zeros(num_sats), np.zeros(num_sats)
+        dTj, Tj_GPS, Rji = np.zeros(num_sats), np.full((num_sats, 1), t), np.zeros(num_sats)
+
         while improvement > tol and iteration < max_iterations:
-            # Interpolate satellite positions
+            for i, PRN in enumerate(prn_lst):
+                signal_transmission_time = np.array([self.desired_time[0], Tj_GPS[i]])
+                dT_rel[i] = sp3_interpolator.compute_relativistic_correction_single_sat(PRN, signal_transmission_time)
+                interpolated_positions, interpolated_clock_bias = sp3_interpolator.interpolate_single_satellite(PRN, signal_transmission_time)
+                X[i], Y[i], Z[i] = interpolated_positions.T
+                dTj[i] = interpolated_clock_bias
 
-            signal_transmission_time = np.array([self.desired_time[0], self.desired_time[1] - rji[0] / c])
-            # dT_rel = self.__compute_relativistic_correction(sp3_interpolator, prn_lst, signal_transmission_time)
-            sat_positions = sp3_interpolator.interpolate_sat_coordinates(signal_transmission_time, self.desired_sys)
-            # sat_positions = sp3_interpolator.interpolate_sat_coordinates(self.desired_time, self.desired_sys) # gir mest nøyaktig hvis ikke mircosekundene tas med
+                # Apply Sagnac correction
+                X_sagnac, Y_sagnac, Z_sagnac = self.apply_sagnac_correction(X[i], Y[i], Z[i], x, y, z)
+                X[i], Y[i], Z[i] = X_sagnac, Y_sagnac, Z_sagnac
 
+                # Correct observed pseudorange
+                Rji[i] = rji[i] + c * (dTj[i] + dT_rel[i])
 
-            sat_positions_tmp = sp3_interpolator.filter_by_prn(sat_positions, prn_lst)
-            ordered_positions = sat_positions_tmp.set_index('Satellite').loc[prn_lst, ['X', 'Y', 'Z', 'Clock Bias']].reset_index()
-            sat_positions = np.array(ordered_positions.iloc[:, 1:4])
-            clock_biases = np.array(ordered_positions['Clock Bias'])
-            X, Y, Z = sat_positions[:, 0], sat_positions[:, 1], sat_positions[:, 2]
+                # Compute time when signal left the satellite
+                Tj_GPS[i] = t - Rji[i] / c + dTj[i]
 
-            # Correct pseudoranges using satellite clock bias
-            rji_corrected = rji + c * clock_biases
+            # Compute the vector differences between receiver and satellite positions
+            diff = np.column_stack([X - x, Y - y, Z - z])  # Shape (num_sats, 3)
 
-            # Compute pseudorange corrections
-            diff = np.column_stack([X - x, Y - y, Z - z])
+            # Compute distances and partial derivatives
             rho = np.linalg.norm(diff, axis=1)
-            l = rji_corrected - (rho + c * dTi0)
+            dax = -diff[:, 0] / rho
+            day = -diff[:, 1] / rho
+            daz = -diff[:, 2] / rho
+            dadT = np.ones_like(rho)
 
+            # Observation corrections
+            # l = Rji + c * dT_rel - (rho + c * dTi0)
+            l = Rji - (rho + c * dTi0)
+            A = np.column_stack([dax, day, daz, dadT])
 
-            A = np.column_stack([-diff[:, 0] / rho, -diff[:, 1] / rho, -diff[:, 2] / rho, np.ones_like(rho)])
-
-            # Solve for updates
+            # Solve for corrections
             N = A.T @ A
             h = A.T @ l
-            dx = np.linalg.solve(N, h)
+            dx = np.linalg.solve(N, h)  # Solve for parameter updates
 
+            # Update receiver position and clock bias
             x += dx[0]
             y += dx[1]
             z += dx[2]
             dTi0 += dx[3] / c
-            improvement = np.max(np.abs(dx))
+
+            self.update_receiver_coordinates(x, y, z)
+
+            # Update iteration info
             iteration += 1
+            logger.info(f"Iteration {iteration}: dx = {dx}")
+            improvement = np.max(np.abs(dx))
+
+        # Try to filter low satellites and update position
+        try:
+            x, y, z, dTi0, A, l, N, h, sat_nr = self.__estimate_without_low_satellites(X, Y, Z, Rji, sat_nr, x, y, z, signal_transmission_time, dTi0)
+        except Exception as e:
+            logger.warning(
+                f"WARNING (GNSS_MultipathAnalysis): Failed to perform the final position estimation after removing low-elevation satellites. "
+                f"Error: {str(e)}"
+            )
+            pass
 
         stats_report = StatisticalAnalysis(A, l, N, h).run_statistical_analysis()
         return np.array([x, y, z, dTi0]), stats_report
+
+
+
 
 
 
