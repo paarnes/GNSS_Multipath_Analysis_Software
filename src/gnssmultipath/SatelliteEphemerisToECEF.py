@@ -367,7 +367,7 @@ class SatelliteEphemerisToECEF:
         self.x_rec = x_rec
         self.y_rec = y_rec
         self.z_rec = z_rec
-        self.max_sat_per_sys = {"G" : 36, "R" : 36, "E" : 36, "C" : 60}
+        self.max_sat_per_sys = {"G" : 36, "R" : 36, "E" : 36, "C" : 100}
         self.available_systems = self.find_available_systems_in_eph_data()
         self.available_systems = list(set(self.available_systems).intersection(desired_systems))
         self.sat_coord = {sys: {"position": {str(PRN): None for PRN in range(1, max_sat + 1)}} for sys, max_sat in self.max_sat_per_sys.items() if sys in self.available_systems}
