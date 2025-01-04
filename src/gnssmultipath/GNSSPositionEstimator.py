@@ -100,28 +100,7 @@ class GNSSPositionEstimator:
 
 
 if __name__ == "__main__":
-    gnss_systems = ["G","R","E","C"]
-    rinObs = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles\OPEC00NOR_S_20220010000_01D_30S_MO_3.04_croped.rnx"
-    sp3 = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\SP3\Testfile_20220101.eph"
-    rinNav = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\NavigationFiles\BRDC00IGS_R_20220010000_01D_MN.rnx"
-
-    desired_time = np.array([2022, 1, 1, 0, 0, 30.0000000])
-    desired_system = "G"  # GPS
-    gnsspos, stats = GNSSPositionEstimator(rinObs,
-                                      sp3_file = sp3,
-                                      desired_time = desired_time,
-                                      desired_system = desired_system).estimate_position()
-
-    print(gnsspos)
-    print(stats)
-
-    gnsspos, stats = GNSSPositionEstimator(rinObs,
-                                      rinex_nav_file = rinNav,
-                                      desired_time = desired_time,
-                                      desired_system = desired_system).estimate_position()
-    print(gnsspos)
-    print(stats)
-
+    pass
 
 
 
