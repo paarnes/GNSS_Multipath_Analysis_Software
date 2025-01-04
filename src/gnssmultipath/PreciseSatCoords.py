@@ -31,7 +31,6 @@ class PreciseSatCoords:
     Example:
     --------
     .. code-block:: python
-
         precise_orbits = PreciseOrbits2ECEF(rinex_obs_file, sp3_file, ["G", "E"])
         positions = precise_orbits.interpolate_to_epoch(epoch_time=[2024, 1, 1, 12, 0, 0], system="G", PRN=5)
     """
