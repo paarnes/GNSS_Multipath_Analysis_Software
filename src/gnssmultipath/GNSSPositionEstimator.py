@@ -1,4 +1,4 @@
-from typing import Literal, Dict, Tuple
+from typing import Literal, Dict, Tuple, Optional
 import numpy as np
 from gnssmultipath.BroadNavPositionEstimator import BroadNavPositionEstimator
 from gnssmultipath.SP3PositionEstimator import SP3PositionEstimator
@@ -51,6 +51,7 @@ class GNSSPositionEstimator:
         x_rec_approx: float = 0.0,
         y_rec_approx: float = 0.0,
         z_rec_approx: float = 0.0,
+        elevation_cut_off_angle: Optional[int] = 10,
     ):
         if rinex_nav_file:
             self.GNSSPos = BroadNavPositionEstimator(
@@ -61,6 +62,7 @@ class GNSSPositionEstimator:
                 x_rec_approx=x_rec_approx,
                 y_rec_approx=y_rec_approx,
                 z_rec_approx=z_rec_approx,
+                elevation_cut_off_angle = elevation_cut_off_angle,
             )
         else:
             self.GNSSPos = SP3PositionEstimator(
@@ -71,6 +73,7 @@ class GNSSPositionEstimator:
                 x_rec_approx=x_rec_approx,
                 y_rec_approx=y_rec_approx,
                 z_rec_approx=z_rec_approx,
+                elevation_cut_off_angle = elevation_cut_off_angle,
             )
 
     def estimate_position(self) -> Tuple[np.ndarray, Dict]:
