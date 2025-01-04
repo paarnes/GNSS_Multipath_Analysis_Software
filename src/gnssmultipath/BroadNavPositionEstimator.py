@@ -81,6 +81,7 @@ class BroadNavPositionEstimator:
         time_epochs: Optional[np.ndarray] = None,
         GNSSsystems: Optional[dict] = None,
         obsCodes: Optional[dict] = None,
+        elevation_cut_off_angle: Optional[int] = 10,
     ):
         if "C" in desired_system:
             raise ValueError("Using BeiDou to compute approximate position is not supported yet. Please choose another system.")
@@ -88,6 +89,7 @@ class BroadNavPositionEstimator:
         # Desired time in GPS format
         self.desired_time = np.atleast_2d(date2gpstime_vectorized(desired_time)).T
         self.desired_sys = desired_system
+        self.elevation_cut_off_angle = elevation_cut_off_angle
 
         # Handle satellite ephemeris data
         if navdata:
@@ -229,7 +231,7 @@ class BroadNavPositionEstimator:
         dTi0: float
     )  -> Tuple[float, float, float, float, np.ndarray, np.ndarray, np.ndarray, list]:
         """
-        Filter out satellites with an elevation angle below 15 degrees and recompute the position and clock bias.
+        Filter out satellites with an elevation angle below the specified threshold (like 10 degrees for intance) and recompute the position and clock bias.
 
         Parameters:
         ----------
@@ -250,9 +252,9 @@ class BroadNavPositionEstimator:
         # Compute azimuth and elevation for all satellites
         azimuths, elevations = self.navdata.compute_azimuth_and_elevation_static(X, Y, Z, x, y, z)
 
-        # Filter satellites with elevation < 15 degrees
-        active_sat_indices = np.where(elevations >= 15)[0]
-        low_sat_indices = np.where(elevations < 15)[0]
+        # Filter satellites with elevation < 15 degrees for example
+        active_sat_indices = np.where(elevations >= self.elevation_cut_off_angle)[0]
+        low_sat_indices = np.where(elevations < self.elevation_cut_off_angle)[0]
         for i in low_sat_indices:
             PRN = f"{self.desired_sys}{str(sat_nr[i]).zfill(2)}"
             logger.info(f"\nINFO(GNSSPositionEstimator): {PRN} is exluded due to low elevation: {np.round(elevations[i],3)}°")
