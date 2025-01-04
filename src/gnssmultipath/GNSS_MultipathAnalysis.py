@@ -13,7 +13,7 @@ from typing import Union, List
 import numpy as np
 from tqdm import tqdm
 from gnssmultipath.readRinexObs import readRinexObs
-from gnssmultipath.Geodetic_functions import gpstime_to_utc_datefmt
+from gnssmultipath.Geodetic_functions import gpstime_to_utc_datefmt, gpstime2date
 from gnssmultipath.computeSatElevations import computeSatElevations
 from gnssmultipath.computeSatElevAzimuth_fromNav import computeSatElevAzimuth_fromNav
 from gnssmultipath.signalAnalysis import signalAnalysis
@@ -24,6 +24,8 @@ from gnssmultipath.make_polarplot import make_polarplot,make_skyplot, make_polar
 from gnssmultipath.make_polarplot_dont_use_TEX import make_polarplot_dont_use_TEX, make_skyplot_dont_use_TEX, make_polarplot_SNR_dont_use_TEX, plot_SNR_wrt_elev_dont_use_TEX
 from gnssmultipath.plotResults import plotResults, plotResults_dont_use_TEX, make_barplot, make_barplot_dont_use_TEX
 from gnssmultipath.PickleHandler import PickleHandler
+from gnssmultipath.PreciseSatCoords import PreciseSatCoords
+from gnssmultipath.SP3PositionEstimator import SP3PositionEstimator
 
 warnings.filterwarnings("ignore")
 
@@ -234,6 +236,8 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
     else:
         includeAllGNSSsystems   = 0
 
+    estimated_position, stats = None, None
+
 
     ## ---  Control of the user input arguments
     if not isinstance(sp3NavFilename_1, str):
@@ -331,11 +335,45 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
     sat_pos = {}
     if sp3NavFilename_1 != '':
         ## -- Compute satellite elevation angles from SP3 files
-        sat_elevation_angles, sat_azimut_angles, sat_coordinates = computeSatElevations(GNSS_SVs, GNSSsystems, approxPosition,\
-            nepochs, time_epochs, max_sat, sp3NavFilename_1, sp3NavFilename_2, sp3NavFilename_3)
+        # sat_elevation_angles, sat_azimut_angles, sat_coordinates = computeSatElevations(GNSS_SVs, GNSSsystems, approxPosition,\
+        #     nepochs, time_epochs, max_sat, sp3NavFilename_1, sp3NavFilename_2, sp3NavFilename_3)
+        # sat_elevation_angles1, sat_azimut_angles1, sat_coordinates1 = computeSatElevations(GNSS_SVs, GNSSsystems, approxPosition,\
+        #     nepochs, time_epochs, max_sat, sp3NavFilename_1, sp3NavFilename_2, sp3NavFilename_3)
+        x_rec_approx, y_rec_approx, z_rec_approx = np.atleast_2d(approxPosition).flatten()
+
+        # Filter out empty strings using a list comprehension
+        sp3_files = [sp3NavFilename_1, sp3NavFilename_2, sp3NavFilename_3]
+        sp3_files = [file for file in sp3_files if file]
+
+        sat_obj = PreciseSatCoords(sp3_files, time_epochs=time_epochs, GNSSsystems= GNSSsystems)
+        df_sat_coordinates = sat_obj.satcoords
+
+        if all(coord == 0 for coord in [x_rec_approx, y_rec_approx, z_rec_approx]):
+                desired_time = np.array(gpstime2date(time_epochs[0,0], round(time_epochs[0,1],6)))
+                position_estimator = SP3PositionEstimator(df_sat_coordinates, desired_time= desired_time,
+                                                          GNSS_obs = GNSS_obs, time_epochs = time_epochs,
+                                                          GNSSsystems = GNSSsystems, obsCodes = obsCodes,
+                                                          sp3_metadata_dict = sat_obj.sp3_metadata_dict)
+                estimated_position, stats = position_estimator.estimate_position()
+                x_rec_approx, y_rec_approx, z_rec_approx,_ = estimated_position.flatten()
+
+        df_az_el = sat_obj.compute_azimuth_and_elevation(receiver_position=(x_rec_approx, y_rec_approx, z_rec_approx))
+        sat_dict = sat_obj.create_satellite_data_dict(df_sat_coordinates, df_az_el)
+
+        # Create dicts for each data type
+        sat_coordinates = {}
+        sat_elevation_angles = {}
+        sat_azimut_angles = {}
+
+        # Loop through sat_dict, enumerate to get an index for each key
+        for idx, (system, data) in enumerate(sat_dict.items()):
+            sat_coordinates[system] = data.get('coordinates', {})
+            sat_elevation_angles[idx] = data.get('elevation', None)
+            sat_azimut_angles[idx] = data.get('azimuth', None)
+
     else:
         nav_files = [broadcastNav1,broadcastNav2,broadcastNav3,broadcastNav4]
-        sat_pos, glo_fcn = computeSatElevAzimuth_fromNav(nav_files, approxPosition, GNSS_SVs, time_epochs, nav_data_rate)
+        sat_pos, glo_fcn, estimated_position, stats = computeSatElevAzimuth_fromNav(nav_files, approxPosition, GNSS_SVs, time_epochs, nav_data_rate, GNSS_obs, GNSSsystems, obsCodes)
 
         ## -- Build same struture for satellit elevation angles if broadcast nav defined
         sat_elevation_angles = {}
@@ -638,19 +676,25 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
         rinex_obs_filename = rinObsFilename.split('/')
         rinex_obs_filename = rinex_obs_filename[-1]
         analysisResults['ExtraOutputInfo']  = {}
-        analysisResults['ExtraOutputInfo']['rinex_obs_filename']   = rinex_obs_filename
-        analysisResults['ExtraOutputInfo']['markerName']           = markerName
-        analysisResults['ExtraOutputInfo']['rinexVersion']         = rinexVersion
-        analysisResults['ExtraOutputInfo']['rinexProgr']           = rinexProgr
-        analysisResults['ExtraOutputInfo']['recType']              = recType
-        analysisResults['ExtraOutputInfo']['tFirstObs']            = tFirstObs
-        analysisResults['ExtraOutputInfo']['tLastObs']             = tLastObs
-        analysisResults['ExtraOutputInfo']['tInterval']            = tInterval
-        analysisResults['ExtraOutputInfo']['time_epochs_gps_time'] = time_epochs
-        analysisResults['ExtraOutputInfo']['time_epochs_utc_time'] = gpstime_to_utc_datefmt(time_epochs)
-        analysisResults['ExtraOutputInfo']['GLO_Slot2ChannelMap']  = GLO_Slot2ChannelMap
-        analysisResults['ExtraOutputInfo']['nEpochs']              = nepochs
-        analysisResults['ExtraOutputInfo']['elevation_cutoff']     = cutoff_elevation_angle
+        analysisResults['ExtraOutputInfo']['rinex_obs_filename']       = rinex_obs_filename
+        analysisResults['ExtraOutputInfo']['markerName']               = markerName
+        analysisResults['ExtraOutputInfo']['rinexVersion']             = rinexVersion
+        analysisResults['ExtraOutputInfo']['rinexProgr']               = rinexProgr
+        analysisResults['ExtraOutputInfo']['recType']                  = recType
+        analysisResults['ExtraOutputInfo']['Rinex_Receiver_Approx_Pos'] = np.atleast_2d(approxPosition).flatten().tolist()
+        analysisResults['ExtraOutputInfo']['tFirstObs']                = tFirstObs
+        analysisResults['ExtraOutputInfo']['tLastObs']                 = tLastObs
+        analysisResults['ExtraOutputInfo']['tInterval']                = tInterval
+        analysisResults['ExtraOutputInfo']['time_epochs_gps_time']     = time_epochs
+        analysisResults['ExtraOutputInfo']['time_epochs_utc_time']     = gpstime_to_utc_datefmt(time_epochs)
+        analysisResults['ExtraOutputInfo']['GLO_Slot2ChannelMap']      = GLO_Slot2ChannelMap
+        analysisResults['ExtraOutputInfo']['nEpochs']                  = nepochs
+        analysisResults['ExtraOutputInfo']['elevation_cutoff']         = cutoff_elevation_angle
+
+        if estimated_position is not None:
+            analysisResults['ExtraOutputInfo']['Estimated_Receiver_Approx_Pos'] = np.round(estimated_position.flatten(),4).tolist()[:-1]
+            analysisResults['ExtraOutputInfo']['Estimated_Receiver_Approx_Pos_stats'] = stats
+
 
         ## -- Store default limits or user set limits in dict
         if phaseCodeLimit == 0:

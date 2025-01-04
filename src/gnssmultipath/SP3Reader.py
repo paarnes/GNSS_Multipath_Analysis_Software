@@ -1,14 +1,15 @@
 import pandas as pd
 import re
+from typing import Union, List
 from datetime import datetime
 
 class SP3Reader:
     """
     SP3Reader Class
-    
+
     A utility class to read and parse SP3 files containing satellite ephemeris data. The class supports
-    multiple SP3 files, GNSS system filtering, and coordinate conversion. 
-    
+    multiple SP3 files, GNSS system filtering, and coordinate conversion.
+
     Attributes:
     -----------
     - filepaths: List of SP3 file paths to process.
@@ -18,21 +19,21 @@ class SP3Reader:
     - epoch_interval: Float representing the interval between epochs (in seconds).
     - gnss_systems: Set containing GNSS systems present in the SP3 files.
     - desiredGNSSsystems: List of GNSS systems to filter and include in the output.
-    
+
     Example:
     --------
     .. code-block:: python
-    
+
         file_paths = ["file1.sp3", "file2.sp3"]
         sp3_reader = SP3Reader(file_paths, coords_in_meter=True, desiredGNSSsystems=["G", "R"])
         sp3_df = sp3_reader.read()
         metadata = sp3_reader.get_metadata()
     """
-    
-    def __init__(self, filepaths=None, coords_in_meter: bool = True, clock_bias_in_sec: bool = True, desiredGNSSsystems: list = ["G", "R", "E", "C"]):
+
+    def __init__(self, filepaths: Union[str, List]=None, coords_in_meter: bool = True, clock_bias_in_sec: bool = True, desiredGNSSsystems: list = ["G", "R", "E", "C"]):
         """
         Initialize the SP3Reader class with optional file paths, coordinate scaling, and GNSS filtering.
-    
+
         Parameters:
         ----------
         - filepaths: str or list of str, optional. Single SP3 file path or a list of SP3 file paths.
@@ -58,11 +59,11 @@ class SP3Reader:
     def _read_file(self, filepath):
         """
         Read a single SP3 file and extract its satellite data into a DataFrame.
-    
+
         Parameters:
         ----------
         filepath: str. Path to the SP3 file.
-    
+
         Returns:
         -------
         pandas.DataFrame: DataFrame containing satellite ephemeris data with columns ['Epoch', 'Satellite', 'X', 'Y', 'Z', 'Clock Bias'].
@@ -117,7 +118,7 @@ class SP3Reader:
     def read(self):
         """
         Combine satellite data from multiple SP3 files into a single DataFrame.
-    
+
         Returns:
         -------
         pandas.DataFrame: Combined DataFrame with data from all provided SP3 files.
@@ -159,11 +160,11 @@ class SP3Reader:
     def _parse_epoch(epoch_parts):
         """
         Convert SP3 epoch components into a datetime object.
-    
+
         Parameters:
         ----------
         epoch_parts: list of str. Components of the epoch in the format [YYYY, MM, DD, HH, MM, SS].
-    
+
         Returns:
         -------
         datetime: Datetime object representing the epoch.
@@ -176,7 +177,7 @@ class SP3Reader:
     def get_metadata(self):
         """
         Retrieve metadata about the parsed SP3 files.
-    
+
         Returns:
         -------
         dict: Dictionary containing metadata with keys ['n_epochs', 'epoch_interval_sec', 'gnss_systems_in_file', 'desired_gnss_systems'].

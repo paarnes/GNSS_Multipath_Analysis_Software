@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Optional, List, Tuple, Dict
 from gnssmultipath.readRinexObs import readRinexObs
 from gnssmultipath.SP3Reader import SP3Reader
-from SP3Interpolator import SP3Interpolator
+from gnssmultipath.SP3Interpolator import SP3Interpolator
 import gnssmultipath.Geodetic_functions as geodf
 from gnssmultipath import PickleHandler
 
@@ -36,22 +36,24 @@ class PreciseSatCoords:
         positions = precise_orbits.interpolate_to_epoch(epoch_time=[2024, 1, 1, 12, 0, 0], system="G", PRN=5)
     """
 
-    def __init__(self, sp3_file: str, rinex_obs_file: str=None,time_epochs=None):
+    def __init__(self, sp3_file: str, rinex_obs_file: str=None, time_epochs: np.ndarray=None, GNSSsystems: Dict=None):
 
-
-        _,_, _, _, self.time_epochs, _, self.GNSSsystems,\
-        _, _, _, _, _, _, _, _, _, _,\
-        _, _, _, _, _, _, _, _ = readRinexObs(rinex_obs_file)
+        if rinex_obs_file:
+            _,_, _, _, self.time_epochs, _, self.GNSSsystems,\
+            _, _, _, _, _, _, _, _, _, _,\
+            _, _, _, _, _, _, _, _ = readRinexObs(rinex_obs_file)
+        else:
+            self.time_epochs = time_epochs
+            self.GNSSsystems = GNSSsystems
 
         self.gnss_systems = list(self.GNSSsystems.values())
 
         # Read SP3
-        sp3_reader = SP3Reader(sp3, coords_in_meter=True, desiredGNSSsystems=self.gnss_systems)
+        sp3_reader = SP3Reader(sp3_file, coords_in_meter=True, desiredGNSSsystems=self.gnss_systems)
         self.sp3_df = sp3_reader.read()
         self.sp3_metadata_dict = sp3_reader.get_metadata()
         self.sp3_epoch_interval = self.sp3_metadata_dict["epoch_interval_sec"]
         self.satcoords = self.interpolate_sp3()
-        print("ssdsd")
 
     def interpolate_sp3(self):
         """
@@ -122,7 +124,7 @@ class PreciseSatCoords:
                     elevation = np.where(mask, elevation, np.nan)
 
                 # Store results
-                for epoch, az, el in zip(sat_data['Time'], azimuth, elevation):
+                for epoch, az, el in zip(sat_data['Epoch'], azimuth, elevation):
                     results.append({
                         "Epoch": epoch,
                         "Satellite": satellite,
@@ -185,7 +187,7 @@ class PreciseSatCoords:
         num_epochs = len(unique_epochs)
 
         for gnss in gnss_systems:
-            max_prn = 40 if gnss != "C" else 100
+            max_prn = 36 if gnss != "C" else 100
             satellite_data[gnss] = {
                 'coordinates': {},
                 'azimuth': np.full((num_epochs, max_prn + 1), np.nan),

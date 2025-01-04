@@ -317,26 +317,29 @@ class SatelliteEphemerisToECEF:
     Input:
     -----
 
-    rinex_nav_file  : List or string. Takes in both a single RINEX navfile or a list of RINEX navigation file. If a list is provided, the data will
+    - rinex_nav_file  : List or string. Takes in both a single RINEX navfile or a list of RINEX navigation file. If a list is provided, the data will
                       be merged in a single array (merged on to one file).
-    x_rec           : Receiver X-coordinates in ECEF
-    y_rec           : Receiver Y-coordinates in ECEF
-    z_rec           : Receiver Z-coordinates in ECEF
-    desired_systems : List of desired system codes ["G","R","E"]
-    data_rate       : Update rate of the ephemerides. Higher values correspond to less data and faster file reading (in minutes)
+    - x_rec           : Receiver X-coordinates in ECEF
+    - y_rec           : Receiver Y-coordinates in ECEF
+    - z_rec           : Receiver Z-coordinates in ECEF
+    - desired_systems : List of desired system codes ["G","R","E"]
+    - data_rate       : Update rate of the ephemerides. Higher values correspond to less data and faster file reading (in minutes)
 
 
     Examples on how to use the class:
 
     - Compute satellite coordinates for all systems and satellites where the time is defined GPS time "Time-of-week" (seconds):
+    .. code-block:: python
             sat_pos = SatelliteEphemerisToECEF(rin_nav_file, x_rec, y_rec, z_rec).get_sat_ecef_coordinates(tow_epochs) # where "tow_epochs" is an 1D array with time-of-week
 
 
     - Compute satellite coordinates for a specific satellite (in this case "R10") and where the time is defined in GPS time and "Time-of-week" (seconds):
+    .. code-block:: python
             sat_pos = SatelliteEphemerisToECEF(rin_nav_file, x_rec, y_rec, z_rec).get_sat_ecef_coordinates(tow_epochs, PRN = 'R10')
 
 
     - Compute satellite coordinates for a specific satellite (in this case "G20") and where the time is defined in Gregorian time (year, month,day,hour,minute,seconds):
+    .. code-block:: python
             time_epochs = np.array([[2020,   10,   30,   13,   22,   14],
                                     [2020,   10,   30,   13,   22,   15],
                                     [2020,   10,   30,   13,   22,   16]])
@@ -345,6 +348,7 @@ class SatelliteEphemerisToECEF:
 
 
     - Compute satellite azimuth and elevation angles
+    .. code-block:: python
             CONVERTER = SatelliteEphemerisToECEF(rinnav, x_rec, y_rec, z_rec, data_rate=120) # create an object
             CONVERTER.get_sat_ecef_coordinates(time_epochs)                                  # compute satellite coordinates
             sat_pos = CONVERTER.compute_satellite_azimut_and_elevation_angle()               # compute satellite elevation and azimuth angles

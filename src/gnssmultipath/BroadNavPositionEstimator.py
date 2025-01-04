@@ -5,7 +5,7 @@ from typing import Literal
 from gnssmultipath.Geodetic_functions import date2gpstime, date2gpstime_vectorized
 from gnssmultipath.SatelliteEphemerisToECEF import SatelliteEphemerisToECEF, Kepler2ECEF
 from gnssmultipath.readRinexObs import readRinexObs
-from StatisticalAnalysis import StatisticalAnalysis
+from gnssmultipath.StatisticalAnalysis import StatisticalAnalysis
 from typing import Tuple, Dict, Optional, Union
 
 
@@ -16,7 +16,7 @@ c = 299792458  # Speed of light [m/s]
 
 
 
-class GNSSPositionEstimator:
+class BroadNavPositionEstimator:
     """
     A class to estimate the position of a GNSS receiver using pseudoranges and ephemeris data.
 
@@ -28,7 +28,6 @@ class GNSSPositionEstimator:
         rinNav = "path/to/rinex_nav_file.rnx"
         desired_time = np.array([2024, 1, 1, 12, 0, 0])  # Example date and time
         desired_system = "G"  # Use GPS
-
         GNSSPos = GNSSPositionEstimator(rinObs, rinNav, desired_time, desired_system)
         estimated_position, stats = GNSSPos.estimate_position()
 
@@ -412,7 +411,7 @@ class GNSSPositionEstimator:
             y += dx[1]
             z += dx[2]
             dTi0 += dx[3] / c
-            
+
             # Update reciever coordiantes (class attributes)
             self.update_receiver_coordinates(x, y, z)
 
@@ -504,7 +503,7 @@ if __name__=="__main__":
     GNSS_obs, _, _, _, time_epochs, _, GNSSsystems, \
         obsCodes, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ = readRinexObs(rinObs)
 
-    GNSSPos = GNSSPositionEstimator(desired_time=desired_time,
+    GNSSPos = BroadNavPositionEstimator(desired_time=desired_time,
                                     desired_system=desired_sys,
                                     navdata=navObj,
                                     GNSS_obs=GNSS_obs,
