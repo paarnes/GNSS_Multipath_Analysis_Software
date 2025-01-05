@@ -693,7 +693,7 @@ Initial state vector $\text{state\_vec}$:
 
 $$
 \begin{equation}
-state\_vec = \begin{bmatrix} x_e \\ y_e \\ z_e \\ v_x \\ v_y \\ v_z \end{bmatrix}
+state{\_vec} = \begin{bmatrix} x_e \\ y_e \\ z_e \\ v_x \\ v_y \\ v_z \end{bmatrix}
 \end{equation}
 $$
 
@@ -701,14 +701,14 @@ Initial acceleration vector:
 
 $$
 \begin{equation}
-a\_vec = \begin{bmatrix} J_x \\ J_y \\ J_z \end{bmatrix}
+a{\_vec} = \begin{bmatrix} J_x \\ J_y \\ J_z \end{bmatrix}
 \end{equation}
 $$
 
 ---
 
 #### 6. **Runge-Kutta Integration**
-- Time step ($t_\text{step}$): 90 seconds, adjusted based on the magnitude of $\Deltat$.
+- Time step ($t_\text{step}$): 90 seconds, adjusted based on the magnitude of $\Delta t$.
 - Iterate using the 4th-order Runge-Kutta method until $\Delta t$ is less than a small threshold (e.g., $10^{-9}$).
 
 #### Runge-Kutta Equations:
