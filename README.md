@@ -571,7 +571,7 @@ Z = y \sin(i_k)
 $$
 
 
-Compute the distance ($ \text{DS} $) between the satellite and the receiver:
+Compute the distance ($\text{DS}$) between the satellite and the receiver:
 
 $$
 \text{DS} = \sqrt{(X - x_\text{rec})^2 + (Y - y_\text{rec})^2 + (Z - z_\text{rec})^2}
@@ -586,13 +586,15 @@ $$
 **Convergence**:
 
 Repeat the process until:
+
 $$
 |\text{TRANS}_0 - \text{TRANS}| < \epsilon
 $$
 
 
 <br><br>
-Where $ \epsilon $ is a small threshold, e.g., $ 10^{-10} $. Once the iteration converges, the corrected ECEF coordinates are $X, Y, Z$ and the relativistic clock correction. $ \Delta T_\text{rel} $.
+
+Where $\epsilon$ is a small threshold, e.g., $ 10^{-10} $. Once the iteration converges, the corrected ECEF coordinates are $X, Y, Z$ and the relativistic clock correction. $\Delta T_\text{rel}$.
 
 ---
 
