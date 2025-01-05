@@ -57,7 +57,7 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
                           includeObservationOverview: Union[bool, None] = None,
                           includeLLIOverview: Union[bool, None] = None,
                           use_LaTex: bool = True
-                          ):
+                          ) -> dict:
 
     """
     GNSS Multipath Analysis
@@ -169,6 +169,9 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
     OUTPUTS:
 
     analysisResults:          A dictionary that contains alls results of all analysises, for all GNSS systems.
+    
+
+    The software is also returning results file. A report provided as a text file, and a CSV file with the estimated values.
     --------------------------------------------------------------------------------------------------------------------------
     """
     start_time = time.time()
