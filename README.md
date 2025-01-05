@@ -443,7 +443,7 @@ where $M_0$ is the mean anomaly at reference epoch.
 
 ---
 
-#### 3. **Solve for Eccentric Anomaly ($ E $)**
+#### 3. **Solve for Eccentric Anomaly** ($E$):
 Use iterative approximation to solve Kepler's equation:
 
 $$
@@ -460,14 +460,14 @@ where $\epsilon$ could be set to $1e-12$
 
 ---
 
-#### 4. **Calculate True Anomaly ($ \nu $)**
-- Compute $\cos(\nu)$ and $\sin(\nu)$:
+#### 4. **Calculate True Anomaly** ($\nu$):
+Compute $\cos(\nu)$ and $\sin(\nu)$:
 
 $$
 \cos(\nu) = \frac{\cos(E) - e}{1 - e \cos(E)}, \quad \sin(\nu) = \frac{\sqrt{1 - e^2} \sin(E)}{1 - e \cos(E)}
 $$
 
-- Use the arctangent to find $ \nu $:
+Use the arctangent to find $ \nu $:
 
 $$
 \nu = \arctan2(\sin(\nu), \cos(\nu))
@@ -476,19 +476,19 @@ $$
 ---
 
 #### 5. **Compute Orbital Corrections**
-- **Corrected Argument of Latitude** ($u_k$):
+**Corrected Argument of Latitude** ($u_k$):
 
 $$
 u_k = \nu + \omega + C_{uc} \cos(2u) + C_{us} \sin(2u)
 $$
 
-- **Corrected Radius** ($r_k$):
+**Corrected Radius** ($r_k$):
 
 $$
 r_k = A (1 - e \cos(E)) + C_{rc} \cos(2u) + C_{rs} \sin(2u)
 $$
 
-- **Corrected Inclination** ($i_k$):
+**Corrected Inclination** ($i_k$):
 
 $$
 i_k = i_0 + i_\text{dot} t_k + C_{ic} \cos(2u) + C_{is} \sin(2u)
@@ -506,10 +506,13 @@ $$
 ---
 
 #### 7. **Satellite Position in Orbital Plane**
-- $ x $ and $ y $ in the orbital plane:
+$x$ and $y$ in the orbital plane:
 
 $$
-x = r_k \cos(u_k), \quad y = r_k \sin(u_k)
+\begin{align*}
+x &= r_k \cos(u_k) \\
+y &= r_k \sin(u_k)
+\end{align*}
 $$
 
 ---
