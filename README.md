@@ -637,8 +637,6 @@ depends on:
 
 ---
 
-### **Steps for Interpolation**
-
 #### 1. **Inputs**
 - **Ephemerides Data**:
   Broadcast ephemerides, including position, velocity, acceleration, and clock corrections, from a RINEX navigation file.
@@ -649,9 +647,9 @@ depends on:
 
 #### 2. **Extract and Convert Ephemeris Data**
 - Read ephemerides parameters for the GLONASS satellite:
-  - $x_e, y_e, z_e$: Satellite positions at reference time $ t_e $ (PZ-90) [km].
-  - $v_x, v_y, v_z$: Satellite velocities at $ t_e $ [km/s].
-  - $J_x, J_y, J_z$: Acceleration components at $ t_e $ $[km/s^2]$.
+  - $x_e, y_e, z_e$: Satellite positions at reference time $t_e$ (PZ-90) [km].
+  - $v_x, v_y, v_z$: Satellite velocities at $t_e$ [km/s].
+  - $J_x, J_y, J_z$: Acceleration components at $t_e$ $[km/s^2]$.
   - $\tau_N$: Clock bias [s].
   - $\gamma_N$: Clock frequency bias.
 
@@ -661,16 +659,17 @@ Positions, velocities, and accelerations are converted from kilometers to meters
 ---
 
 #### 3. **Time Difference** ($\Delta t$)
-- Convert the reference time $t_e$ from UTC to GPST by adding leap seconds:
+Convert the reference time $t_e$ from UTC to GPST by adding leap seconds:
 
-  $$
-  t_\text{GPST} = t_e + \text{leap seconds}
-  $$
+$$
+t_\text{GPST} = t_e + \text{leap seconds}
+$$
 
-- Compute the time difference between observation and reference epochs:
-  $$
-  \Delta t= t_\text{obs} - t_\text{GPST}
-  $$
+Compute the time difference between observation and reference epochs:
+
+$$
+\Delta t= t_\text{obs} - t_\text{GPST}
+$$
 
 ---
 
