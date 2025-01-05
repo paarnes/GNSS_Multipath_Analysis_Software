@@ -385,23 +385,20 @@ result_dict = PickleHandler.read_zstd_pickle(path_to_picklefile)
 
 This section explains step-by-step how satellite positions in Keplerian elements are converted to Earth-Centered Earth-Fixed (ECEF) coordinates. The explanation is showing how the `kepler2ecef` method has implemented this conversion. This approch works for GPS, Galileo and BeiDou, but not for GLONASS. GLONASS is not storing the satellite positions as Keplerian elements, but uses a state vector instead. Hence another approch is neccessary.
 
----
-
-### **Steps for Conversion**
+#### **Steps for Conversion**
 
 #### 1. **Constants and Inputs**
-- **Gravitational Constant and Earth's Mass ($ GM $)**:
-  $$
-  GM = 3.986005 \times 10^{14} \, \text{m}^3/\text{s}^2
-  $$
+- **Gravitational Constant and Earth's Mass**($GM$):
+
+  $$GM = 3.986005 \times 10^{14} \, \text{m}^3/\text{s}^2$$
+
 - **Earth's Angular Velocity ($ \omega_e $)**:
-  $$
-  \omega_e = 7.2921151467 \times 10^{-5} \, \text{rad/s}
-  $$
+
+  $$\omega_e = 7.2921151467 \times 10^{-5} \, \text{rad/s}$$
+
 - **Speed of Light ($ c $)**:
-  $$
-  c = 299792458 \, \text{m/s}
-  $$
+
+  $$c = 299792458 \, \text{m/s}$$
 
 Inputs:
 - Keplerian elements from the RINEX navigation file.
