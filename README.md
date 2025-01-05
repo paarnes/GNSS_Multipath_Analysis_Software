@@ -1214,6 +1214,7 @@ where $q_X, q_Y, q_Z, q_{dT}$ are the diagonal elements of the cofactor matrix. 
 
 ### **7. Standard Deviations**
 Standard deviations represent the precision of the estimated parameters:
+
 $$
 S_x = \sqrt{C_{xx}[0, 0]}, \quad
 S_y = \sqrt{C_{xx}[1, 1]}, \quad
@@ -1228,34 +1229,48 @@ $$
 ### **Computation Workflow**
 The following steps summarize the computation of these statistical parameters:
 1. **Compute Residuals**:
-   $$
-   V = A \cdot h - l
-   $$
+
+$$
+V = A \cdot h - l
+$$
+
 2. **Calculate SSE**:
-   $$
-   \text{SSE} = V^T \cdot V
-   $$
+
+$$
+\text{SSE} = V^T \cdot V
+$$
+
 3. **Compute $S_0$**:
-   $$
-   S_0 = \sqrt{\frac{\text{SSE}}{n - e}}
-   $$
+
+$$
+S_0 = \sqrt{\frac{\text{SSE}}{n - e}}
+$$
+
 4. **Derive $Q_{xx}$**:
-   $$
-   Q_{xx} = N^{-1}, \quad N = A^T \cdot A
-   $$
+
+$$
+Q_{xx} = N^{-1}, \quad N = A^T \cdot A
+$$
+
 5. **Calculate $C_{xx}$**:
-   $$
-   C_{xx} = S_0^2 \cdot Q_{xx}
-   $$
+
+$$
+C_{xx} = S_0^2 \cdot Q_{xx}
+$$
+
 6. **Extract Cofactors** ($q_X, q_Y, q_Z, q_{dT}$) from $Q_{xx}$.
+
 7. **Compute DOPs**:
-   $$
-   \text{PDOP}, \text{TDOP}, \text{GDOP}
-   $$
+
+$$
+\text{PDOP}, \text{TDOP}, \text{GDOP}
+$$
+
 8. **Calculate Standard Deviations**:
-   $$
-   S_x, S_y, S_z, S_t
-   $$
+
+$$
+S_x, S_y, S_z, S_t
+$$
 
 
 #### **Summary**
@@ -1265,7 +1280,7 @@ A comprehensive statistical report includes:
 - **Standard Deviation of Unit Weight ($S_0$)**: Average error per degree of freedom.
 - **Covariance Matrix ($C_{xx}$)**: Absolute parameter precision.
 - **Cofactor Matrix ($Q_{xx}$)**: Diagonal elements used to compute DOP values.
-- **DOPs**: Geometric quality of satellite configuration. LOw values indicates good satellite geometry.
+- **DOPs**: Geometric quality of satellite configuration. Low values indicates good satellite geometry.
 - **Standard Deviations**: Uncertainty in receiver coordinates and clock bias.
 
 
