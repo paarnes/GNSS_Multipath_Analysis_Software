@@ -808,18 +808,22 @@ a_\text{J2} = 1.5 J_2 \frac{\mu a_e^2}{r^5} \left( 1 - 5 \frac{z^2}{r^2} \right)
 $$
 
 3. **Equations of Motion**:
-   $$
-   \dot{x} = v_x, \quad \dot{y} = v_y, \quad \dot{z} = v_z
-   $$
-   $$
-   \dot{v_x} = a_\text{grav} x + a_\text{J2} x + 2\omega v_y + \omega^2 x + J_x
-   $$
-   $$
-   \dot{v_y} = a_\text{grav} y + a_\text{J2} y - 2\omega v_x + \omega^2 y + J_y
-   $$
-   $$
-   \dot{v_z} = a_\text{grav} z + a_\text{J2} z + J_z
-   $$
+
+$$
+\dot{x} = v_x, \quad \dot{y} = v_y, \quad \dot{z} = v_z
+$$
+
+$$
+\dot{v_x} = a_\text{grav} x + a_\text{J2} x + 2\omega v_y + \omega^2 x + J_x
+$$
+
+$$
+\dot{v_y} = a_\text{grav} y + a_\text{J2} y - 2\omega v_x + \omega^2 y + J_y
+$$
+
+$$
+\dot{v_z} = a_\text{grav} z + a_\text{J2} z + J_z
+$$
 
 where:
 - $ \mu = 3.9860044 \times 10^{14} $ [$m^3/s^2$] is the gravitational constant.
@@ -849,10 +853,12 @@ This section explains the steps taken by the **SP3Interpolator** Python class to
 #### 2. **Select Nearest Points**
 For a given target time $t$:
 1. Compute the time difference:
-   $$
-   \Delta t_i = |\text{Epoch}_i - t|
-   $$
-   Here, $\text{Epoch}_i$ is the time of the $i$-th SP3 entry in seconds.
+
+$$
+\Delta t_i = |\text{Epoch}_i - t|
+$$
+
+Here, $\text{Epoch}_i$ is the time of the $i$-th SP3 entry in seconds.
 2. Select the $n$ nearest epochs around the given target time $t$ (e.g., $n=7$) by sorting $\Delta t_i$ in ascending order. By default the number of nearest points for interpolation is set to 7.
 
 
@@ -865,6 +871,7 @@ Neville's algorithm computes the interpolated value $P(t)$ using $n$ known point
 
 #### Recursive Formula
 The recursive interpolation formula is:
+
 $$
 p_{i,j}(t) =
 \frac{
@@ -873,6 +880,7 @@ p_{i,j}(t) =
 x_{i+j} - x_i
 }
 $$
+
 Where:
 - $p_{i,0}(t) = y_i$ (initial values) and $j$ is the current degree of the interpolating polynomial.
 - $t$ represents the **target value** or **interpolation point** at which the function $P(t)$ is being approximated.
@@ -883,14 +891,16 @@ Where:
 #### Algorithm Implementation
 1. Begin with $p_{i,0} = y_i$.
 2. Compute higher-degree polynomials:
-   $$
-   p_{i,j}(t) \quad \text{for} \quad j = 1, 2, \dots, n-1.
-   $$
+
+$$
+p_{i,j}(t) \quad \text{for} \quad j = 1, 2, \dots, n-1.
+$$
+
 3. After completing $j = n-1$, the interpolated value is $P(t) = p_{0,n-1}(t)$.
 
 
 #### 4. **Repeat for Each Coordinate component and for the satellite clock bias**
-Repeat the above steps independently for $X$, $Y$, $Z$, and the clock bias, resulting in $(X, Y, Z, \text{Bias}) \quad \text{at time } t.$
+Repeat the above steps independently for $X$, $Y$, $Z$, and the clock bias, resulting in $(X, Y, Z, \text{Bias}) \quad \text{at time } t$
 
 
 #### Mathematical Summary
@@ -1001,7 +1011,7 @@ if __name__ == "__main__":
 
 
 
-
+---
 
 ### Estimating the Receiver Position Using Least Squares
 
@@ -1131,18 +1141,20 @@ Repeat steps 2–8 until the largest correction in $\Delta \mathbf{x}$ is smalle
 ---
 
 ### **Iteration Process in Detail**
-1. **Initialization**:
-   - Start with approximate receiver position $(x, y, z)$ and clock bias $dT_0 = 0$.
-   - Set the improvement threshold and maximum number of iterations.
+**Initialization**:
+	- Start with approximate receiver position $(x, y, z)$ and clock bias $dT_0 = 0$.
+	- Set the improvement threshold and maximum number of iterations.
 
-2. **Convergence Check**:
+**Convergence Check**:
    - After each iteration, compute the improvement:
-     $$
-     \text{improvement} = \max(|\Delta x|, |\Delta y|, |\Delta z|, |\Delta dT_0|)
-     $$
+
+$$
+\text{improvement} = \max(|\Delta x|, |\Delta y|, |\Delta z|, |\Delta dT_0|)
+$$
+
    - If the improvement is below the threshold, stop the iteration.
 
-3. **Satellite Filtering**:
+**Satellite Filtering**:
    - After convergence, filter out satellites with low elevation angles (e.g., $< 15^\circ$).
    - Recompute the receiver position using the remaining satellites.
 
