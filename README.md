@@ -414,75 +414,85 @@ Inputs:
 
 #### 2. **Calculate Orbital Parameters**
 - **Mean Motion ($ n_0 $)**:
-  $$
-  n_0 = \sqrt{\frac{GM}{A^3}}
-  $$
-  where $ A = a^2 (\text{semimajor axis}) $.
+$$
+n_0 = \sqrt{\frac{GM}{A^3}}
+$$
+where $ A = a^2 (\text{semimajor axis}) $.
 
 - **Corrected Mean Motion ($ n_k $)**:
-  $$
-  n_k = n_0 + \Delta n
-  $$
+$$
+n_k = n_0 + \Delta n
+$$
 
 - **Time Since Reference Epoch ($ t_k $)**:
-  $$
-  t_k = \text{TOW}_\text{rec} - \text{TOE}
-  $$
+$$
+t_k = \text{TOW}_\text{rec} - \text{TOE}
+$$
 
 - **Mean Anomaly ($ M_k $)**:
-  $$
-  M_k = M_0 + n_k t_k
-  $$
-  where $M_0$ is the mean anomaly at reference epoch.
+$$
+M_k = M_0 + n_k t_k
+$$
+where $M_0$ is the mean anomaly at reference epoch.
 
 ---
 
 #### 3. **Solve for Eccentric Anomaly ($ E $)**
 Use iterative approximation to solve Kepler's equation:
+
 $$
 E = M_k + e \sin(E)
 $$
+
 Repeat until convergence, where:
+
 $$
 |E_{\text{new}} - E_{\text{old}}| < \epsilon
 $$
+
 where $\epsilon$ could be set to $1e-12$
 
 ---
 
 #### 4. **Calculate True Anomaly ($ \nu $)**
-- Compute $ \cos(\nu) $ and $ \sin(\nu) $:
-  $$
-  \cos(\nu) = \frac{\cos(E) - e}{1 - e \cos(E)}, \quad \sin(\nu) = \frac{\sqrt{1 - e^2} \sin(E)}{1 - e \cos(E)}
-  $$
+- Compute $\cos(\nu)$ and $\sin(\nu)$:
+
+$$
+\cos(\nu) = \frac{\cos(E) - e}{1 - e \cos(E)}, \quad \sin(\nu) = \frac{\sqrt{1 - e^2} \sin(E)}{1 - e \cos(E)}
+$$
 
 - Use the arctangent to find $ \nu $:
-  $$
-  \nu = \arctan2(\sin(\nu), \cos(\nu))
-  $$
+
+$$
+\nu = \arctan2(\sin(\nu), \cos(\nu))
+$$
 
 ---
 
 #### 5. **Compute Orbital Corrections**
-- **Corrected Argument of Latitude ($ u_k $)**:
-  $$
-  u_k = \nu + \omega + C_{uc} \cos(2u) + C_{us} \sin(2u)
-  $$
+- **Corrected Argument of Latitude** ($u_k$):
 
-- **Corrected Radius ($ r_k $)**:
-  $$
-  r_k = A (1 - e \cos(E)) + C_{rc} \cos(2u) + C_{rs} \sin(2u)
-  $$
+$$
+u_k = \nu + \omega + C_{uc} \cos(2u) + C_{us} \sin(2u)
+$$
 
-- **Corrected Inclination ($ i_k $)**:
-  $$
-  i_k = i_0 + i_\text{dot} t_k + C_{ic} \cos(2u) + C_{is} \sin(2u)
-  $$
+- **Corrected Radius** ($r_k$):
+
+$$
+r_k = A (1 - e \cos(E)) + C_{rc} \cos(2u) + C_{rs} \sin(2u)
+$$
+
+- **Corrected Inclination** ($i_k$):
+
+$$
+i_k = i_0 + i_\text{dot} t_k + C_{ic} \cos(2u) + C_{is} \sin(2u)
+$$
 
 ---
 
 #### 6. **Longitude of Ascending Node**
 Account for Earth's rotation:
+
 $$
 \Omega_k = \Omega_0 + (\dot{\Omega} - \omega_e)t_k - \omega_e \text{TOE}
 $$
@@ -491,9 +501,10 @@ $$
 
 #### 7. **Satellite Position in Orbital Plane**
 - $ x $ and $ y $ in the orbital plane:
-  $$
-  x = r_k \cos(u_k), \quad y = r_k \sin(u_k)
-  $$
+
+$$
+x = r_k \cos(u_k), \quad y = r_k \sin(u_k)
+$$
 
 ---
 
@@ -502,9 +513,11 @@ Convert from the orbital frame to the Earth-centered, Earth-fixed frame:
 $$
 X = x \cos(\Omega_k) - y \sin(\Omega_k) \cos(i_k)
 $$
+
 $$
 Y = x \sin(\Omega_k) + y \cos(\Omega_k) \cos(i_k)
 $$
+
 $$
 Z = y \sin(i_k)
 $$
@@ -513,6 +526,7 @@ $$
 
 #### 9. **Relativistic Clock Correction**
 Account for relativistic effects:
+
 $$
 \Delta T_\text{rel} = -\frac{2 \sqrt{A \cdot GM}}{c^2} e \sin(E)
 $$
