@@ -826,10 +826,10 @@ $$
 $$
 
 where:
-- $ \mu = 3.9860044 \times 10^{14} $ [$m^3/s^2$] is the gravitational constant.
-- $ J_2 = 1.0826257 \times 10^{-3} $ is the Earth's oblateness factor.
-- $ \omega = 7.292115 \times 10^{-5} $ [$rad/s$] is the Earth's rotation rate.
-- $ a_e = 6378136.0 $ [$m$] is the semi-major axis of the Earth (PZ-90 ellipsoid).
+- $\mu = 3.9860044 \times 10^{14}$ [$m^3/s^2$] is the gravitational constant.
+- $J_2 = 1.0826257 \times 10^{-3}$ is the Earth's oblateness factor.
+- $\omega = 7.292115 \times 10^{-5}$ [$rad/s$] is the Earth's rotation rate.
+- $a_e = 6378136.0$ [$m$] is the semi-major axis of the Earth (PZ-90 ellipsoid).
 
 
 This method ensures precise interpolation of GLONASS satellite positions and velocities at user-specified epochs.
@@ -907,21 +907,24 @@ Repeat the above steps independently for $X$, $Y$, $Z$, and the clock bias, resu
 
 Given $n$ nearest points:
 Let:
-   $$
-   p_{i,j}(t) =
-   \begin{cases}
-   y_i & \text{if } j = 0 \\
-   \frac{
-   (t - x_i) p_{i+1,j-1} - (t - x_{i+j}) p_{i,j-1}
-   }{
-   x_{i+j} - x_i
-   } & \text{if } j > 0
-   \end{cases}
-   $$
+
+$$
+p_{i,j}(t) =
+\begin{cases}
+y_i & \text{if } j = 0 \\
+\frac{
+(t - x_i) p_{i+1,j-1} - (t - x_{i+j}) p_{i,j-1}
+}{
+x_{i+j} - x_i
+} & \text{if } j > 0
+\end{cases}
+$$
+
 The interpolated value is:
-   $$
-   P(t) = p_{0,n-1}(t).
-   $$
+
+$$
+P(t) = p_{0,n-1}(t).
+$$
 
 
 #### Example code outlining how Neville's algorithm can be implemented (dummy data)
