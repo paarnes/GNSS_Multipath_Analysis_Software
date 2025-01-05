@@ -388,17 +388,23 @@ This section explains step-by-step how satellite positions in Keplerian elements
 #### **Steps for Conversion**
 
 #### 1. **Constants and Inputs**
-- **Gravitational Constant and Earth's Mass**($GM$):
+- **Gravitational Constant and Earth's Mass** ($GM$):
 
-  $$GM = 3.986005 \times 10^{14} \, \text{m}^3/\text{s}^2$$
+$$
+GM = 3.986005 \times 10^{14} \, \text{m}^3/\text{s}^2
+$$
 
-- **Earth's Angular Velocity ($ \omega_e $)**:
+- **Earth's Angular Velocity** ($\omega_e $):
 
-  $$\omega_e = 7.2921151467 \times 10^{-5} \, \text{rad/s}$$
+$$
+\omega_e = 7.2921151467 \times 10^{-5} \, \text{rad/s}
+$$
 
-- **Speed of Light ($ c $)**:
+- **Speed of Light** ($c$):
 
-  $$c = 299792458 \, \text{m/s}$$
+$$
+c = 299792458 \, \text{m/s}
+$$
 
 Inputs:
 - Keplerian elements from the RINEX navigation file.
