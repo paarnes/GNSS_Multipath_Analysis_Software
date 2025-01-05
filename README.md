@@ -594,7 +594,7 @@ $$
 
 <br><br>
 
-Where $\epsilon$ is a small threshold, e.g., $ 10^{-10} $. Once the iteration converges, the corrected ECEF coordinates are $X, Y, Z$ and the relativistic clock correction. $\Delta T_\text{rel}$.
+Where $\epsilon$ is a small threshold, e.g., $10^{-10}$. Once the iteration converges, the corrected ECEF coordinates are $X, Y, Z$ and the relativistic clock correction $\Delta T_\text{rel}$.
 
 ---
 
@@ -610,11 +610,19 @@ The GLONASS equations of motion describe how the satellite's state (position and
 The state vector $\text{state} = [x, y, z, v_x, v_y, v_z]$ includes the satellite's position ($x, y, z$) and velocity ($v_x, v_y, v_z$). The derivatives of the state vector represent the equations of motion for the GLONASS satellite which include:
 
 **Change in Position**
- $$\dot{x}, \dot{y}, \dot{z}$$
+
+ $$
+ \dot{x}, \dot{y}, \dot{z}
+ $$
+
  which equals the velocity components
- $$v_x, v_y, v_z$$
+
+ $$
+ v_x, v_y, v_z
+ s$$
 
  **Change in Velocity**
+
 $$
 \dot{v_x}, \dot{v_y}, \dot{v_z}
 $$
@@ -641,22 +649,24 @@ depends on:
 
 #### 2. **Extract and Convert Ephemeris Data**
 - Read ephemerides parameters for the GLONASS satellite:
-  - $ x_e, y_e, z_e $: Satellite positions at reference time $ t_e $ (PZ-90) [km].
-  - $ v_x, v_y, v_z $: Satellite velocities at $ t_e $ [km/s].
-  - $ J_x, J_y, J_z $: Acceleration components at $ t_e $ $[km/s^2]$.
-  - $ \tau_N $: Clock bias [s].
-  - $ \gamma_N $: Clock frequency bias.
+  - $x_e, y_e, z_e$: Satellite positions at reference time $ t_e $ (PZ-90) [km].
+  - $v_x, v_y, v_z$: Satellite velocities at $ t_e $ [km/s].
+  - $J_x, J_y, J_z$: Acceleration components at $ t_e $ $[km/s^2]$.
+  - $\tau_N$: Clock bias [s].
+  - $\gamma_N$: Clock frequency bias.
 
 
 Positions, velocities, and accelerations are converted from kilometers to meters.
 
 ---
 
-#### 3. **Time Difference ($ \Delta t$)**
-- Convert the reference time $ t_e $ from UTC to GPST by adding leap seconds:
+#### 3. **Time Difference** ($\Delta t$)
+- Convert the reference time $t_e$ from UTC to GPST by adding leap seconds:
+
   $$
   t_\text{GPST} = t_e + \text{leap seconds}
   $$
+
 - Compute the time difference between observation and reference epochs:
   $$
   \Delta t= t_\text{obs} - t_\text{GPST}
@@ -665,107 +675,125 @@ Positions, velocities, and accelerations are converted from kilometers to meters
 ---
 
 #### 4. **Clock Corrections**
-- Satellite clock error:
-  $$
-  \text{clock error} = \tau_N + \Delta t\cdot \gamma_N
-  $$
-- Clock rate error:
-  $$
-  \text{clock rate error} = \gamma_N
-  $$
+Satellite clock error:
+
+$$
+\text{clock error} = \tau_N + \Delta t\cdot \gamma_N
+$$
+
+Clock rate error:
+
+$$
+\text{clock rate error} = \gamma_N
+$$
 
 ---
 
 #### 5. **Initialize State Vector**
-- Initial state vector $\text{state\_vec}$:
-  $$
-  \text{state\_vec} = \begin{bmatrix} x_e \\ y_e \\ z_e \\ v_x \\ v_y \\ v_z \end{bmatrix}
-  $$
-- Initial acceleration vector $\text{a\_vec}$:
-  $$
-  \text{a\_vec} = \begin{bmatrix} J_x \\ J_y \\ J_z \end{bmatrix}
-  $$
+Initial state vector $\text{state\_vec}$:
+
+$$
+\text{state\_vec} = \begin{bmatrix} x_e \\ y_e \\ z_e \\ v_x \\ v_y \\ v_z \end{bmatrix}
+$$
+
+Initial acceleration vector $\text{a\_vec}$:
+
+$$
+\text{a\_vec} = \begin{bmatrix} J_x \\ J_y \\ J_z \end{bmatrix}
+$$
 
 ---
 
 #### 6. **Runge-Kutta Integration**
-- Time step ($ t_\text{step} $): 90 seconds, adjusted based on the magnitude of $ \Delta t$.
-- Iterate using the 4th-order Runge-Kutta method until $ \Delta t$ is less than a small threshold (e.g., $ 10^{-9} $).
+- Time step ($t_\text{step}$): 90 seconds, adjusted based on the magnitude of $\Deltat$.
+- Iterate using the 4th-order Runge-Kutta method until $\Delta t$ is less than a small threshold (e.g., $10^{-9}$).
 
 #### Runge-Kutta Equations:
 Solving the system of ordinary differential equations (ODEs) using the 4th-order Runge-Kutta method. Runge-Kutta interpolation method implemented in the ``glonass_diff_eq`` method apart of the ``GLOStateVec2ECEF`` class.
-  $$
-   \text{derivatives} = \text{glonass\_diff\_eq}(\text{state\_vec}, \text{a\_vec})
-  $$
+
+$$
+\text{derivatives} = \text{glonass\_diff\_eq}(\text{state\_vec}, \text{a\_vec})
+$$
 
 this method will be refered to as $f$ from now.
 
 ### **Runge-Kutta Integration with Indexed Updates**
 
-1. **Calculate Derivatives**:
-   Compute the derivatives using the current state vector and acceleration:
-   $$
-   k_1 = f(\text{state\_vec}_n, \text{a\_vec})
-   $$
-   $$
-   k_2 = f\left(\text{state\_vec}_n + \frac{k_1 \cdot t_\text{step}}{2}, \text{a\_vec}\right)
-   $$
-   $$
-   k_3 = f\left(\text{state\_vec}_n + \frac{k_2 \cdot t_\text{step}}{2}, \text{a\_vec}\right)
-   $$
-   $$
-   k_4 = f\left(\text{state\_vec}_n + k_3 \cdot t_\text{step}, \text{a\_vec}\right)
-   $$
+**Calculate Derivatives**:
+Compute the derivatives using the current state vector and acceleration:
 
-2. **Update State Vector**:
-   Compute the updated state vector ($ \text{state\_vec}_{n+1} $) as:
-   $$
-   \text{state\_vec}_{n+1} = \text{state\_vec}_n + \frac{1}{6} (k_1 + 2k_2 + 2k_3 + k_4) \cdot t_\text{step}
-   $$
+$$
+k_1 = f(\text{state\_vec}_n, \text{a\_vec})
+$$
 
-3. **Update Time**:
-   Increment the time to the next step:
-   $$
-   t_{n+1} = t_n + t_\text{step}
-   $$
+$$
+k_2 = f\left(\text{state\_vec}_n + \frac{k_1 \cdot t_\text{step}}{2}, \text{a\_vec}\right)
+$$
 
-4. **Reduce $ \Delta t $**:
-   Adjust the remaining time difference:
-   $$
-   \Delta t = \Delta t - t_\text{step}
-   $$
+$$
+k_3 = f\left(\text{state\_vec}_n + \frac{k_2 \cdot t_\text{step}}{2}, \text{a\_vec}\right)
+$$
+
+$$
+k_4 = f\left(\text{state\_vec}_n + k_3 \cdot t_\text{step}, \text{a\_vec}\right)
+$$
+
+**Update State Vector**:
+Compute the updated state vector ($\text{state\_vec}_{n+1}$) as:
+
+$$
+\text{state\_vec}_{n+1} = \text{state\_vec}_n + \frac{1}{6} (k_1 + 2k_2 + 2k_3 + k_4) \cdot t_\text{step}
+$$
+
+**Update Time**:
+Increment the time to the next step:
+
+$$
+t_{n+1} = t_n + t_\text{step}
+$$
+
+**Reduce $ \Delta t $**:
+Adjust the remaining time difference:
+
+$$
+\Delta t = \Delta t - t_\text{step}
+$$
 
 ---
 
 #### 7. **Final Outputs**
-- **Position** ($ x, y, z $) [m]:
+- **Position** ($x, y, z$) [m]:
   Extracted from the final state vector.
-- **Velocity** ($ v_x, v_y, v_z $) [m/s]:
+- **Velocity** ($v_x, v_y, v_z$) [m/s]:
   Extracted from the final state vector.
-- **Clock Error** ($ \text{clock error} $) [s]:
+- **Clock Error** ($\text{clock error}$) [s]:
   Calculated during initialization.
-- **Clock Rate Error** ($ \text{clock rate error} $) [s/s]:
+- **Clock Rate Error** ($\text{clock rate error}$) [s/s]:
   Calculated during initialization.
 
 ---
 
 ### **GLONASS Equations of Motion**
-The derivatives of the state vector ($ x, y, z, v_x, v_y, v_z $) are computed as follows:
+The derivatives of the state vector ($x, y, z, v_x, v_y, v_z$) are computed as follows:
 
-1. **Radial Distance ($ r $)**:
-   $$
-   r = \sqrt{x^2 + y^2 + z^2}
-   $$
+**Radial Distance** ($r$):
 
-2. **Acceleration Terms**:
-   - Gravitational acceleration:
-     $$
-     a_\text{grav} = -\frac{\mu}{r^3}
-     $$
-   - Perturbation due to Earth's oblateness ($ J_2 $):
-     $$
-     a_\text{J2} = 1.5 J_2 \frac{\mu a_e^2}{r^5} \left( 1 - 5 \frac{z^2}{r^2} \right)
-     $$
+$$
+r = \sqrt{x^2 + y^2 + z^2}
+$$
+
+**Acceleration Terms**:
+Gravitational acceleration:
+
+$$
+a_\text{grav} = -\frac{\mu}{r^3}
+$$
+
+Perturbation due to Earth's oblateness ($J_2$):
+
+$$
+a_\text{J2} = 1.5 J_2 \frac{\mu a_e^2}{r^5} \left( 1 - 5 \frac{z^2}{r^2} \right)
+$$
 
 3. **Equations of Motion**:
    $$
