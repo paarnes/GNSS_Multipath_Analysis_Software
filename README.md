@@ -1174,18 +1174,21 @@ where $n$ is the number of observations and $e$ is the number of unknowns. **Sig
 
 ---
 
-### **4. Cofactor Matrix ($Q_{xx}$)**
+### **4. Cofactor Matrix** ($Q_{xx}$)
 The cofactor matrix is computed as:
+
 $$
 Q_{xx} = N^{-1}
 $$
+
 where $N = A^TA$.
 
 
 ---
 
-### **5. Covariance Matrix ($C_{xx}$)**
+### **5. Covariance Matri**  ($C_{xx}$)
 The covariance matrix is computed as:
+
 $$
 C_{xx} = S_0^2 \cdot Q_{xx}
 $$
@@ -1197,17 +1200,23 @@ $$
 ### **6. Dilution of Precision (DOPs)**
 DOP metrics quantify the geometric quality of the satellite configuration:
 - **Positional DOP (PDOP)**:
-  $$
-  \text{PDOP} = \sqrt{q_X + q_Y + q_Z}
-  $$
+
+$$
+\text{PDOP} = \sqrt{q_X + q_Y + q_Z}
+$$
+
 - **Time DOP (TDOP)**:
-  $$
-  \text{TDOP} = \sqrt{q_{dT}}
-  $$
+
+$$
+\text{TDOP} = \sqrt{q_{dT}}
+$$
+
 - **Geometric DOP (GDOP)**:
-  $$
-  \text{GDOP} = \sqrt{\text{PDOP}^2 + \text{TDOP}^2}
-  $$
+
+$$
+\text{GDOP} = \sqrt{\text{PDOP}^2 + \text{TDOP}^2}
+$$
+
 where $q_X, q_Y, q_Z, q_{dT}$ are the diagonal elements of the cofactor matrix. **Significance**: Smaller DOP values indicate better satellite geometry and more reliable positioning.
 
 ---
