@@ -420,22 +420,5 @@ class SP3PositionEstimator:
 
 
 if __name__ == "__main__":
-    # Turn off scientific notation
-    np.set_printoptions(suppress=True)
-
-    fasit = np.array([3149785.9652, 598260.8822, 5495348.4927])
-
-    sp3_file = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\SP3\Testfile_20220101.eph"
-    rinex_obs_file = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles\OPEC00NOR_S_20220010000_01D_30S_MO_3.04_croped.rnx"
-    desired_time = np.array([2022, 1, 1, 2, 0, 30.0000000])
-    # desired_time = np.array([2022, 1, 1, 2, 3, 30.0000000])
-    desired_time = np.array([2022, 1, 1, 0, 0, 30.0000000])
-    desired_system = "G"  # GPS
-
-    position_estimator = SP3PositionEstimator(sp3_file, rinex_obs_file, desired_time, desired_system)
-    estimated_position, stats = position_estimator.estimate_position()
-
-    print("Estimated Position:\n", estimated_position)
-    print("Difference:\n", fasit- estimated_position[:3])
-    # print("Statistics Report:", stats)
+    pass
 
