@@ -692,17 +692,26 @@ $$
 Initial state vector:
 
 $$
-\begin{equation}
-state_{vec} = \begin{bmatrix} x_e \\ y_e \\ z_e \\ v_x \\ v_y \\ v_z \end{bmatrix}
-\end{equation}
+state_{vec} =
+\begin{bmatrix}
+x_e \\
+y_e \\
+z_e \\
+v_x \\
+v_y \\
+v_z
+\end{bmatrix}
 $$
 
 Initial acceleration vector:
 
 $$
-\begin{equation}
-a_{vec} = \begin{bmatrix} J_x \\ J_y \\ J_z \end{bmatrix}
-\end{equation}
+a_{vec} =
+\begin{bmatrix}
+J_x \\
+J_y \\
+J_z
+\end{bmatrix}
 $$
 
 ---
