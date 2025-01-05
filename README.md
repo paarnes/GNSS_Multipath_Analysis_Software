@@ -519,16 +519,13 @@ $$
 
 #### 8. **Transform to ECEF Coordinates**
 Convert from the orbital frame to the Earth-centered, Earth-fixed frame:
-$$
-X = x \cos(\Omega_k) - y \sin(\Omega_k) \cos(i_k)
-$$
 
 $$
-Y = x \sin(\Omega_k) + y \cos(\Omega_k) \cos(i_k)
-$$
-
-$$
+\begin{gather*}
+X = x \cos(\Omega_k) - y \sin(\Omega_k) \cos(i_k) \\
+Y = x \sin(\Omega_k) + y \cos(\Omega_k) \cos(i_k) \\
 Z = y \sin(i_k)
+\end{gather*}
 $$
 
 ---
@@ -545,36 +542,43 @@ $$
 #### 10. **Earth Rotation Correction (Sagnac Effect)**
 If the receiver position is known, adjust for the Earth's rotation during signal transmission using an iterative process to correct for the ``Sagnac`` effect. The Sagnac effect accounts for the Earth's rotation during the signal's travel time from the satellite to the receiver. This correction ensures that the satellite's position aligns with the time of signal transmission, adjusting for the Earth's rotation.
 
-The Earth's rotation during the signal's travel introduces a positional error if uncorrected. This adjustment ensures high-accuracy satellite positioning, especially critical in GNSS applications. This correction is implemented in the ``kepler2ecef`` method part of the ``Kepler2ECEF`` class, and the iterative method ensures precise compensation for the Earth's rotation during signal travel time.
+The Earth's rotation during the signal's travel introduces a positional error if uncorrected. This adjustment ensures high-accuracy satellite positioning and is implemented in the ``kepler2ecef`` method part of the ``Kepler2ECEF`` class, and the iterative method ensures precise compensation for the Earth's rotation during signal travel time.
 
 #### **Iterative Algorithm for Earth Rotation Correction**
 1. **Initialize Variables**:
-   - $ \text{TRANS}_0 $: Approximate initial signal travel time, e.g., 0.075 seconds.
-   - $ \text{TRANS} $: Variable to store updated travel time.
-   - $ j $: Iteration counter.
+   - $\text{TRANS}_0$: Approximate initial signal travel time, e.g., 0.075 seconds.
+   - $\text{TRANS}$: Variable to store updated travel time.
+   - $j$: Iteration counter.
 
 2. **Iterative Process**:
    - Update the longitude of the ascending node ($ \Omega_k $) to account for the Earth's rotation during the signal travel time:
+
      $$
      \Omega_k = \Omega_0 + (\dot{\Omega} - \omega_e)t_k - \omega_e(\text{TOE} + \text{TRANS})
      $$
+
    - Recalculate ECEF coordinates:
+
      $$
      X = x \cos(\Omega_k) - y \sin(\Omega_k) \cos(i_k)
      $$
+
      $$
      Y = x \sin(\Omega_k) + y \cos(\Omega_k) \cos(i_k)
      $$
+
      $$
      Z = y \sin(i_k)
      $$
 
    - Compute the distance ($ \text{DS} $) between the satellite and the receiver:
+
      $$
      \text{DS} = \sqrt{(X - x_\text{rec})^2 + (Y - y_\text{rec})^2 + (Z - z_\text{rec})^2}
      $$
 
    - Update the travel time:
+
      $$
      \text{TRANS}_0 = \frac{\text{DS}}{c}
      $$
