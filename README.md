@@ -413,26 +413,32 @@ Inputs:
 ---
 
 #### 2. **Calculate Orbital Parameters**
-- **Mean Motion ($ n_0 $)**:
+- **Mean Motion** ($n_0$):
+
 $$
 n_0 = \sqrt{\frac{GM}{A^3}}
 $$
-where $ A = a^2 (\text{semimajor axis}) $.
 
-- **Corrected Mean Motion ($ n_k $)**:
+where $A = a^2 (\text{semimajor axis})$.
+
+- **Corrected Mean Motion** ($n_k$):
+
 $$
 n_k = n_0 + \Delta n
 $$
 
-- **Time Since Reference Epoch ($ t_k $)**:
+- **Time Since Reference Epoch** ($t_k$):
+
 $$
 t_k = \text{TOW}_\text{rec} - \text{TOE}
 $$
 
-- **Mean Anomaly ($ M_k $)**:
+- **Mean Anomaly** ($M_k$):
+
 $$
 M_k = M_0 + n_k t_k
 $$
+
 where $M_0$ is the mean anomaly at reference epoch.
 
 ---
