@@ -419,7 +419,7 @@ $$
 n_0 = \sqrt{\frac{GM}{A^3}}
 $$
 
-where $A = a^2 (\text{semimajor axis})$.
+	where $A = a^2 (\text{semimajor axis})$.
 
 - **Corrected Mean Motion** ($n_k$):
 
