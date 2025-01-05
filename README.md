@@ -1021,6 +1021,7 @@ This section describes how the software estimates the approximate receiver posit
 
 #### 2. **Compute Geometric Range ($\rho$)**
 For each satellite, compute the geometric distance between the receiver and the satellite:
+
 $$
 \rho = \sqrt{(X - x)^2 + (Y - y)^2 + (Z - z)^2}
 $$
@@ -1030,14 +1031,19 @@ $$
 #### 3. **Linearization via Taylor Series and Construction of the Design Matrix ($A$)**
 The observation equation for pseudoranges is non-linear. Before its possible to use linear algebra, we have to linearize using a first-order Taylor series expansion.
 This linearization assumes small corrections to the initial approximate values of $(x,y,z,dT)$. The pseudorange equation is:
+
 $$
 R_{ji} = \sqrt{(X - x)^2 + (Y - y)^2 + (Z - z)^2} + dT
 $$
+
 where $(X, Y, Z)$ are satellite coordinates, $(x, y, z)$ are receiver coordinates and $dT$ is the clock bias. The equation is linearized around an initial guess $(x_0, y_0, z_0, dT_0)$. Using a first-order Taylor series expansion, we get:
+
 $$
 R_{ji} \approx R_{ji,0} + \frac{\partial R_{ji}}{\partial x} \Delta x + \frac{\partial R_{ji}}{\partial y} \Delta y + \frac{\partial R_{ji}}{\partial z} \Delta z + \frac{\partial R_{ji}}{\partial dT} \Delta dT
 $$
+
 where $R_{ji,0}$ is the pseudorange computed at the initial guess. $\Delta x, \Delta y, \Delta z, \Delta dT$ are the corrections to the initial guess. The partial derivatives become:
+
 $$
 \frac{\partial R_{ji}}{\partial x} = -\frac{X - x}{\rho}, \quad
 \frac{\partial R_{ji}}{\partial y} = -\frac{Y - y}{\rho}, \quad
@@ -1046,6 +1052,7 @@ $$
 $$
 
 The design matrix $A$ is constructed using these derivatives:
+
 $$
 A = \begin{bmatrix}
 -\frac{X_1 - x}{\rho_1} & -\frac{Y_1 - y}{\rho_1} & -\frac{Z_1 - z}{\rho_1} & 1 \\
@@ -1061,6 +1068,7 @@ This linearized system is solved iteratively, updating $(x, y, z, dT)$ until con
 
 #### 4. **Observation Vector ($l$)**
 The observation vector $l$ represents the difference between the measured pseudoranges and the calculated distances:
+
 $$
 l = R_{ji} + c \cdot dT_\text{rel} - (\rho + c \cdot dT_i)
 $$
@@ -1069,6 +1077,7 @@ $$
 
 #### 5. **Normal Matrix ($N$)**
 The normal matrix is computed as:
+
 $$
 N = A^T A
 $$
@@ -1077,32 +1086,39 @@ $$
 
 #### 6. **Correction Vector ($h$)**
 The correction vector is computed as:
+
 $$
 h = A^T l
 $$
 
 ---
 
-#### 7. **Solve for Updates ($\Delta x, \Delta y, \Delta z, \Delta dT_0$)**
+#### 7. **Solve for Updates** ($\Delta x, \Delta y, \Delta z, \Delta dT_0$)
 Solve the linear system:
+
 $$
 \Delta \mathbf{x} = N^{-1} h
 $$
+
 where $\Delta \mathbf{x} = [\Delta x, \Delta y, \Delta z, \Delta dT_0]^T$.
 
 ---
 
 #### 8. **Update Receiver Position**
 Update the receiver's position and clock bias:
+
 $$
 x \gets x + \Delta x
 $$
+
 $$
 y \gets y + \Delta y
 $$
+
 $$
 z \gets z + \Delta z
 $$
+
 $$
 dT_0 \gets dT_0 + \frac{\Delta dT_0}{c}
 $$
@@ -1139,6 +1155,7 @@ Repeat steps 2–8 until the largest correction in $\Delta \mathbf{x}$ is smalle
 
 This iterative least-squares approach ensures high accuracy in estimating the receiver's position while accounting for satellite clock errors and relativistic corrections.
 
+---
 
 ### Statistical Parameters of the estimated position
 
@@ -1146,17 +1163,20 @@ This section describes the key statistical parameters computed during the GNSS p
 
 ---
 
-### **1. Residuals ($V$)**
+### **1. Residuals** ($V$)
 Residuals represent the differences between observed and computed values:
+
 $$
 V = A \cdot h - l
 $$
+
 where $A$ is the Design matrix, $h$ is the Adjustments vector and $l$ is the Observations vector. **Significance**: Residuals indicate the quality of the fit between the observed pseudoranges and the model.
 
 ---
 
 ### **2. Sum of Squared Errors (SSE)**
 The SSE quantifies the total error in the fit:
+
 $$
 \text{SSE} = V^T \cdot V
 $$
@@ -1165,11 +1185,13 @@ $$
 
 ---
 
-### **3. Standard Deviation of Unit Weight ($S_0$)**
+### **3. Standard Deviation of Unit Weight** ($S_0$)
 The standard deviation of unit weight measures the average residual per degree of freedom:
+
 $$
 S_0 = \sqrt{\frac{\text{SSE}}{n - e}}
 $$
+
 where $n$ is the number of observations and $e$ is the number of unknowns. **Significance**: $S_0$ is a measure of the model's overall accuracy.
 
 ---
