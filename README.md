@@ -689,11 +689,11 @@ $$
 ---
 
 #### 5. **Initialize State Vector**
-Initial state vector $\text{state\_vec}$:
+Initial state vector:
 
 $$
 \begin{equation}
-state{\_vec} = \begin{bmatrix} x_e \\ y_e \\ z_e \\ v_x \\ v_y \\ v_z \end{bmatrix}
+state_{vec} = \begin{bmatrix} x_e \\ y_e \\ z_e \\ v_x \\ v_y \\ v_z \end{bmatrix}
 \end{equation}
 $$
 
@@ -701,7 +701,7 @@ Initial acceleration vector:
 
 $$
 \begin{equation}
-a{\_vec} = \begin{bmatrix} J_x \\ J_y \\ J_z \end{bmatrix}
+a_{vec} = \begin{bmatrix} J_x \\ J_y \\ J_z \end{bmatrix}
 \end{equation}
 $$
 
