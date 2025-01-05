@@ -545,55 +545,54 @@ If the receiver position is known, adjust for the Earth's rotation during signal
 The Earth's rotation during the signal's travel introduces a positional error if uncorrected. This adjustment ensures high-accuracy satellite positioning and is implemented in the ``kepler2ecef`` method part of the ``Kepler2ECEF`` class, and the iterative method ensures precise compensation for the Earth's rotation during signal travel time.
 
 #### **Iterative Algorithm for Earth Rotation Correction**
-1. **Initialize Variables**:
+**Initialize Variables**:
    - $\text{TRANS}_0$: Approximate initial signal travel time, e.g., 0.075 seconds.
    - $\text{TRANS}$: Variable to store updated travel time.
    - $j$: Iteration counter.
 
-2. **Iterative Process**:
-   - Update the longitude of the ascending node ($ \Omega_k $) to account for the Earth's rotation during the signal travel time:
+**Iterative Process**:
 
-     $$
-     \Omega_k = \Omega_0 + (\dot{\Omega} - \omega_e)t_k - \omega_e(\text{TOE} + \text{TRANS})
-     $$
+Update the longitude of the ascending node ($ \Omega_k $) to account for the Earth's rotation during the signal travel time:
 
-   - Recalculate ECEF coordinates:
+$$
+\begin{equation*}
+\Omega_k = \Omega_0 + (\dot{\Omega} - \omega_e)t_k - \omega_e(\text{TOE} + \text{TRANS})
+\end{equation*}
+$$
 
-     $$
-     X = x \cos(\Omega_k) - y \sin(\Omega_k) \cos(i_k)
-     $$
+Recalculate ECEF coordinates:
 
-     $$
-     Y = x \sin(\Omega_k) + y \cos(\Omega_k) \cos(i_k)
-     $$
-
-     $$
-     Z = y \sin(i_k)
-     $$
-
-   - Compute the distance ($ \text{DS} $) between the satellite and the receiver:
-
-     $$
-     \text{DS} = \sqrt{(X - x_\text{rec})^2 + (Y - y_\text{rec})^2 + (Z - z_\text{rec})^2}
-     $$
-
-   - Update the travel time:
-
-     $$
-     \text{TRANS}_0 = \frac{\text{DS}}{c}
-     $$
-
-3. **Convergence**:
-   - Repeat the process until:
-     $$
-     |\text{TRANS}_0 - \text{TRANS}| < \epsilon
-     $$
-     Where $ \epsilon $ is a small threshold, e.g., $ 10^{-10} $.
+$$
+\begin{gather*}
+X = x \cos(\Omega_k) - y \sin(\Omega_k) \cos(i_k) \\
+Y = x \sin(\Omega_k) + y \cos(\Omega_k) \cos(i_k) \\
+Z = y \sin(i_k)
+\end{gather*}
+$$
 
 
+Compute the distance ($ \text{DS} $) between the satellite and the receiver:
 
-#### **Final Adjusted Coordinates**
-Once the iteration converges, the corrected ECEF coordinates are $X, Y, Z$ and the relativistic clock correction. $ \Delta T_\text{rel} $.
+$$
+\text{DS} = \sqrt{(X - x_\text{rec})^2 + (Y - y_\text{rec})^2 + (Z - z_\text{rec})^2}
+$$
+
+Update the travel time:
+
+$$
+\text{TRANS}_0 = \frac{\text{DS}}{c}
+$$
+
+**Convergence**:
+
+Repeat the process until:
+$$
+|\text{TRANS}_0 - \text{TRANS}| < \epsilon
+$$
+
+
+<br><br>
+Where $ \epsilon $ is a small threshold, e.g., $ 10^{-10} $. Once the iteration converges, the corrected ECEF coordinates are $X, Y, Z$ and the relativistic clock correction. $ \Delta T_\text{rel} $.
 
 ---
 
