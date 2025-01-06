@@ -383,7 +383,7 @@ result_dict = PickleHandler.read_zstd_pickle(path_to_picklefile)
 
 ### Converting Keplerian Elements to ECEF Coordinates
 
-This section explains step-by-step how satellite positions in Keplerian elements are converted to Earth-Centered Earth-Fixed (ECEF) coordinates. The explanation is showing how the `kepler2ecef` method has implemented this conversion. This approch works for GPS, Galileo and BeiDou, but not for GLONASS. GLONASS is not storing the satellite positions as Keplerian elements, but uses a state vector instead. Hence another approch is neccessary.
+This section explains step-by-step how satellite positions in Keplerian elements are converted to Earth-Centered Earth-Fixed (ECEF) coordinates. The explanation is showing how the `kepler2ecef` method has implemented this conversion. This approch works for GPS, Galileo and BeiDou, but not for GLONASS. GLONASS is not storing the satellite positions as Keplerian elements, but uses a state vector instead. The coordinates then get interpolated to the current epoch by solving the differential equation using a 4th order Runge-Kutta.
 
 #### **Steps for Conversion**
 
@@ -1278,45 +1278,45 @@ $$
 
 ### **Computation Workflow**
 The following steps summarize the computation of these statistical parameters:
-1. **Compute Residuals**:
+1. **Compute Residuals**
 
 $$
 V = A \cdot h - l
 $$
 
-2. **Calculate SSE**:
+2. **Calculate SSE**
 
 $$
 \text{SSE} = V^T \cdot V
 $$
 
-3. **Compute $S_0$**:
+3. **Compute $S_0$**
 
 $$
 S_0 = \sqrt{\frac{\text{SSE}}{n - e}}
 $$
 
-4. **Derive $Q_{xx}$**:
+4. **Derive $Q_{xx}$**
 
 $$
 Q_{xx} = N^{-1}, \quad N = A^T \cdot A
 $$
 
-5. **Calculate $C_{xx}$**:
+5. **Calculate $C_{xx}$**
 
 $$
 C_{xx} = S_0^2 \cdot Q_{xx}
 $$
 
-6. **Extract Cofactors** ($q_X, q_Y, q_Z, q_{dT}$) from $Q_{xx}$.
+6. **Extract Cofactors** ($q_X, q_Y, q_Z, q_{dT}$) from $Q_{xx}$
 
-7. **Compute DOPs**:
+7. **Compute DOPs**
 
 $$
 \text{PDOP}, \text{TDOP}, \text{GDOP}
 $$
 
-8. **Calculate Standard Deviations**:
+8. **Calculate Standard Deviations**
 
 $$
 S_x, S_y, S_z, S_t
