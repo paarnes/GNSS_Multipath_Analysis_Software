@@ -737,20 +737,20 @@ this method will be refered to as $f$ from now.
 Compute the derivatives using the current state vector and acceleration:
 
 $$
-k_1 = f(state\_vec_n, a\_vec)
+k_1 = f(state_{vec_n}, a_{vec})
 $$
 
 
 $$
-k_2 = f\left(state\_vec_n + \frac{k_1 \cdot t\_step}{2}, a\_vec\right)
+k_2 = f\left(state_{vec_n} + \frac{k_1 \cdot t_{step}}{2}, a_{vec} \right)
 $$
 
 $$
-k_3 = f\left(state\_vec_n + \frac{k_2 \cdot t\_step}{2}, a\_vec\right)
+k_3 = f\left(state_{vec_n} + \frac{k_2 \cdot t_{step}}{2}, a_{vec} \right)
 $$
 
 $$
-k_4 = f\left(state\_vec_n + k_3 \cdot t\_step, a\_vec\right)
+k_4 = f\left(state_{vec_n} + k_3 \cdot t_{step}, a_{vec} \right)
 $$
 
 
@@ -758,7 +758,7 @@ $$
 Compute the updated state vector ($\text{state\_vec}_{n+1}$) as:
 
 $$
-state\_vec_{n+1} = state\_vec_n + \frac{1}{6} (k_1 + 2k_2 + 2k_3 + k_4) \cdot t\_step
+state_{vec_{n+1}} = state_{vec_n} + \frac{1}{6} (k_1 + 2k_2 + 2k_3 + k_4) \cdot t_{step}
 $$
 
 
