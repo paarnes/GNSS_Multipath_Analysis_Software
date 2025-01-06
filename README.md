@@ -826,10 +826,10 @@ $$
 $$
 
 where:
-- $\mu = 3.9860044 \times 10^{14}$ [$m^3/s^2$] is the gravitational constant.
+- $\mu = 3.9860044 \times 10^{14}$ $[m^3/s^2]$ is the gravitational constant.
 - $J_2 = 1.0826257 \times 10^{-3}$ is the Earth's oblateness factor.
-- $\omega = 7.292115 \times 10^{-5}$ [$rad/s$] is the Earth's rotation rate.
-- $a_e = 6378136.0$ [$m$] is the semi-major axis of the Earth (PZ-90 ellipsoid).
+- $\omega = 7.292115 \times 10^{-5}$ $[rad/s]$ is the Earth's rotation rate.
+- $a_e = 6378136.0$ $[m]$ is the semi-major axis of the Earth (PZ-90 ellipsoid).
 
 
 This method ensures precise interpolation of GLONASS satellite positions and velocities at user-specified epochs.
@@ -1042,8 +1042,7 @@ $$
 ---
 
 #### 3. **Linearization via Taylor Series and Construction of the Design Matrix ($A$)**
-The observation equation for pseudoranges is non-linear. Before its possible to use linear algebra, we have to linearize using a first-order Taylor series expansion.
-This linearization assumes small corrections to the initial approximate values of $(x,y,z,dT)$. The pseudorange equation is:
+The observation equation for pseudoranges is non-linear. Before we can use linear algebra, we need to linearize it using a first-order Taylor series expansion. This linearization assumes small corrections to the initial approximate values of $(x,y,z,dT)$. The pseudorange equation is:
 
 $$
 R_{ji} = \sqrt{(X - x)^2 + (Y - y)^2 + (Z - z)^2} + dT
