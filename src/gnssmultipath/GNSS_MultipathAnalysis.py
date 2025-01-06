@@ -14,7 +14,6 @@ import numpy as np
 from tqdm import tqdm
 from gnssmultipath.readRinexObs import readRinexObs
 from gnssmultipath.Geodetic_functions import gpstime_to_utc_datefmt, gpstime2date
-from gnssmultipath.computeSatElevations import computeSatElevations
 from gnssmultipath.computeSatElevAzimuth_fromNav import computeSatElevAzimuth_fromNav
 from gnssmultipath.signalAnalysis import signalAnalysis
 from gnssmultipath.detectClockJumps import detectClockJumps
@@ -169,7 +168,7 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
     OUTPUTS:
 
     analysisResults:          A dictionary that contains alls results of all analysises, for all GNSS systems.
-    
+
 
     The software is also returning results file. A report provided as a text file, and a CSV file with the estimated values.
     --------------------------------------------------------------------------------------------------------------------------
