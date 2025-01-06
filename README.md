@@ -725,13 +725,13 @@ Solving the system of ordinary differential equations (ODEs) using the 4th-order
 
 <div align="center">
 derivatives = glonass_diff_eq(state_vec, a_vec)
-
 </div>
 
+<br>
 
 this method will be refered to as $f$ from now.
 
-### **Runge-Kutta Integration with Indexed Updates**
+### **Runge-Kutta steps**
 
 **Calculate Derivatives**:
 Compute the derivatives using the current state vector and acceleration:
