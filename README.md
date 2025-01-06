@@ -755,7 +755,7 @@ $$
 
 
 **Update State Vector**:
-Compute the updated state vector ($\text{state\_vec}_{n+1}$) as:
+Compute the updated state vector ($state_{vec_{n+1}}$) as:
 
 $$
 state_{vec_{n+1}} = state_{vec_n} + \frac{1}{6} (k_1 + 2k_2 + 2k_3 + k_4) \cdot t_{step}
