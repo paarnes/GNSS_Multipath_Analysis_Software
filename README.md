@@ -725,10 +725,8 @@ Solving the system of ordinary differential equations (ODEs) using the 4th-order
 
 <div align="center">
 derivatives = glonass_diff_eq(state_vec, a_vec)
+
 </div>
-
-
-
 
 
 this method will be refered to as $f$ from now.
@@ -739,27 +737,30 @@ this method will be refered to as $f$ from now.
 Compute the derivatives using the current state vector and acceleration:
 
 $$
-k_1 = f(\text{state\_vec}_n, \text{a\_vec})
+k_1 = f(state\_vec_n, a\_vec)
+$$
+
+
+$$
+k_2 = f\left(state\_vec_n + \frac{k_1 \cdot t\_step}{2}, a\_vec\right)
 $$
 
 $$
-k_2 = f\left(\text{state\_vec}_n + \frac{k_1 \cdot t_\text{step}}{2}, \text{a\_vec}\right)
+k_3 = f\left(state\_vec_n + \frac{k_2 \cdot t\_step}{2}, a\_vec\right)
 $$
 
 $$
-k_3 = f\left(\text{state\_vec}_n + \frac{k_2 \cdot t_\text{step}}{2}, \text{a\_vec}\right)
+k_4 = f\left(state\_vec_n + k_3 \cdot t\_step, a\_vec\right)
 $$
 
-$$
-k_4 = f\left(\text{state\_vec}_n + k_3 \cdot t_\text{step}, \text{a\_vec}\right)
-$$
 
 **Update State Vector**:
 Compute the updated state vector ($\text{state\_vec}_{n+1}$) as:
 
 $$
-\text{state\_vec}_{n+1} = \text{state\_vec}_n + \frac{1}{6} (k_1 + 2k_2 + 2k_3 + k_4) \cdot t_\text{step}
+state\_vec_{n+1} = state\_vec_n + \frac{1}{6} (k_1 + 2k_2 + 2k_3 + k_4) \cdot t\_step
 $$
+
 
 **Update Time**:
 Increment the time to the next step:
