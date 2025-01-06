@@ -723,9 +723,10 @@ $$
 #### Runge-Kutta Equations:
 Solving the system of ordinary differential equations (ODEs) using the 4th-order Runge-Kutta method. Runge-Kutta interpolation method implemented in the ``glonass_diff_eq`` method apart of the ``GLOStateVec2ECEF`` class.
 
-$$
-\text{derivatives} = \text{glonass\_diff\_eq}(state_{\text{vec}}, a_{\text{vec}})
-$$
+<div align="center">
+derivatives = glonass_diff_eq(state_vec, a_vec)
+</div>
+
 
 
 
