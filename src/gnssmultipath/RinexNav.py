@@ -71,7 +71,7 @@ class RinexNav:
             # Calculate the time difference between the current epoch and the previous one
             # Appends the data if the time diff is greater than the set limit, or if it is the first epoch (filtered_data is empty)
             time_diff = epoch - previous_epoch
-            if time_diff >= time_difference or not filtered_data: 
+            if time_diff >= time_difference or not filtered_data:
                 filtered_data.append(ephemeris_sublist)
                 previous_epoch = epoch
 
@@ -120,6 +120,9 @@ class RinexNav:
             print(f"Could not open/read file: {filename}\nError: {e}")
             return
         return header
+
+
+
 
 
 
@@ -187,7 +190,7 @@ class Rinex_v2_Reader(RinexNav):
             for idx, val in enumerate(line):
                 if line[0:2] != ' ' and line[22] != ' ':
                     line = line[:22] + " " + line[22:]
-                if line[idx] == 'E':
+                if line[idx] == 'e' or line[idx] == 'E' and idx !=0:
                     line = line[:idx+4] + " " + line[idx+4:]
 
             fl = [el for el in line.split(" ") if el != ""]
@@ -213,11 +216,14 @@ class Rinex_v2_Reader(RinexNav):
                 block_arr = block_arr.reshape(1,len(block_arr))
 
             ## -- Collecting all data into common variable
+            if block_arr.shape[1] > 36:
+                block_arr = block_arr[:,0:36]
             if np.size(block_arr) != 0:
                 data  = np.concatenate([data , block_arr], axis=0)
             else:
                 data  = np.delete(data , (0), axis=0)
                 print('File %s is read successfully!' % (filename))
+
 
         filnr.close()
         n_eph = len(data)
@@ -225,7 +231,13 @@ class Rinex_v2_Reader(RinexNav):
         if dataframe == 'yes' or dataframe == 'YES':
             data = DataFrame(data)
 
-        return data, header, n_eph
+        # Create a dictinary for the data
+        nav_data = {'ephemerides':data,
+                    'header':header,
+                    'nepohs': n_eph
+                    }
+
+        return nav_data
 
 
 
