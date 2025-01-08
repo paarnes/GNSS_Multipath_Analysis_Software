@@ -57,6 +57,18 @@ GNSS Multipath Analysis is a software tool for analyzing the multipath effect on
 - Detects cycle slips and estimates the multipath effect.
 - Exports results to CSV and a Python dictionary as a Pickle (both compressed and uncompressed formats are supported).
 - Allows selection of specific navigation systems and signal bands for analysis.
+- Estimate the approximate position of the receiver using pseudoranges from the RINEX observation file.
+  - Supports both SP3 and RINEX navigation files.
+  - Calculates statistical measures for the estimated position, including:
+    - Residuals
+    - Sum of Squared Errors (SSE)
+    - Cofactor matrix
+    - Covariance matrix
+    - Dilution of Precision (PDOP, GDOP, and TDOP)
+    - Standard deviation of the estimated position
+
+
+
 
 
 ## Installation
@@ -97,7 +109,7 @@ If you have a SP3 file, and not a RINEX navigation file, you just replace the ke
 ## The steps are:
 1. Reads in the RINEX observation file
 2. Reads the RINEX navigation file or the precise satellite coordinates in SP3-format (depends on what’s provided)
-3. If a navigation file is provided, the satellite coordinates will be transformed from Kepler-elements to ECEF for GPS, Galileo and BeiDou. For GLONASS the navigation file is containing a state vector. The coordinates then get interpolated to the current epoch by solving the differential equation using a 4th order Runge-Kutta. If a SP3 file is provided, the interpolation is done by a barycentric Lagrange interpolation.
+3. If a navigation file is provided, the satellite coordinates will be transformed from Kepler-elements to ECEF for GPS, Galileo and BeiDou. For GLONASS the navigation file is containing a state vector. The coordinates then get interpolated to the current epoch by solving the differential equation using a 4th order Runge-Kutta. If a SP3 file is provided, the interpolation is done using ``Neville's algorithm``.
 4. Satellites elevation and azimuth angles get computed.
 5. Cycle slip detection by using both ionospheric residuals and a code-phase combination. These linear combinations are given as
 
