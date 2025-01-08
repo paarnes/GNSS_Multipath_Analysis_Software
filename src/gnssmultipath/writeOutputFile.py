@@ -34,6 +34,11 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
     rinexVersion            = analysisResults['ExtraOutputInfo']['rinexVersion']
     rinexProgr              = analysisResults['ExtraOutputInfo']['rinexProgr']
     recType                 = analysisResults['ExtraOutputInfo']['recType']
+
+    rinex_rec_approx_pos    = analysisResults['ExtraOutputInfo']['Rinex_Receiver_Approx_Pos']
+    estimated_approx_pos    = analysisResults['ExtraOutputInfo'].get('Estimated_Receiver_Approx_Pos', None)
+    esti_approx_pos_stats   = analysisResults['ExtraOutputInfo'].get('Estimated_Receiver_Approx_Pos_stats', None)
+
     tFirstObs               = analysisResults['ExtraOutputInfo']['tFirstObs']
     tLastObs                = analysisResults['ExtraOutputInfo']['tLastObs']
     tInterval               = analysisResults['ExtraOutputInfo']['tInterval']
@@ -107,8 +112,8 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
     fid = open(outputFilename, 'w+')
 
     fid.write('GNSS_MultipathAnalysis\n')
-    fid.write('Software version: 1.4.3\n')
-    fid.write('Last software version release: 26/11/2023\n\n')
+    fid.write('Software version: 1.5.0\n')
+    fid.write('Last software version release: 08/01/2025\n\n')
     fid.write('Software developed by Per Helge Aarnes (per.helge.aarnes@gmail.com) \n\n')
     fid.write('RINEX observation filename:\t\t %s\n' % (rinex_obs_filename))
     if sp3_filename is not None:
@@ -117,6 +122,18 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
         fid.write('Broadcast navigation filename:\t %s\n' % (','.join(broad_filename)))
     fid.write('RINEX version:\t\t\t\t\t %s\n' % (rinexVersion.strip()))
     fid.write('RINEX converting program:\t\t %s\n' % (rinexProgr))
+    fid.write('Rec. approx position (RINEX):    %s\n' % (rinex_rec_approx_pos))
+
+    if estimated_approx_pos:
+        std_est_pos = (
+            esti_approx_pos_stats["Standard Deviations"]["Sx"],
+            esti_approx_pos_stats["Standard Deviations"]["Sy"],
+            esti_approx_pos_stats["Standard Deviations"]["Sz"],
+        )
+        fid.write('Est. approx position: \t\t\t %s\n' % str(estimated_approx_pos))
+        fid.write('St.dev of the est. position: \t %s\n' % ', '.join(map(str, std_est_pos)))
+
+
     fid.write('Marker name:\t\t\t\t\t %s\n' % (markerName))
     fid.write('Receiver type:\t\t\t\t\t %s\n' % (recType))
     fid.write('Date of observation start:\t\t %4d/%d/%d %d:%d:%.2f \n' % (tFirstObs[0],tFirstObs[1],tFirstObs[2],tFirstObs[3],tFirstObs[4],tFirstObs[5]))

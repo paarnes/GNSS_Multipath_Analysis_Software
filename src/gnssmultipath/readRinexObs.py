@@ -358,7 +358,7 @@ def readRinexObs304(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
     max_GPS_PRN     = 36 # Max number of GPS PRN in constellation
     max_GLONASS_PRN = 36 # Max number of GLONASS PRN in constellation
     max_Galileo_PRN = 36 # Max number of Galileo PRN in constellation
-    max_Beidou_PRN  = 60 # Max number of BeiDou PRN in constellation
+    max_Beidou_PRN  = 100 # Max number of BeiDou PRN in constellation
 
     ## -- Read header of observation file
     [success, rinexVersion, gnssType, markerName, recType, antDelta,\
@@ -1827,7 +1827,7 @@ def readRinexObs211(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
     max_GPS_PRN     = 36 # Max number of GPS PRN in constellation
     max_GLONASS_PRN = 36 # Max number of GLONASS PRN in constellation
     max_Galileo_PRN = 36 # Max number of Galileo PRN in constellation
-    max_Beidou_PRN  = 60 # Max number of BeiDou PRN in constellation
+    max_Beidou_PRN  = 100 # Max number of BeiDou PRN in constellation
 
     ## -- Read header of observation file
     [success, rinexVersion, gnssType, markerName, recType, antDelta,\
