@@ -112,8 +112,8 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
     fid = open(outputFilename, 'w+')
 
     fid.write('GNSS_MultipathAnalysis\n')
-    fid.write('Software version: 1.4.6\n')
-    fid.write('Last software version release: 5/01/2025\n\n')
+    fid.write('Software version: 1.5.0\n')
+    fid.write('Last software version release: 08/01/2025\n\n')
     fid.write('Software developed by Per Helge Aarnes (per.helge.aarnes@gmail.com) \n\n')
     fid.write('RINEX observation filename:\t\t %s\n' % (rinex_obs_filename))
     if sp3_filename is not None:
