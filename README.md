@@ -24,6 +24,11 @@
    - [Read a RINEX navigation file (v.3)](#read-a-rinex-navigation-file-v3)
    - [Read in the results from an uncompressed Pickle file](#read-in-the-results-from-an-uncompressed-pickle-file)
    - [Read in the results from a compressed Pickle file](#read-in-the-results-from-a-compressed-pickle-file)
+   - [Estimate the receiver position based on pseudoranges using SP3 file and print the standard deviation of the estimated position](#estimate-the-receiver-position-based-on-pseudoranges-using-sp3-file-and-print-the-standard-deviation-of-the-estimated-position)
+   - [Estimate the receiver position based on pseudoranges using RINEX navigation file and print the DOP values](#estimate-the-receiver-position-based-on-pseudoranges-using-rinex-navigation-file-and-print-the-dop-values)
+
+
+
 - [Background information about implementation](#some-background-information-on-implementation)
 	- [Converting Keplerian Elements to ECEF Coordinates](#converting-keplerian-elements-to-ecef-coordinates)
 	- [Interpolating a GLONASS State Vector to ECEF Coordinates](#interpolating-a-glonass-state-vector-to-ecef-coordinates)
@@ -377,6 +382,54 @@ from gnssmultipath import PickleHandler
 path_to_picklefile = 'analysisResults.pkl'
 result_dict = PickleHandler.read_zstd_pickle(path_to_picklefile)
 ```
+
+
+### Estimate the receiver position based on pseudoranges using SP3 file and print the standard deviation of the estimated position
+```python
+from gnssmultipath import GNSSPositionEstimator
+import numpy as np
+
+rinObs = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04_croped.rnx'
+sp3 = 'Testfile_20220101.eph'
+
+# Set desired time for when to estimate position and which system to use
+desired_time = np.array([2022, 1, 1, 1, 5, 30.0000000])
+desired_system = "G"  # GPS
+gnsspos, stats = GNSSPositionEstimator(rinObs,
+                                    sp3_file = sp3,
+                                    desired_time = desired_time,
+                                    desired_system = desired_system,
+                                    elevation_cut_off_angle = 15
+                                    ).estimate_position()
+
+print('Estimated coordinates in ECEF (m):\n' + '\n'.join([f'{axis} = {coord}' for axis, coord in zip(['X', 'Y', 'Z'], np.round(gnsspos[:-1], 3))]))
+print('\nStandard deviation of the estimated coordinates (m):\n' + '\n'.join([f'{k} = {v}' for k, v in stats["Standard Deviations"].items() if k in ['Sx', 'Sy', 'Sz']]))
+```
+
+### Estimate the receiver position based on pseudoranges using RINEX navigation file and print the DOP values
+```python
+from gnssmultipath import GNSSPositionEstimator
+import numpy as np
+
+rinObs = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04_croped.rnx'
+rinNav = 'BRDC00IGS_R_20220010000_01D_MN.rnx'
+
+# Set desired time for when to estimate position and which system to use
+desired_time = np.array([2022, 1, 1, 2, 40, 0.0000000])
+desired_system = "R"  # GLONASS
+
+
+gnsspos, stats = GNSSPositionEstimator(rinObs,
+                                    rinex_nav_file = rinNav,
+                                    desired_time = desired_time,
+                                    desired_system = desired_system,
+                                    elevation_cut_off_angle = 10).estimate_position()
+
+print('Estimated coordinates in ECEF (m):\n' + '\n'.join([f'{axis} = {coord}' for axis, coord in zip(['X', 'Y', 'Z'], np.round(gnsspos[:-1], 3))]))
+print('\nStandard deviation of the estimated coordinates (m):\n' + '\n'.join([f'{k} = {v}' for k, v in stats["Standard Deviations"].items() if k in ['Sx', 'Sy', 'Sz']]))
+print(f'\nDOP values:\n' + '\n'.join([f'{k} = {v}' for k, v in stats["DOPs"].items()]))
+```
+
 
 
 ## Some background information on implementation
