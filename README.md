@@ -67,9 +67,8 @@ GNSS Multipath Analysis is a software tool for analyzing the multipath effect on
     - Dilution of Precision (PDOP, GDOP, and TDOP)
     - Standard deviation of the estimated position
 
---- 
 
-This version improves readability and ensures consistent terminology.
+
 
 
 ## Installation
