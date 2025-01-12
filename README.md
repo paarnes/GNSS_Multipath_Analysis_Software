@@ -3,6 +3,11 @@
 [![Python application](https://github.com/paarnes/GNSS_Multipath_Analysis_Software/actions/workflows/run-tests.yml/badge.svg)](https://github.com/paarnes/GNSS_Multipath_Analysis_Software/actions/workflows/run-tests.yml)
 [![PyPI version](https://badge.fury.io/py/gnssmultipath.svg)](https://badge.fury.io/py/gnssmultipath)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python Versions](https://img.shields.io/pypi/pyversions/gnssmultipath.svg)](https://pypi.org/project/gnssmultipath/)
+[![Downloads](https://pepy.tech/badge/gnssmultipath)](https://pepy.tech/project/gnssmultipath)
+
+
+
 
 ## Table of Contents
 - [Introduction](#introduction)
@@ -59,6 +64,8 @@ GNSS Multipath Analysis is a software tool for analyzing the multipath effect on
 - Allows selection of specific navigation systems and signal bands for analysis.
 - Estimate the approximate position of the receiver using pseudoranges from the RINEX observation file.
   - Supports both SP3 and RINEX navigation files.
+  - The software will estimate the receiver's position if it is not provided in the header of the RINEX observation file.
+  - Supports user-defined Coordinate Reference System (CRS). The estimated coordinates can be delivered in the desired CRS.
   - Calculates statistical measures for the estimated position, including:
     - Residuals
     - Sum of Squared Errors (SSE)
@@ -110,7 +117,7 @@ If you have a SP3 file, and not a RINEX navigation file, you just replace the ke
 1. Reads in the RINEX observation file
 2. Reads the RINEX navigation file or the precise satellite coordinates in SP3-format (depends on what’s provided)
 3. If a navigation file is provided, the satellite coordinates will be transformed from Kepler-elements to ECEF for GPS, Galileo and BeiDou. For GLONASS the navigation file is containing a state vector. The coordinates then get interpolated to the current epoch by solving the differential equation using a 4th order Runge-Kutta. If a SP3 file is provided, the interpolation is done using ``Neville's algorithm``.
-4. Satellites elevation and azimuth angles get computed.
+4. Compute the satellites' elevation and azimuth angles. If the receiver's approximate position is not provided in the header of the RINEX observation file, the software automatically estimates it based on pseudoranges using the ``GNSSPositionEstimator`` class.
 5. Cycle slip detection by using both ionospheric residuals and a code-phase combination. These linear combinations are given as
 
 $$
@@ -443,6 +450,34 @@ print(f'\nDOP values:\n' + '\n'.join([f'{k} = {v}' for k, v in stats["DOPs"].ite
 ```
 
 
+### Estimate the receiver's position based on pseudoranges in the desired CRS
+Define a specific Coordinate Reference System (CRS) to output the estimated receiver's coordinates. In this case the
+coordinates will be given in WGS84 UTM zone 32N (EPSG:32632) and ellipsoidal heights.
+
+Note: You can use the [EPSG GeoRepository](https://epsg.org/home.html) to find the EPSG code for the desired CRS.
+
+```python
+from gnssmultipath import GNSSPositionEstimator
+import numpy as np
+
+
+rinObs = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04_croped.rnx'
+rinNav = 'BRDC00IGS_R_20220010000_01D_MN.rnx'
+
+# Set desired time for when to estimate position and which system to use
+desired_time = np.array([2022, 1, 1, 1, 5, 30.0000000])
+desired_system = "E"  # GPS
+desired_crs = "EPSG:32632"  # Desired CRS for the estimated receiver coordinates (WGS84 UTM zone 32N)
+gnsspos, stats = GNSSPositionEstimator(rinObs,
+                                    rinex_nav_file=rinNav,
+                                    desired_time = desired_time,
+                                    desired_system = desired_system,
+                                    elevation_cut_off_angle = 10,
+                                    crs=desired_crs).estimate_position()
+
+print('Estimated coordinates in ECEF (m):\n' + '\n'.join([f'{axis} = {coord}' for axis, coord in zip(['Eastin', 'Northing', 'Height (ellipoidal)'], np.round(gnsspos[:-1], 3))]))
+```
+
 
 ## Some background information on implementation
 
@@ -532,7 +567,7 @@ $$
 \cos(\nu) = \frac{\cos(E) - e}{1 - e \cos(E)}, \quad \sin(\nu) = \frac{\sqrt{1 - e^2} \sin(E)}{1 - e \cos(E)}
 $$
 
-Use the arctangent to find $ \nu $:
+Use the arctangent to find $\nu$:
 
 $$
 \nu = \arctan2(\sin(\nu), \cos(\nu))
@@ -617,7 +652,7 @@ The Earth's rotation during the signal's travel introduces a positional error if
 
 **Iterative Process**:
 
-Update the longitude of the ascending node ($ \Omega_k $) to account for the Earth's rotation during the signal travel time:
+Update the longitude of the ascending node ($\Omega_k$) to account for the Earth's rotation during the signal travel time:
 
 $$
 \begin{equation*}
@@ -834,7 +869,7 @@ $$
 t_{n+1} = t_n + t_\text{step}
 $$
 
-**Reduce $ \Delta t $**:
+**Reduce**$\Delta t$:
 Adjust the remaining time difference:
 
 $$

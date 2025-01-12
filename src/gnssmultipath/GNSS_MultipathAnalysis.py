@@ -380,8 +380,19 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
         ## -- Build same struture for satellit elevation angles if broadcast nav defined
         sat_elevation_angles = {}
         sat_pos_dummy = sat_pos.copy()
+
+        # Intersect the keys in the sat_pos_dummy dict and the GNSSsystems dict
+        GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, GNSSsystems = filter_common_gnss_keys(sat_pos_dummy, GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, GNSSsystems)
+
         for sys in np.arange(0,len(GNSSsystems)):
             currentGNSSsystem = GNSSsystems[sys+1]
+
+            # Raise an error if currentGNSSsystem is not in sat_pos_dummy keys
+            if currentGNSSsystem not in sat_pos_dummy.keys():
+                sys_name = GNSSsystemCode2Fullname[currentGNSSsystem]
+                sys_in_rin_nav = [GNSSsystemCode2Fullname[sys] for sys in sat_pos_dummy.keys()]
+                raise KeyError(f'GNSS system "{sys_name}" is not present in the RINEX navigation file: {sys_in_rin_nav}')
+
             if currentGNSSsystem != 'C':
                 sat_elevation_angles[sys] = sat_pos_dummy[currentGNSSsystem]['elevation'][:,0:37]
             else:
@@ -860,6 +871,37 @@ def ismember(list_,code):
     if indx != []:
         indx = indx[0]
     return indx
+
+
+def filter_common_gnss_keys(sat_pos, GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, GNSSsystems):
+    """
+    Filters the GNSS-related dictionaries to include only common systems present in `sat_pos_dummy` keys.
+
+    Parameters:
+    ----------
+    - sat_pos (dict): Dictionary with satellite position data.
+    - GNSS_obs (dict): Dictionary of GNSS observations.
+    - GNSS_LLI (dict): Dictionary of GNSS Loss of Lock Indicators.
+    - GNSS_SS (dict): Dictionary of GNSS Signal Strengths.
+    - GNSS_SVs (dict): Dictionary of GNSS Space Vehicles.
+    - GNSSsystems (dict): Dictionary of GNSS systems.
+
+    Returns:
+    --------
+    - Tuple[dict, dict, dict, dict, dict]: Filtered GNSS dictionaries with common systems.
+    """
+    # Intersect the keys in sat_pos_dummy and GNSSsystems
+    common_systems = set(sat_pos.keys()).intersection(set(GNSSsystems.values()))
+
+    # Filter each dictionary to only include common systems
+    GNSSsystems_filtered = {k: v for k, v in GNSSsystems.items() if v in common_systems}
+    GNSS_obs_filtered = {k: v for k, v in GNSS_obs.items() if k in common_systems}
+    GNSS_LLI_filtered = {k: v for k, v in GNSS_LLI.items() if k in common_systems}
+    GNSS_SS_filtered = {k: v for k, v in GNSS_SS.items() if k in common_systems}
+    GNSS_SVs_filtered = {k: v for k, v in GNSS_SVs.items() if k in common_systems}
+
+    return GNSS_obs_filtered, GNSS_LLI_filtered, GNSS_SS_filtered, GNSS_SVs_filtered, GNSSsystems_filtered
+
 
 
 
