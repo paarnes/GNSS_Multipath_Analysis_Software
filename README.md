@@ -449,6 +449,32 @@ print(f'\nDOP values:\n' + '\n'.join([f'{k} = {v}' for k, v in stats["DOPs"].ite
 ```
 
 
+### Estimate the receiver's position based on pseudoranges in the desired CRS
+Define a specific Coordinate Reference System (CRS) to output the estimated receiver's coordinates. In this case the
+coordinates will be given in WGS84 UTM zone 32N (EPSG:32632) and ellipsoidal heights.
+
+```python
+from gnssmultipath import GNSSPositionEstimator
+import numpy as np
+
+
+rinObs = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04_croped.rnx'
+rinNav = 'BRDC00IGS_R_20220010000_01D_MN.rnx'
+
+# Set desired time for when to estimate position and which system to use
+desired_time = np.array([2022, 1, 1, 1, 5, 30.0000000])
+desired_system = "E"  # GPS
+desired_crs = "EPSG:32632"  # Desired CRS for the estimated receiver coordinates (WGS84 UTM zone 32N)
+gnsspos, stats = GNSSPositionEstimator(rinObs,
+                                    rinex_nav_file=rinNav,
+                                    desired_time = desired_time,
+                                    desired_system = desired_system,
+                                    elevation_cut_off_angle = 10,
+                                    crs=desired_crs).estimate_position()
+
+print('Estimated coordinates in ECEF (m):\n' + '\n'.join([f'{axis} = {coord}' for axis, coord in zip(['Eastin', 'Northing', 'Height (ellipoidal)'], np.round(gnsspos[:-1], 3))]))
+```
+
 
 ## Some background information on implementation
 
