@@ -6,17 +6,6 @@ a workflow that runs these tests.
 Made by: Per Helge Aarnes
 E-mail: per.helge.aarnes@gmail.com
 
-Example on how to run the tests:
-
-To run all tests:
-    pytest test_GNSSPositionEstimator.py  -vv
-
-To run a specific test:
-    pytest test_GNSSPositionEstimator.py::XXXXX  -vv
-
-To run a specific test in debug mode to see where it fails:
-    pytest test_GNSSPositionEstimator.py::xxx  -vv --pdb  (type "quit" to exit the debug mode)
-
 """
 
 import sys
@@ -57,7 +46,7 @@ desired_time = np.array([2022, 1, 1, 1, 5, 30.0000000])
 def test_with_initial_coordinates_GPS():
     desired_system = "G"  # Desired system for GNSS
 
-    # Initialize the GNSSPositionEstimator object
+    # Initialize the SP3PositionEstimator object
     GNSSPos = SP3PositionEstimator(sp3_data=sp3,
                                    rinex_obs_file=rinObs,
                                    desired_time=desired_time,
@@ -86,7 +75,7 @@ def test_with_initial_coordinates_GPS():
 def test_with_initial_coordinates_GLONASS():
     desired_system = "R"  # Desired system for GNSS
 
-    # Initialize the GNSSPositionEstimator object
+    # Initialize the SP3PositionEstimator object
     GNSSPos = SP3PositionEstimator(sp3_data=sp3,
                                    rinex_obs_file=rinObs,
                                    desired_time=desired_time,
@@ -115,7 +104,7 @@ def test_with_initial_coordinates_GLONASS():
 def test_with_initial_coordinates_BeiDou():
     desired_system = "C"  # Desired system for GNSS
 
-    # Initialize the GNSSPositionEstimator object
+    # Initialize the SP3PositionEstimator object
     GNSSPos = SP3PositionEstimator(sp3_data=sp3,
                                    rinex_obs_file=rinObs,
                                    desired_time=desired_time,
@@ -144,7 +133,7 @@ def test_with_initial_coordinates_BeiDou():
 def test_with_initial_coordinates_Galileo():
     desired_system = "E"  # Desired system for GNSS
 
-    # Initialize the GNSSPositionEstimator object
+    # Initialize the SP3PositionEstimator object
     GNSSPos = SP3PositionEstimator(sp3_data=sp3,
                                    rinex_obs_file=rinObs,
                                    desired_time=desired_time,
@@ -173,7 +162,7 @@ def test_with_initial_coordinates_Galileo():
 def test_with_initial_coordinates_Galileo_with_20_el_cutoff_and_no_approx_pos():
     desired_system = "E"  # Desired system for GNSS
 
-    # Initialize the GNSSPositionEstimator object
+    # Initialize the SP3PositionEstimator object
     GNSSPos = SP3PositionEstimator(sp3_data=sp3,
                                    rinex_obs_file=rinObs,
                                    desired_time=desired_time,

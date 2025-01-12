@@ -6,17 +6,6 @@ a workflow that runs these tests.
 Made by: Per Helge Aarnes
 E-mail: per.helge.aarnes@gmail.com
 
-Example on how to run the tests:
-
-To run all tests:
-    pytest test_GNSSPositionEstimator.py  -vv
-
-To run a specific test:
-    pytest test_GNSSPositionEstimator.py::XXXXX  -vv
-
-To run a specific test in debug mode to see where it fails:
-    pytest test_GNSSPositionEstimator.py::xxx  -vv --pdb  (type "quit" to exit the debug mode)
-
 """
 
 import sys
@@ -55,7 +44,7 @@ desired_system = "G"  # Desired system for GNSS
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_with_initial_coordinates():
-    # Initialize the GNSSPositionEstimator object
+    # Initialize the BroadNavPositionEstimator object
     GNSSPos = BroadNavPositionEstimator(
         rinObs, rinNav, desired_time, desired_system, x_rec_approx=x_rec, y_rec_approx=y_rec, z_rec_approx=z_rec, elevation_cut_off_angle=15
     )
@@ -76,7 +65,7 @@ def test_with_initial_coordinates():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_without_initial_coordinates():
-    # Initialize the GNSSPositionEstimator object
+    # Initialize the BroadNavPositionEstimator object
     GNSSPos = BroadNavPositionEstimator(
         rinObs, rinNav, desired_time, desired_system, elevation_cut_off_angle=15)
     # Estimate position and extract the results
@@ -96,7 +85,7 @@ def test_without_initial_coordinates():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_GLONASS_without_initial_coordinates():
-    # Initialize the GNSSPositionEstimator object
+    # Initialize the BroadNavPositionEstimator object
     desired_system ="R"
     desired_time = np.array([2022, 1, 1, 0, 0, 30.0000000])
     GNSSPos = BroadNavPositionEstimator(
@@ -118,7 +107,7 @@ def test_GLONASS_without_initial_coordinates():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_GLONASS_with_initial_coordinates():
-    # Initialize the GNSSPositionEstimator object
+    # Initialize the BroadNavPositionEstimator object
     desired_system ="R"
     desired_time = np.array([2022, 1, 1, 0, 0, 30.0000000])
     GNSSPos = BroadNavPositionEstimator(

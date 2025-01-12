@@ -28,7 +28,7 @@ class BroadNavPositionEstimator:
         rinNav = "path/to/rinex_nav_file.rnx"
         desired_time = np.array([2024, 1, 1, 12, 0, 0])  # Example date and time
         desired_system = "G"  # Use GPS
-        GNSSPos = GNSSPositionEstimator(rinObs, rinNav, desired_time, desired_system)
+        GNSSPos = BroadNavPositionEstimator(rinObs, rinNav, desired_time, desired_system)
         estimated_position, stats = GNSSPos.estimate_position()
 
 
@@ -257,7 +257,7 @@ class BroadNavPositionEstimator:
         low_sat_indices = np.where(elevations < self.elevation_cut_off_angle)[0]
         for i in low_sat_indices:
             PRN = f"{self.desired_sys}{str(sat_nr[i]).zfill(2)}"
-            logger.info(f"\nINFO(GNSSPositionEstimator): {PRN} is exluded due to low elevation: {np.round(elevations[i],3)}°")
+            logger.info(f"\nINFO(BroadNavPositionEstimator): {PRN} is exluded due to low elevation: {np.round(elevations[i],3)}°")
 
 
         # Update satellite-related data based on active satellites
@@ -462,38 +462,6 @@ if __name__=="__main__":
     desired_time = np.array([2022, 1, 1, 0, 0, 30.0000000])
     # desired_time = np.array([2022, 1, 1, 0, 5, 0.0000000])
     desired_system = "R"
-
-
-
-    ### TEST
-    # rinNav = r"C:\Users\perhe\OneDrive\Documents\Python_skript\Approx_rec_pos\BRDM00DLR_S_20191550000_01D_MN.rnx"
-    # fasit = np.array([3173400.0, 605500.0, 5481000.0])
-    # # fasit = np.array([3173289, 605742, 5481217])
-    # x_rec, y_rec, z_rec = fasit.T
-    # desired_time = np.array([2019, 6, 4, 7, 30, 0.0000000])
-
-
-    # GNSSPos = GNSSPositionEstimator(rinObs, rinNav, desired_time, desired_system, x_rec_approx=x_rec, y_rec_approx=y_rec, z_rec_approx=z_rec)
-    # GNSSPos = GNSSPositionEstimator(rinObs, rinNav, desired_time, desired_system, x_rec_approx=0, y_rec_approx=0, z_rec_approx=0)
-    # estimated_position, stats = GNSSPos.estimate_position()
-    # X,Y,Z,dT = estimated_position.T
-    # print(X,Y,Z,dT)
-    # print(f"\nDifference: {np.round(fasit- np.array([X,Y,Z]), 3)}")
-    # fasit = np.array([3173289, 605742, 5481217])
-
-
-    # lon, lat, h = Transformer.from_crs("EPSG:4936", "EPSG:4258", always_xy=True).transform(X,Y,Z)
-    # estimated__etrs89_nn2000 = np.array(Transformer.from_crs("EPSG:4936", "EPSG:5972").transform(X,Y,Z))
-    # fasit_etrs89_nn2000 = Transformer.from_crs("EPSG:4936", "EPSG:5972").transform(*fasit.T)
-
-    # print(X,Y,Z,dT)
-    # print(f"\nDifference: {np.round(fasit- np.array([X,Y,Z]), 3)}")
-    # print(f"\nDifference in UTM Z32: {np.round(fasit_etrs89_nn2000 - estimated__etrs89_nn2000,3)}")
-    # print(stats)
-
-
-    # geof.ECEF2geodb(a=6378137, b=6356752.314245, X=X,Y=Y, Z=Z)
-    # my_func = np.array(geof.ECEF2geodb(a=6378137, b=6356752.314245, X=X,Y=Y,Z=Z))
 
 
     ## Example of not using file as input

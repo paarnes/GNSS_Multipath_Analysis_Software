@@ -4,3 +4,4 @@ pandas==2.0.3
 tqdm==4.66.5
 zstandard==0.23.0
 pytest
+pyproj

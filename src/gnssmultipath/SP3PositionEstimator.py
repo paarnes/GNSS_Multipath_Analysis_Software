@@ -181,7 +181,7 @@ class SP3PositionEstimator:
         low_sat_indices = np.where(elevations < self.elevation_cut_off_angle)[0]
         for i in low_sat_indices:
             PRN = f"{self.desired_sys}{str(sat_nr[i]).zfill(2)}"
-            logger.info(f"\nINFO(GNSSPositionEstimator): {PRN} is exluded due to low elevation: {np.round(elevations[i],3)}°")
+            logger.info(f"\nINFO(SP3PositionEstimator): {PRN} is exluded due to low elevation: {np.round(elevations[i],3)}°")
 
 
         # Update satellite-related data based on active satellites
