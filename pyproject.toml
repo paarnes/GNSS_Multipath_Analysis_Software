@@ -15,6 +15,20 @@ maintainers  = [
 description = "A python software that provides comprehensive solutions for GNSS multipath analysis."
 readme = "README.md"
 requires-python = ">=3.8"
+keywords = [
+    "GNSS",
+    multipath,
+    analytics,
+    gps,
+    glonass,
+    galileo,
+    beidou,
+    rinex,
+    sp3,
+    snr,
+    position-estimation,
+]
+license = { text = "MIT" }
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
