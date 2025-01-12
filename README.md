@@ -116,7 +116,7 @@ If you have a SP3 file, and not a RINEX navigation file, you just replace the ke
 1. Reads in the RINEX observation file
 2. Reads the RINEX navigation file or the precise satellite coordinates in SP3-format (depends on what’s provided)
 3. If a navigation file is provided, the satellite coordinates will be transformed from Kepler-elements to ECEF for GPS, Galileo and BeiDou. For GLONASS the navigation file is containing a state vector. The coordinates then get interpolated to the current epoch by solving the differential equation using a 4th order Runge-Kutta. If a SP3 file is provided, the interpolation is done using ``Neville's algorithm``.
-4. Satellites elevation and azimuth angles get computed.
+4. Compute the satellites' elevation and azimuth angles. If the receiver's approximate position is not provided in the header of the RINEX observation file, the software automatically estimates it based on pseudoranges using the ``GNSSPositionEstimator`` class.
 5. Cycle slip detection by using both ionospheric residuals and a code-phase combination. These linear combinations are given as
 
 $$
