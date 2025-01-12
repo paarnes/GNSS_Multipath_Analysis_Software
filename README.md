@@ -3,6 +3,11 @@
 [![Python application](https://github.com/paarnes/GNSS_Multipath_Analysis_Software/actions/workflows/run-tests.yml/badge.svg)](https://github.com/paarnes/GNSS_Multipath_Analysis_Software/actions/workflows/run-tests.yml)
 [![PyPI version](https://badge.fury.io/py/gnssmultipath.svg)](https://badge.fury.io/py/gnssmultipath)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python Versions](https://img.shields.io/pypi/pyversions/gnssmultipath.svg)](https://pypi.org/project/gnssmultipath/)
+[![Downloads](https://pepy.tech/badge/gnssmultipath)](https://pepy.tech/project/gnssmultipath)
+
+
+
 
 ## Table of Contents
 - [Introduction](#introduction)
@@ -59,6 +64,7 @@ GNSS Multipath Analysis is a software tool for analyzing the multipath effect on
 - Allows selection of specific navigation systems and signal bands for analysis.
 - Estimate the approximate position of the receiver using pseudoranges from the RINEX observation file.
   - Supports both SP3 and RINEX navigation files.
+  - The software will estimate the receiver's position if it is not provided in the header of the RINEX observation file.
   - Calculates statistical measures for the estimated position, including:
     - Residuals
     - Sum of Squared Errors (SSE)
@@ -532,7 +538,7 @@ $$
 \cos(\nu) = \frac{\cos(E) - e}{1 - e \cos(E)}, \quad \sin(\nu) = \frac{\sqrt{1 - e^2} \sin(E)}{1 - e \cos(E)}
 $$
 
-Use the arctangent to find $ \nu $:
+Use the arctangent to find $\nu$:
 
 $$
 \nu = \arctan2(\sin(\nu), \cos(\nu))
@@ -617,7 +623,7 @@ The Earth's rotation during the signal's travel introduces a positional error if
 
 **Iterative Process**:
 
-Update the longitude of the ascending node ($ \Omega_k $) to account for the Earth's rotation during the signal travel time:
+Update the longitude of the ascending node ($\Omega_k$) to account for the Earth's rotation during the signal travel time:
 
 $$
 \begin{equation*}
@@ -834,7 +840,7 @@ $$
 t_{n+1} = t_n + t_\text{step}
 $$
 
-**Reduce $ \Delta t $**:
+**Reduce**$\Delta t$:
 Adjust the remaining time difference:
 
 $$
