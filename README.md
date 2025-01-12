@@ -65,6 +65,7 @@ GNSS Multipath Analysis is a software tool for analyzing the multipath effect on
 - Estimate the approximate position of the receiver using pseudoranges from the RINEX observation file.
   - Supports both SP3 and RINEX navigation files.
   - The software will estimate the receiver's position if it is not provided in the header of the RINEX observation file.
+  - Supports user-defined Coordinate Reference System (CRS). The estimated coordinates can be delivered in the desired CRS.
   - Calculates statistical measures for the estimated position, including:
     - Residuals
     - Sum of Squared Errors (SSE)
@@ -452,6 +453,8 @@ print(f'\nDOP values:\n' + '\n'.join([f'{k} = {v}' for k, v in stats["DOPs"].ite
 ### Estimate the receiver's position based on pseudoranges in the desired CRS
 Define a specific Coordinate Reference System (CRS) to output the estimated receiver's coordinates. In this case the
 coordinates will be given in WGS84 UTM zone 32N (EPSG:32632) and ellipsoidal heights.
+
+Note: You can use the [EPSG GeoRepository](https://epsg.org/home.html) to find the EPSG code for the desired CRS.
 
 ```python
 from gnssmultipath import GNSSPositionEstimator
