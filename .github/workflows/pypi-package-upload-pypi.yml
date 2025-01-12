@@ -43,7 +43,7 @@ jobs:
           git add pyproject.toml
           git commit -m "Bump version to ${{ steps.increment_version.outputs.version }}"
           # Push the changes directly to the master branch
-          git push origin HEAD:master
+          git push origin HEAD:master --force
 
       - name: Build and upload to PyPI
         run: |
