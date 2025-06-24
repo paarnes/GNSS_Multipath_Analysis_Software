@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gnssmultipath"
-version = "1.5.3"
+version = "1.6.0"
 authors = [
   { name="Per Helge Aarnes", email="per.helge.aarnes@gmail.com" },
 ]
@@ -40,9 +40,9 @@ classifiers = [
 ]
 
 dependencies = [
-  "matplotlib=3.9.2",
+  "matplotlib==3.9.2",
   "numpy==2.1.0",
-  "pandas==2.0.3",
+  "pandas==2.3.0",
   "tqdm==4.66.5",
   "zstandard==0.23.0",
   "pytest",
