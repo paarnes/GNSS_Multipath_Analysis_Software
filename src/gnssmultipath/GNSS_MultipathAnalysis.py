@@ -359,7 +359,7 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
                 estimated_position, stats = position_estimator.estimate_position()
                 x_rec_approx, y_rec_approx, z_rec_approx,_ = estimated_position.flatten()
 
-        df_az_el = sat_obj.compute_azimuth_and_elevation(receiver_position=(x_rec_approx, y_rec_approx, z_rec_approx))
+        df_az_el = sat_obj.compute_azimuth_and_elevation(receiver_position=(x_rec_approx, y_rec_approx, z_rec_approx), drop_below_horizon=True)
         sat_dict = sat_obj.create_satellite_data_dict(df_sat_coordinates, df_az_el)
 
         # Create dicts for each data type
