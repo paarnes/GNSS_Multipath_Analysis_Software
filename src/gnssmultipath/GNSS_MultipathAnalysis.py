@@ -583,9 +583,12 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
                                         continue
 
                                     ## Execute the analysis of current combination of observations. Return statistics on analysis
-                                    currentStats, success = signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, frequencyOverview, nepochs, tInterval, \
-                                    int(max_sat[sys]), GNSS_SVs[currentGNSSsystem], obsCodes[sys+1], GNSS_obs[currentGNSSsystem], GNSS_LLI[currentGNSSsystem],\
-                                        sat_elevation_angles[sys], phaseCodeLimit, ionLimit, cutoff_elevation_angle)
+                                    current_max_sat = int(max_sat[sys].item()) if hasattr(max_sat[sys], "item") else int(max_sat[sys])
+                                    currentStats, success = signalAnalysis(
+                                        currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, frequencyOverview, nepochs, tInterval,
+                                        current_max_sat, GNSS_SVs[currentGNSSsystem], obsCodes[sys+1], GNSS_obs[currentGNSSsystem], GNSS_LLI[currentGNSSsystem],
+                                        sat_elevation_angles[sys], phaseCodeLimit, ionLimit, cutoff_elevation_angle
+                                    )
 
                                     if not success:
                                         return success

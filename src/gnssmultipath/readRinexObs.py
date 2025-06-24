@@ -389,21 +389,21 @@ def readRinexObs304(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
     for k in np.arange(0,nGNSSsystems):
         if GNSSsystems[k+1] == 'G':
             max_sat[k] = max_GPS_PRN
-            GNSS_SVs['G'] = np.zeros([nepochs,int(max_sat[k] + 1)])
+            GNSS_SVs['G'] = np.zeros([nepochs, int(max_sat[k].item() + 1)])
             GNSSsystems_full_names[k] = "GPS"
         elif GNSSsystems[k+1] == 'R':
             max_sat[k] = max_GLONASS_PRN
-            GNSS_SVs['R'] = np.zeros([nepochs,int(max_sat[k] + 1)])
+            GNSS_SVs['R'] = np.zeros([nepochs, int(max_sat[k].item() + 1)])
             GNSSsystems_full_names[k] = "GLONASS"
 
         elif GNSSsystems[k+1] == 'E':
             max_sat[k] = max_Galileo_PRN
-            GNSS_SVs['E'] = np.zeros([nepochs,int(max_sat[k]) + 1])
+            GNSS_SVs['E'] = np.zeros([nepochs, int(max_sat[k].item() + 1)])
             GNSSsystems_full_names[k] = "Galileo"
 
         elif GNSSsystems[k+1] == 'C':
             max_sat[k] = max_Beidou_PRN
-            GNSS_SVs['C'] = np.zeros([nepochs,int(max_sat[k]) + 1])
+            GNSS_SVs['C'] = np.zeros([nepochs, int(max_sat[k].item() + 1)])
             GNSSsystems_full_names[k] = "BeiDou"
         else:
             print(f'ERROR(readRinexObs304): Only following GNSS systems are compatible with this program: GPS, GLONASS, Galileo, Beidou. {GNSSsystems[k]} is not valid')
@@ -411,7 +411,9 @@ def readRinexObs304(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
 
 
         curr_sys = GNSSsystems[k+1]
-        GNSS_obs[curr_sys] = np.zeros([int(max_sat[k]), numOfObsCodes[k], nepochs])
+        max_sat_k = int(max_sat[k].item()) if hasattr(max_sat[k], "item") else int(max_sat[k])
+        GNSS_obs[curr_sys] = np.zeros([max_sat_k, numOfObsCodes[k], nepochs])
+
 
         # Preallocation LLI and SS
         if readLLI:
@@ -453,10 +455,11 @@ def readRinexObs304(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
             GNSS_obs_dum = {}
             GNSS_LLI_dum = {}
             GNSS_SS_dum  = {}
-            for k in np.arange(0,nGNSSsystems):
-                GNSS_obs_dum[k+1] = np.zeros([int(max_sat[k]) +1, numOfObsCodes[k]])
-                GNSS_LLI_dum[k+1] = np.zeros([int(max_sat[k]) +1, numOfObsCodes[k]])
-                GNSS_SS_dum[k+1]  = np.zeros([int(max_sat[k]) +1, numOfObsCodes[k]])
+            for k in np.arange(0, nGNSSsystems):
+                max_sat_k = int(max_sat[k].item()) if hasattr(max_sat[k], "item") else int(max_sat[k])
+                GNSS_obs_dum[k+1] = np.zeros([max_sat_k + 1, numOfObsCodes[k]])
+                GNSS_LLI_dum[k+1] = np.zeros([max_sat_k + 1, numOfObsCodes[k]])
+                GNSS_SS_dum[k+1]  = np.zeros([max_sat_k + 1, numOfObsCodes[k]])
 
             ## -- Iterate through satellites of epoch and store obs, LLI and SS
             for sat in np.arange(0,numSV):
@@ -472,11 +475,15 @@ def readRinexObs304(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
                 if readSS:
                     GNSS_SS_dum[GNSSsystemIndex][SV][0:nObsTypes_current_sat] = SS[sat, 0:nObsTypes_current_sat]
 
-                GNSS_SVs[curr_sys][current_epoch-1, int(nGNSS_sat_current_epoch[GNSSsystemIndex-1])] = SV  # Store PRN number of current sat to PRNs of this epoch
+                # GNSS_SVs[curr_sys][current_epoch-1, int(nGNSS_sat_current_epoch[GNSSsystemIndex-1])] = SV  # Store PRN number of current sat to PRNs of this epoch
+                GNSS_SVs[curr_sys][current_epoch-1, int(nGNSS_sat_current_epoch[GNSSsystemIndex-1].item()) if hasattr(nGNSS_sat_current_epoch[GNSSsystemIndex-1], "item") else int(nGNSS_sat_current_epoch[GNSSsystemIndex-1])] = SV
+
 
             for k in np.arange(0,nGNSSsystems):
                 curr_sys = GNSSsystems[k+1]
-                GNSS_SVs[curr_sys][current_epoch-1, 0]  = nGNSS_sat_current_epoch[k] # Set number of satellites with obs for each GNSS system this epoch
+                # GNSS_SVs[curr_sys][current_epoch-1, 0]  = nGNSS_sat_current_epoch[k] # Set number of satellites with obs for each GNSS system this epoch
+                GNSS_SVs[curr_sys][current_epoch-1, 0] = float(nGNSS_sat_current_epoch[k].item()) if hasattr(nGNSS_sat_current_epoch[k], "item") else float(nGNSS_sat_current_epoch[k])
+
                 if curr_sys == 'G':
                     GPS[current_epoch] = GNSS_obs_dum[k+1]
                 elif curr_sys == 'R':
@@ -1829,7 +1836,7 @@ def readRinexObs211(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
     max_Galileo_PRN = 36 # Max number of Galileo PRN in constellation
     max_Beidou_PRN  = 100 # Max number of BeiDou PRN in constellation
 
-    ## -- Read header of observation file
+    #  Read header of observation file
     [success, rinexVersion, gnssType, markerName, recType, antDelta,\
     GNSSsystems,numOfObsCodes, obsCodes, obsCodeIndex,tFirstObs, tLastObs, tInterval, \
     timeSystem, _, clockOffsetsON, rinexProgr, rinexDate,leapSec, approxPosition, GLO_Slot2ChannelMap, _, fid] = \
@@ -1838,50 +1845,49 @@ def readRinexObs211(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
     if success==0:
         return
 
-    ## -- Compute number of epochs with observations
+    # Compute number of epochs with observations
     nepochs, tLastObs, tInterval, success = rinexFindNEpochs211(filename, tFirstObs, tLastObs, tInterval) #computes number of epochs in observation file
 
     if success==0:
         return
 
-    ## --Number of GNSS systems
+    # Number of GNSS systems
     nGNSSsystems = len(GNSSsystems)
 
-    ## Declare data cells, arrays and matrices
+    # Declare data cells, arrays and matrices
     GNSS_SVs = {}
     max_sat  =  np.zeros([nGNSSsystems,1])
     t_week = []
     t_tow = []
 
     GNSSsystems_full_names =  [""]*nGNSSsystems
-    ##  -- Making dict for storin LLI and SS
+    # Making dict for storin LLI and SS
     GNSS_LLI = {}
     GNSS_SS = {}
 
 
-    ## -- Create array for max_sat. Initialize cell elements in cell arrays
-    for k in np.arange(0,nGNSSsystems):
+    # Create array for max_sat. Initialize cell elements in cell arrays
+    for k in np.arange(0, nGNSSsystems):
+        # Always extract scalar from max_sat[k] for shape arguments
+        max_sat_k = int(max_sat[k].item()) if hasattr(max_sat[k], "item") else int(max_sat[k])
         if GNSSsystems[k+1] == 'G':
-            max_sat[k] = max_GPS_PRN
-            GNSS_SVs['G'] = np.zeros([nepochs,int(max_sat[k] + 1)])
+            GNSS_SVs['G'] = np.zeros([nepochs, max_sat_k + 1])
             GNSSsystems_full_names[k] = "GPS"
         elif GNSSsystems[k+1] == 'R':
-            max_sat[k] = max_GLONASS_PRN
-            GNSS_SVs['R'] = np.zeros([nepochs,int(max_sat[k] + 1)])
+            GNSS_SVs['R'] = np.zeros([nepochs, max_sat_k + 1])
             GNSSsystems_full_names[k] = "GLONASS"
-
         elif GNSSsystems[k+1] == 'E':
-            max_sat[k] = max_Galileo_PRN
-            GNSS_SVs['E'] = np.zeros([nepochs,int(max_sat[k]) + 1])
+            GNSS_SVs['E'] = np.zeros([nepochs, max_sat_k + 1])
             GNSSsystems_full_names[k] = "Galileo"
-
         elif GNSSsystems[k+1] == 'C':
-            max_sat[k] = max_Beidou_PRN
-            GNSS_SVs['C'] = np.zeros([nepochs,int(max_sat[k]) + 1])
+            GNSS_SVs['C'] = np.zeros([nepochs, max_sat_k + 1])
             GNSSsystems_full_names[k] = "BeiDou"
         else:
-            print('ERROR(readRinexObs211): Only following GNSS systems are compatible with this program: GPS, GLONASS, Galileo, Beidou. %s is not valid' % GNSSsystems[k])
+            print(f'ERROR(readRinexObs211): Only following GNSS systems are compatible with this program: GPS, GLONASS, Galileo, Beidou. {GNSSsystems[k]} is not valid')
             return
+
+        curr_sys = GNSSsystems[k+1]
+        GNSS_obs[curr_sys] = np.zeros([max_sat_k, numOfObsCodes[k], nepochs])
 
 
         curr_sys = GNSSsystems[k+1]
@@ -1902,17 +1908,17 @@ def readRinexObs211(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
     GNSS_names = dict(zip(['G', 'R', 'E', 'C'],['GPS','GLONASS','Galileo','Beidou']))
     current_epoch      = 0
 
-    ## -- Initialize progress bar
+    # Initialize progress bar
     n_update_break = int(np.floor(nepochs/10)) #number of epoch before updating progressbar
     bar_format = '{desc}: {percentage:3.0f}%|{bar}| ({n_fmt}/{total_fmt})'
 
     with tqdm(total=100,desc ="Rinex observations are being read" , position=0, leave=True, bar_format=bar_format) as pbar:
         while 1:
-            ## Read Obs Block Header
+            #  Read Obs Block Header
             success, _, _, date, numSV,SVlist_, eof = rinexReadObsBlockHead211(fid)
             if success==0 or eof==1:
                 break
-            ## -- Read current block of observations
+            # Read current block of observations
             success, Obs,SVlist, numSV, LLI, SS, eof = rinexReadObsBlock211(fid, numSV, numOfObsCodes, GNSSsystems, obsCodeIndex, readSS, readLLI, SVlist_)
             if success ==0 or eof==1:
                 break
@@ -1960,14 +1966,15 @@ def readRinexObs211(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
                 if readSS:
                     GNSS_SS_dum[GNSSsystemIndex][SV][0:nObsTypes_current_sat] = SS[sat, 0:nObsTypes_current_sat] # fjernet "-1" 13.11.2022
 
-                ## -- Store PRN number of current sat to PRNs of this epoch
-                GNSS_SVs[curr_sys][current_epoch-1, int(nGNSS_sat_current_epoch[GNSSsystemIndex-1])] = SV
+                # Store PRN number of current sat to PRNs of this epoch
+                # GNSS_SVs[curr_sys][current_epoch-1, int(nGNSS_sat_current_epoch[GNSSsystemIndex-1])] = SV
+                GNSS_SVs[curr_sys][current_epoch-1, int(nGNSS_sat_current_epoch[GNSSsystemIndex-1].item()) if hasattr(nGNSS_sat_current_epoch[GNSSsystemIndex-1], "item") else int(nGNSS_sat_current_epoch[GNSSsystemIndex-1])] = SV
 
             for k in np.arange(0,nGNSSsystems):
                 curr_sys = GNSSsystems[k+1]
                 ## --Set number of satellites with obs for each GNSS system this epoch
-                GNSS_SVs[curr_sys][current_epoch-1, 0]  = nGNSS_sat_current_epoch[k]
-
+                # GNSS_SVs[curr_sys][current_epoch-1, 0]  = nGNSS_sat_current_epoch[k]
+                GNSS_SVs[curr_sys][current_epoch-1, 0] = float(nGNSS_sat_current_epoch[k].item()) if hasattr(nGNSS_sat_current_epoch[k], "item") else float(nGNSS_sat_current_epoch[k])
                 if curr_sys == 'G':
                     GPS[current_epoch] = GNSS_obs_dum[k+1]
                 elif curr_sys == 'R':

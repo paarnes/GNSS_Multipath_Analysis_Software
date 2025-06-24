@@ -15,9 +15,6 @@ import numpy as np
 from numpy.testing import assert_almost_equal
 import warnings
 
-warnings.filterwarnings("ignore", category=UserWarning)
-pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
-
 
 # Define the project path and append it to the system path
 project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -40,9 +37,6 @@ x_rec, y_rec, z_rec = initial_coordinates.T
 desired_time = np.array([2022, 1, 1, 1, 5, 30.0000000])
 
 
-
-
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_with_initial_coordinates_GPS():
     desired_system = "G"  # Desired system for GNSS
 
@@ -71,7 +65,6 @@ def test_with_initial_coordinates_GPS():
     assert_almost_equal(computed_clock_error, expected_clock_error, decimal=8)
 
 
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_with_initial_coordinates_GLONASS():
     desired_system = "R"  # Desired system for GNSS
 
@@ -100,7 +93,6 @@ def test_with_initial_coordinates_GLONASS():
     assert_almost_equal(computed_clock_error, expected_clock_error, decimal=8)
 
 
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_with_initial_coordinates_BeiDou():
     desired_system = "C"  # Desired system for GNSS
 
@@ -129,7 +121,6 @@ def test_with_initial_coordinates_BeiDou():
     assert_almost_equal(computed_clock_error, expected_clock_error, decimal=8)
 
 
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_with_initial_coordinates_Galileo():
     desired_system = "E"  # Desired system for GNSS
 
@@ -158,7 +149,6 @@ def test_with_initial_coordinates_Galileo():
     assert_almost_equal(computed_clock_error, expected_clock_error, decimal=8)
 
 
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_with_initial_coordinates_Galileo_with_20_el_cutoff_and_no_approx_pos():
     desired_system = "E"  # Desired system for GNSS
 

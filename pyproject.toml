@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gnssmultipath"
-version = "1.5.2"
+version = "1.5.3"
 authors = [
   { name="Per Helge Aarnes", email="per.helge.aarnes@gmail.com" },
 ]
@@ -14,7 +14,7 @@ maintainers  = [
 ]
 description = "A python software that provides comprehensive solutions for GNSS multipath analysis."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 keywords = [
     "GNSS",
     "multipath",
@@ -30,18 +30,18 @@ keywords = [
 ]
 license = { text = "MIT" }
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
+
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 
 dependencies = [
-  "matplotlib==3.7.5",
-  "numpy==1.24.4",
+  "matplotlib=3.9.2",
+  "numpy==2.1.0",
   "pandas==2.0.3",
   "tqdm==4.66.5",
   "zstandard==0.23.0",
