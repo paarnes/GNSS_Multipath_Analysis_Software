@@ -133,11 +133,14 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
         fid.write('Est. approx position: \t\t\t %s\n' % str(estimated_approx_pos))
         fid.write('St.dev of the est. position: \t %s\n' % ', '.join(map(str, std_est_pos)))
 
+    # Convert to 1D and extract scalars
+    tFirstObs_flat = tFirstObs.flatten()
+    tLastObs_flat = tLastObs.flatten()
 
     fid.write('Marker name:\t\t\t\t\t %s\n' % (markerName))
     fid.write('Receiver type:\t\t\t\t\t %s\n' % (recType))
-    fid.write('Date of observation start:\t\t %4d/%d/%d %d:%d:%.2f \n' % (tFirstObs[0],tFirstObs[1],tFirstObs[2],tFirstObs[3],tFirstObs[4],tFirstObs[5]))
-    fid.write('Date of observation end:\t\t %4d/%d/%d %d:%d:%.2f \n'   % (tLastObs[0],tLastObs[1],tLastObs[2],tLastObs[3],tLastObs[4],tLastObs[5]))
+    fid.write('Date of observation start:\t\t %4d/%d/%d %d:%d:%.2f \n' % (tFirstObs_flat[0],tFirstObs_flat[1],tFirstObs_flat[2],tFirstObs_flat[3],tFirstObs_flat[4],tFirstObs_flat[5]))
+    fid.write('Date of observation end:\t\t %4d/%d/%d %d:%d:%.2f \n'   % (tLastObs_flat[0],tLastObs_flat[1],tLastObs_flat[2],tLastObs_flat[3],tLastObs_flat[4],tLastObs_flat[5]))
     fid.write('Observation interval [seconds]:\t %d\n' % (tInterval))
     fid.write('Elevation angle cutoff [degree]: %d\n' % (elevation_cutoff))
     fid.write('Number of receiver clock jumps:\t %d\n' % (nClockJumps))
@@ -474,44 +477,45 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                             fid.write( '|   |            |   Estimates   |[meters] |   [meters]   |   [degrees]   |                           |          [%]              |       0-10 degrees        |        10-20 degrees      |        20-30 degrees      |        30-40 degrees      |        40-50 degrees      |        >50 degrees        |        NaN degrees        |\n')
                             fid.write( '|   |            |               |         |              |               |___________________________|___________________________|___________________________|___________________________|___________________________|___________________________|___________________________|___________________________|___________________________|\n')
                             fid.write( '|   |            |               |         |              |               | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  |\n')
-                            for PRN in range(0,nSat):
-                                # if current_code_struct['n_range1_obs_per_sat'][:,PRN] > 0:
-                                if current_code_struct['nEstimates_per_sat'][PRN] > 0: ##added 21.01.2023 to prevent sat with only nan in resultfile
-                                    fid.write( '|___|____________|_______________|_________|______________|_______________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|\n')
-                                    fid.write(  '|%3s|%12d|%15d|%9.3f|%14.3f|%15.3f|%10d|%7d|%8d|%10.3f|%7.3f|%8.3f|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|\n' % (\
-                                        GNSS_Name2Code[GNSSsystems[i]] + str(PRN), \
-                                        current_code_struct['n_range1_obs_per_sat'][:,PRN],\
-                                        current_code_struct['nEstimates_per_sat'][PRN],\
-                                        current_code_struct['rms_multipath_range1_satellitewise'][PRN],\
-                                        current_code_struct['elevation_weighted_rms_multipath_range1_satellitewise'][PRN],\
-                                        current_code_struct['mean_sat_elevation_angles'][PRN],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_Tot'],\
-                                        current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_Tot'],\
-                                        current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_Tot'],\
-                                        100*current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_Tot']/current_code_struct['n_range1_obs_per_sat'][:,PRN],\
-                                        100*current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_Tot']/current_code_struct['n_range1_obs_per_sat'][:,PRN],\
-                                        100*current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_Tot']/current_code_struct['n_range1_obs_per_sat'][:,PRN],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_0_10'],\
-                                        current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_0_10'],\
-                                        current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_0_10'],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_10_20'],\
-                                        current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_10_20'],\
-                                        current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_10_20'],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_20_30'],\
-                                        current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_20_30'],\
-                                        current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_20_30'],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_30_40'],\
-                                        current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_30_40'],\
-                                        current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_30_40'],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_40_50'],\
-                                        current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_40_50'],\
-                                        current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_40_50'],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_over50'],\
-                                        current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_over50'],\
-                                        current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_over50'],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_NaN'],\
-                                        current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_NaN'],\
-                                        current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_NaN']))
+
+                        for PRN in range(0, nSat):
+                            if current_code_struct['nEstimates_per_sat'][PRN] > 0:
+                                fid.write('|___|____________|_______________|_________|______________|_______________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|\n')
+                                fid.write('|%3s|%12d|%15d|%9.3f|%14.3f|%15.3f|%10d|%7d|%8d|%10.3f|%7.3f|%8.3f|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|\n' % (
+                                    GNSS_Name2Code[GNSSsystems[i]] + str(PRN),
+                                    int(current_code_struct['n_range1_obs_per_sat'][:, PRN].item()) if hasattr(current_code_struct['n_range1_obs_per_sat'][:, PRN], "item") else int(current_code_struct['n_range1_obs_per_sat'][:, PRN]),
+                                    int(current_code_struct['nEstimates_per_sat'][PRN].item()) if hasattr(current_code_struct['nEstimates_per_sat'][PRN], "item") else int(current_code_struct['nEstimates_per_sat'][PRN]),
+                                    float(current_code_struct['rms_multipath_range1_satellitewise'][PRN]),
+                                    float(current_code_struct['elevation_weighted_rms_multipath_range1_satellitewise'][PRN]),
+                                    float(current_code_struct['mean_sat_elevation_angles'][PRN]),
+                                    int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_Tot']),
+                                    int(current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_Tot']),
+                                    int(current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_Tot']),
+                                    100 * int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_Tot']) / (int(current_code_struct['n_range1_obs_per_sat'][:, PRN].item()) if hasattr(current_code_struct['n_range1_obs_per_sat'][:, PRN], "item") else int(current_code_struct['n_range1_obs_per_sat'][:, PRN])),
+                                    100 * int(current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_Tot']) / (int(current_code_struct['n_range1_obs_per_sat'][:, PRN].item()) if hasattr(current_code_struct['n_range1_obs_per_sat'][:, PRN], "item") else int(current_code_struct['n_range1_obs_per_sat'][:, PRN])),
+                                    100 * int(current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_Tot']) / (int(current_code_struct['n_range1_obs_per_sat'][:, PRN].item()) if hasattr(current_code_struct['n_range1_obs_per_sat'][:, PRN], "item") else int(current_code_struct['n_range1_obs_per_sat'][:, PRN])),
+                                    int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_0_10']),
+                                    int(current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_0_10']),
+                                    int(current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_0_10']),
+                                    int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_10_20']),
+                                    int(current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_10_20']),
+                                    int(current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_10_20']),
+                                    int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_20_30']),
+                                    int(current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_20_30']),
+                                    int(current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_20_30']),
+                                    int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_30_40']),
+                                    int(current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_30_40']),
+                                    int(current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_30_40']),
+                                    int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_40_50']),
+                                    int(current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_40_50']),
+                                    int(current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_40_50']),
+                                    int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_over50']),
+                                    int(current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_over50']),
+                                    int(current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_over50']),
+                                    int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_NaN']),
+                                    int(current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_NaN']),
+                                    int(current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_NaN'])
+                                ))
 
                             fid.write(  '|___|____________|_______________|_________|______________|_______________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|\n')
                         else:
@@ -524,44 +528,44 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                             fid.write(  '|      |           |            |               |         |              |               | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  | Analysed |  LLI  |  Both  |\n')
                             # for PRN in range(0,nSat):
                             for PRN in list(GLO_Slot2ChannelMap.keys()):
-                                # if current_code_struct['n_range1_obs_per_sat'][:,PRN] > 0:
-                                if current_code_struct['nEstimates_per_sat'][PRN] > 0: ##added 21.01.2023 to prevent sat with only nan in resultfile
-                                    fid.write(  '|______|___________|____________|_______________|_________|______________|_______________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|\n')
-                                    fid.write(  '|%6s|%11d|%12d|%15d|%9.3f|%14.3f|%15.3f|%10d|%7d|%8d|%10.3f|%7.3f|%8.3f|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|\n' % ( \
-                                        GNSS_Name2Code[GNSSsystems[i]] + str(PRN), \
-                                        GLO_Slot2ChannelMap[PRN],\
-                                        current_code_struct['n_range1_obs_per_sat'][:,PRN],\
-                                        current_code_struct['nEstimates_per_sat'][PRN],\
-                                        current_code_struct['rms_multipath_range1_satellitewise'][PRN],\
-                                        current_code_struct['elevation_weighted_rms_multipath_range1_satellitewise'][PRN],\
-                                        current_code_struct['mean_sat_elevation_angles'][PRN],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_Tot'],\
-                                        current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_Tot'],\
-                                        current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_Tot'],\
-                                        100*current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_Tot']/current_code_struct['n_range1_obs_per_sat'][:,PRN],\
-                                        100*current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_Tot']/current_code_struct['n_range1_obs_per_sat'][:,PRN],\
-                                        100*current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_Tot']/current_code_struct['n_range1_obs_per_sat'][:,PRN],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_0_10'],\
-                                        current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_0_10'],\
-                                        current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_0_10'],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_10_20'],\
-                                        current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_10_20'],\
-                                        current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_10_20'],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_20_30'],\
-                                        current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_20_30'],\
-                                        current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_20_30'],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_30_40'],\
-                                        current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_30_40'],\
-                                        current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_30_40'],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_40_50'],\
-                                        current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_40_50'],\
-                                        current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_40_50'],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_over50'],\
-                                        current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_over50'],\
-                                        current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_over50'],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_NaN'],\
-                                        current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_NaN'],\
-                                        current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_NaN']))
+                                if current_code_struct['nEstimates_per_sat'][PRN] > 0:
+                                    fid.write('|______|___________|____________|_______________|_________|______________|_______________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|\n')
+                                    fid.write('|%6s|%11d|%12d|%15d|%9.3f|%14.3f|%15.3f|%10d|%7d|%8d|%10.3f|%7.3f|%8.3f|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|%10d|%7d|%8d|\n' % (
+                                        GNSS_Name2Code[GNSSsystems[i]] + str(PRN),
+                                        int(GLO_Slot2ChannelMap[PRN].item()) if hasattr(GLO_Slot2ChannelMap[PRN], "item") else int(GLO_Slot2ChannelMap[PRN]),
+                                        int(current_code_struct['n_range1_obs_per_sat'][:,PRN].item()) if hasattr(current_code_struct['n_range1_obs_per_sat'][:,PRN], "item") else int(current_code_struct['n_range1_obs_per_sat'][:,PRN]),
+                                        int(current_code_struct['nEstimates_per_sat'][PRN].item()) if hasattr(current_code_struct['nEstimates_per_sat'][PRN], "item") else int(current_code_struct['nEstimates_per_sat'][PRN]),
+                                        float(current_code_struct['rms_multipath_range1_satellitewise'][PRN]),
+                                        float(current_code_struct['elevation_weighted_rms_multipath_range1_satellitewise'][PRN]),
+                                        float(current_code_struct['mean_sat_elevation_angles'][PRN]),
+                                        int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_Tot']),
+                                        int(current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_Tot']),
+                                        int(current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_Tot']),
+                                        100 * int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_Tot']) / (int(current_code_struct['n_range1_obs_per_sat'][:,PRN].item()) if hasattr(current_code_struct['n_range1_obs_per_sat'][:,PRN], "item") else int(current_code_struct['n_range1_obs_per_sat'][:,PRN])),
+                                        100 * int(current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_Tot']) / (int(current_code_struct['n_range1_obs_per_sat'][:,PRN].item()) if hasattr(current_code_struct['n_range1_obs_per_sat'][:,PRN], "item") else int(current_code_struct['n_range1_obs_per_sat'][:,PRN])),
+                                        100 * int(current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_Tot']) / (int(current_code_struct['n_range1_obs_per_sat'][:,PRN].item()) if hasattr(current_code_struct['n_range1_obs_per_sat'][:,PRN], "item") else int(current_code_struct['n_range1_obs_per_sat'][:,PRN])),
+                                        int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_0_10']),
+                                        int(current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_0_10']),
+                                        int(current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_0_10']),
+                                        int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_10_20']),
+                                        int(current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_10_20']),
+                                        int(current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_10_20']),
+                                        int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_20_30']),
+                                        int(current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_20_30']),
+                                        int(current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_20_30']),
+                                        int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_30_40']),
+                                        int(current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_30_40']),
+                                        int(current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_30_40']),
+                                        int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_40_50']),
+                                        int(current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_40_50']),
+                                        int(current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_40_50']),
+                                        int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_over50']),
+                                        int(current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_over50']),
+                                        int(current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_over50']),
+                                        int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_NaN']),
+                                        int(current_code_struct['LLI_slip_distribution_per_sat'][PRN]['n_slips_NaN']),
+                                        int(current_code_struct['slip_distribution_per_sat_LLI_fusion'][PRN]['n_slips_NaN'])
+                                    ))
 
                             fid.write(  '|______|___________|____________|_______________|_________|______________|_______________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|__________|_______|________|\n')
 
@@ -573,25 +577,30 @@ def writeOutputFile(outputFilename, outputDir, analysisResults, includeResultSum
                             fid.write(   '|PRN|Observations|   Multipath   |Multipath|  Multipath   |Elevation Angle|    n Slip     |  Ratio   | Elevation Angle | Elevation Angle | Elevation Angle | Elevation Angle | Elevation Angle | Elevation Angle | Elevation Angle |\n')
                             fid.write(   '|   |            |   Estimates   |[meters] |   [meters]   |   [degrees]   |    Periods    |   [%]    |  0-10 degrees   |  10-20 degrees  |  20-30 degrees  |  30-40 degrees  |  40-50 degrees  |   >50 degrees   |   NaN degrees   |\n')
 
-                            for PRN in range(0,nSat):
-                                if current_code_struct['nEstimates_per_sat'][PRN] > 0: ##added 21.01.2023 to prevent sat with only nan in resultfile
-                                    fid.write( '|___|____________|_______________|_________|______________|_______________|_______________|__________|_________________|_________________|_________________|_________________|_________________|_________________|_________________|\n')
-                                    fid.write(  '|%3s|%12d|%15d|%9.3f|%14.3f|%15.3f|%15d|%10.3f|%17d|%17d|%17d|%17d|%17d|%17d|%17d|\n' % (\
-                                        GNSS_Name2Code[GNSSsystems[i]] + str(PRN), \
-                                        current_code_struct['n_range1_obs_per_sat'][:,PRN],\
-                                        current_code_struct['nEstimates_per_sat'][PRN],\
-                                        current_code_struct['rms_multipath_range1_satellitewise'][PRN],\
-                                        current_code_struct['elevation_weighted_rms_multipath_range1_satellitewise'][PRN],\
-                                        current_code_struct['mean_sat_elevation_angles'][PRN],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_Tot'],\
-                                        100*current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_Tot']/current_code_struct['n_range1_obs_per_sat'][:,PRN],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_0_10'],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_10_20'],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_20_30'],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_30_40'],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_40_50'],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_over50'],\
-                                        current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_NaN']))
+                            for PRN in range(0, nSat):
+                                if current_code_struct['nEstimates_per_sat'][PRN] > 0:  # added 21.01.2023 to prevent sat with only nan in resultfile
+                                    fid.write('|___|____________|_______________|_________|______________|_______________|_______________|__________|_________________|_________________|_________________|_________________|_________________|_________________|_________________|\n')
+                                    n_obs = int(current_code_struct['n_range1_obs_per_sat'][:, PRN].item()) if hasattr(current_code_struct['n_range1_obs_per_sat'][:, PRN], "item") else int(current_code_struct['n_range1_obs_per_sat'][:, PRN])
+                                    n_est = int(current_code_struct['nEstimates_per_sat'][PRN].item()) if hasattr(current_code_struct['nEstimates_per_sat'][PRN], "item") else int(current_code_struct['nEstimates_per_sat'][PRN])
+                                    slip_tot = int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_Tot'])
+                                    slip_ratio = 100 * slip_tot / n_obs if n_obs != 0 else float('nan')
+                                    fid.write('|%3s|%12d|%15d|%9.3f|%14.3f|%15.3f|%15d|%10.3f|%17d|%17d|%17d|%17d|%17d|%17d|%17d|\n' % (
+                                        GNSS_Name2Code[GNSSsystems[i]] + str(PRN),
+                                        n_obs,
+                                        n_est,
+                                        float(current_code_struct['rms_multipath_range1_satellitewise'][PRN]),
+                                        float(current_code_struct['elevation_weighted_rms_multipath_range1_satellitewise'][PRN]),
+                                        float(current_code_struct['mean_sat_elevation_angles'][PRN]),
+                                        slip_tot,
+                                        slip_ratio,
+                                        int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_0_10']),
+                                        int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_10_20']),
+                                        int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_20_30']),
+                                        int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_30_40']),
+                                        int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_40_50']),
+                                        int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_over50']),
+                                        int(current_code_struct['range1_slip_distribution_per_sat'][PRN]['n_slips_NaN'])
+                                    ))
 
                             fid.write(  '|___|____________|_______________|_________|______________|_______________|_______________|__________|_________________|_________________|_________________|_________________|_________________|_________________|_________________|\n')
                         else:

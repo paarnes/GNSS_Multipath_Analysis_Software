@@ -258,14 +258,17 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
                     ambiguity_period_end   = int(ambiguity_slip_periods[PRN][ambiguity_period, 0])
 
 
-                ## -- Ionosphere delay estimates of current ambiguity period is reduced by first estimate of ambiguity period
+                #  Ionosphere delay estimates of current ambiguity period is reduced by first estimate of ambiguity period
                 if ambiguity_period_start != ambiguity_period_end:
                     ion_delay_phase1[ambiguity_period_start:ambiguity_period_end, PRN] = ion_delay_phase1[ambiguity_period_start:ambiguity_period_end, PRN] - \
                         ion_delay_phase1[ambiguity_period_start, PRN]
 
-                    ## -- Multipath delays of current ambiguity period are reduced by mean of estimates in ambiguity period, excluding NaN and
-                    multipath_range1[ambiguity_period_start:ambiguity_period_end, PRN] = multipath_range1[ambiguity_period_start:ambiguity_period_end, PRN] - \
-                        np.nanmean(multipath_range1[ambiguity_period_start:ambiguity_period_end, PRN]) # added nanmean 30.11
+                    # Multipath delays of current ambiguity period are reduced by mean of estimates in ambiguity period, excluding NaN and
+                    slice_data = multipath_range1[ambiguity_period_start:ambiguity_period_end, PRN]
+                    if slice_data.size > 0 and not np.all(np.isnan(slice_data)):
+                        multipath_range1[ambiguity_period_start:ambiguity_period_end, PRN] = slice_data - np.nanmean(slice_data)
+                    else:
+                        multipath_range1[ambiguity_period_start:ambiguity_period_end, PRN] = np.nan
 
                     # multipath_range2[ambiguity_period_start:ambiguity_period_end, PRN] = multipath_range2[ambiguity_period_start:ambiguity_period_end, PRN] -\
                         # np.nanmean(multipath_range2[ambiguity_period_start:ambiguity_period_end, PRN])
@@ -273,7 +276,7 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
 
                     ion_delay_phase1[ambiguity_period_start, PRN] = ion_delay_phase1[ambiguity_period_start, PRN] - \
                         ion_delay_phase1[ambiguity_period_start, PRN]
-                    ## -- Multipath delays of current ambiguity period are reduced by mean of estimates in ambiguity period, excluding NaN and
+                    #  Multipath delays of current ambiguity period are reduced by mean of estimates in ambiguity period, excluding NaN and
                     multipath_range1[ambiguity_period_start, PRN] = multipath_range1[ambiguity_period_start, PRN] - \
                         np.nanmean(multipath_range1[ambiguity_period_start, PRN])
 

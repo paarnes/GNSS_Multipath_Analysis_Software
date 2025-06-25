@@ -75,12 +75,13 @@ def detectClockJumps(GNSS_obs, nGNSSsystems, obsCodes, time_epochs, tInterval, G
         nepochs, _, nSat = current_obs.shape
 
         if i == 0:
-            # reshaped_obs = current_obs[:,codeIndices,:].reshape(nepochs, nSat*nCodeObs)
-            reshaped_obs = np.reshape(current_obs[:,codeIndices,:],newshape=(nepochs,nSat*nCodeObs),order='F') # 'F' is adding obscodes together (Fortrans-like indexing)
+            reshaped_obs = np.reshape(current_obs[:,codeIndices,:], (nepochs, nSat*nCodeObs), order='F') # 'F' is adding obscodes together (Fortrans-like indexing)
         else:
-            # reshaped_obs = np.append(reshaped_obs, current_obs[:,codeIndices,:].reshape(nepochs, nSat*nCodeObs),axis=1)
-            reshaped_obs = np.append(reshaped_obs, np.reshape(current_obs[:,codeIndices,:],newshape=(nepochs,nSat*nCodeObs),order='F'),axis=1)
-
+            reshaped_obs = np.append(
+                reshaped_obs,
+                np.reshape(current_obs[:,codeIndices,:], (nepochs, nSat*nCodeObs), order='F'),
+                axis=1
+            )
 
     obsChange =np.diff(reshaped_obs,axis=0)
 

@@ -66,7 +66,6 @@ class BroadNavPositionEstimator:
     - signal_idx: int. Index of the first valid pseudorange signal in the observation codes.
     """
 
-
     def __init__(
         self,
         rinex_obs_file: Union[str, None] = None,
@@ -84,10 +83,12 @@ class BroadNavPositionEstimator:
         elevation_cut_off_angle: Optional[int] = 10,
     ):
         if "C" in desired_system:
-            raise ValueError("Using BeiDou to compute approximate position is not supported yet. Please choose another system.")
+            raise ValueError(
+                "Using BeiDou to compute approximate position is not supported yet. Please choose another system.")
 
         # Desired time in GPS format
-        self.desired_time = np.atleast_2d(date2gpstime_vectorized(desired_time)).T
+        self.desired_time = np.atleast_2d(
+            date2gpstime_vectorized(desired_time)).T
         self.desired_sys = desired_system
         self.elevation_cut_off_angle = elevation_cut_off_angle
 
@@ -95,9 +96,11 @@ class BroadNavPositionEstimator:
         if navdata:
             self.navdata = navdata
         elif rinex_nav_file:
-            self.navdata = SatelliteEphemerisToECEF(rinex_nav_file, x_rec_approx, y_rec_approx, z_rec_approx, self.desired_sys)
+            self.navdata = SatelliteEphemerisToECEF(
+                rinex_nav_file, x_rec_approx, y_rec_approx, z_rec_approx, self.desired_sys)
         else:
-            raise ValueError("Either 'navdata' or 'rinex_nav_file' must be provided.")
+            raise ValueError(
+                "Either 'navdata' or 'rinex_nav_file' must be provided.")
 
         # Handle GNSS observation data
         if all(var is not None for var in [GNSS_obs, time_epochs, GNSSsystems, obsCodes]):
@@ -107,9 +110,11 @@ class BroadNavPositionEstimator:
             self.obsCodes = obsCodes
         elif rinex_obs_file:
             self.GNSS_obs, _, _, _, self.time_epochs, _, self.GNSSsystems, \
-                self.obsCodes, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ = readRinexObs(rinex_obs_file)
+                self.obsCodes, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ = readRinexObs(
+                    rinex_obs_file)
         else:
-            raise ValueError("Either GNSS observation arrays or 'rinex_obs_file' must be provided.")
+            raise ValueError(
+                "Either GNSS observation arrays or 'rinex_obs_file' must be provided.")
 
         # Receiver approximate coordinates
         self.x_rec_approx = x_rec_approx
@@ -120,9 +125,8 @@ class BroadNavPositionEstimator:
         self.__gnss_index_mapper_dict = self.__gnss_index_mapper()
         self.sys_idx = self.__gnss_index_mapper_dict[self.desired_sys]
         self.sys_obs_codes = self.obsCodes[self.sys_idx][self.desired_sys]
-        self.signal_idx = next((i for i, code in enumerate(self.sys_obs_codes) if code.startswith("C")), -1)
-
-
+        self.signal_idx = next((i for i, code in enumerate(
+            self.sys_obs_codes) if code.startswith("C")), -1)
 
     def __gnss_index_mapper(self) -> dict:
         """
@@ -135,9 +139,8 @@ class BroadNavPositionEstimator:
         mapper = {}
         for i in np.arange(0, len(self.GNSSsystems)):
             GNSSsystemIndex = list(self.GNSSsystems.keys())[i]
-            mapper[self.GNSSsystems[GNSSsystemIndex]]= GNSSsystemIndex
+            mapper[self.GNSSsystems[GNSSsystemIndex]] = GNSSsystemIndex
         return mapper
-
 
     @staticmethod
     def __find_idx_of_epoch_closest_in_time(desired_time: np.ndarray, obs_time_epochs: np.ndarray) -> int:
@@ -161,9 +164,9 @@ class BroadNavPositionEstimator:
         total_time_diff = week_diff * 604800 + sec_diff  # 604800 seconds in a GPS week
 
         # Find the index of the smallest difference
-        closest_index = np.argmin(total_time_diff) + 1 # the key of the dict that contains pseudoranges starts on 1
+        # the key of the dict that contains pseudoranges starts on 1
+        closest_index = np.argmin(total_time_diff) + 1
         return closest_index
-
 
     @staticmethod
     def __get_gpstime_for_single_ephemeris(ephemeris: np.ndarray):
@@ -195,7 +198,6 @@ class BroadNavPositionEstimator:
 
         return week, tow
 
-
     def __extract_pseudoranges_and_satellites(self, idx_of_closest_eph):
         """
         Extract valid pseudoranges and corresponding satellite indices.
@@ -214,8 +216,6 @@ class BroadNavPositionEstimator:
         rji = pseudoranges[sat_nr, self.signal_idx]
         return sat_nr, rji
 
-
-
     def __estimate_without_low_satellites(
         self,
         X: np.ndarray,
@@ -229,7 +229,7 @@ class BroadNavPositionEstimator:
         z: float,
         t: float,
         dTi0: float
-    )  -> Tuple[float, float, float, float, np.ndarray, np.ndarray, np.ndarray, list]:
+    ) -> Tuple[float, float, float, float, np.ndarray, np.ndarray, np.ndarray, list]:
         """
         Filter out satellites with an elevation angle below the specified threshold (like 10 degrees for intance) and recompute the position and clock bias.
 
@@ -250,15 +250,18 @@ class BroadNavPositionEstimator:
         the observation vector (h), and the list of active satellite numbers.
         """
         # Compute azimuth and elevation for all satellites
-        azimuths, elevations = self.navdata.compute_azimuth_and_elevation_static(X, Y, Z, x, y, z)
+        azimuths, elevations = self.navdata.compute_azimuth_and_elevation_static(
+            X, Y, Z, x, y, z)
 
         # Filter satellites with elevation < 15 degrees for example
-        active_sat_indices = np.where(elevations >= self.elevation_cut_off_angle)[0]
-        low_sat_indices = np.where(elevations < self.elevation_cut_off_angle)[0]
+        active_sat_indices = np.where(
+            elevations >= self.elevation_cut_off_angle)[0]
+        low_sat_indices = np.where(
+            elevations < self.elevation_cut_off_angle)[0]
         for i in low_sat_indices:
             PRN = f"{self.desired_sys}{str(sat_nr[i]).zfill(2)}"
-            logger.info(f"\nINFO(BroadNavPositionEstimator): {PRN} is exluded due to low elevation: {np.round(elevations[i],3)}°")
-
+            logger.info(
+                f"\nINFO(BroadNavPositionEstimator): {PRN} is exluded due to low elevation: {np.round(elevations[i], 3)}°")
 
         # Update satellite-related data based on active satellites
         X = X[active_sat_indices]
@@ -291,8 +294,7 @@ class BroadNavPositionEstimator:
         dTi0 += dx[3] / c
 
         # return X, Y, Z, dT_rel, sat_nr, x, y, z, dTi0, A,l,N,h
-        return x, y, z, dTi0, A,l,N,h, sat_nr
-
+        return x, y, z, dTi0, A, l, N, h, sat_nr
 
     def __compute_satellite_clock_error_polynomial(self, efemeris, t, toc) -> float:
         """
@@ -317,15 +319,13 @@ class BroadNavPositionEstimator:
         dTj = a0 + a1 * (t - toc) + a2 * (t - toc) ** 2 - T_GD
         return dTj
 
-
     def update_receiver_coordinates(self, x, y, z):
         """Update receiver coordinates in the class attributes."""
         self.navdata.x_rec = x
         self.navdata.y_rec = y
         self.navdata.z_rec = z
 
-
-    def estimate_position(self, max_iterations:int = 15, tol:float = 1e-8) -> Tuple[np.ndarray, Dict[str, np.ndarray]]:
+    def estimate_position(self, max_iterations: int = 15, tol: float = 1e-8) -> Tuple[np.ndarray, Dict[str, np.ndarray]]:
         """
         Estimate the receiver's position using a vectorized least-squares algorithm.
 
@@ -339,34 +339,39 @@ class BroadNavPositionEstimator:
         - position: numpy.ndarray. Estimated receiver position in ECEF coordinates (x, y, z) and clock bias (dt).
         """
         x, y, z = self.x_rec_approx, self.y_rec_approx, self.z_rec_approx
-        idx_of_closest_eph = self.__find_idx_of_epoch_closest_in_time(self.desired_time, self.time_epochs)
-        sat_nr, rji = self.__extract_pseudoranges_and_satellites(idx_of_closest_eph)
+        idx_of_closest_eph = self.__find_idx_of_epoch_closest_in_time(
+            self.desired_time, self.time_epochs)
+        sat_nr, rji = self.__extract_pseudoranges_and_satellites(
+            idx_of_closest_eph)
 
         num_sats = len(sat_nr)
         if num_sats < 4:
-            raise ValueError("Insufficient satellites for position estimation (minimum 4 required).")
+            raise ValueError(
+                "Insufficient satellites for position estimation (minimum 4 required).")
 
         # Initialize variables
-        dTi0 = 0.0 # Initial clock bias
+        dTi0 = 0.0  # Initial clock bias
         improvement = 10
         iteration = 0
         t = self.desired_time[1][0]
 
-
         # Preallocate arrays for satellite data
-        X, Y, Z, dT_rel = np.zeros(num_sats), np.zeros(num_sats), np.zeros(num_sats), np.zeros(num_sats)
-        dTj, Tj_GPS, Rji = np.zeros(num_sats), np.zeros(num_sats), np.zeros(num_sats)
-
+        X, Y, Z, dT_rel = np.zeros(num_sats), np.zeros(
+            num_sats), np.zeros(num_sats), np.zeros(num_sats)
+        dTj, Tj_GPS, Rji = np.zeros(num_sats), np.zeros(
+            num_sats), np.zeros(num_sats)
 
         while improvement > tol and iteration < max_iterations:
             for i, sat_num in enumerate(sat_nr):
                 PRN = f"{self.desired_sys}{str(sat_num).zfill(2)}"
-                efemeris = self.navdata.get_closest_ephemerides_for_PRN_at_time(PRN, self.desired_time[1])
+                efemeris = self.navdata.get_closest_ephemerides_for_PRN_at_time(
+                    PRN, self.desired_time[1])
                 _, tow = self.__get_gpstime_for_single_ephemeris(efemeris[0])
 
                 # Select the correct clock error computation method based on satellite system
                 if self.desired_sys in ['G', 'E']:  # GPS, GALILEO, BeiDou
-                    dTj[i] = self.__compute_satellite_clock_error_polynomial(efemeris, t, tow)
+                    dTj[i] = self.__compute_satellite_clock_error_polynomial(
+                        efemeris, t, tow)
 
                     # Correct observed pseudorange
                     Rji[i] = rji[i] + dTj[i] * c
@@ -375,9 +380,15 @@ class BroadNavPositionEstimator:
                     Tj_GPS[i] = t - Rji[i] / c
 
                     # Compute satellite ECEF position and relativistic clock correction
-                    X[i], Y[i], Z[i], dT_rel[i] = self.navdata.get_sat_ecef_coordinates(desired_time=np.array([Tj_GPS[i]]), PRN = PRN)
-                    # X[i], Y[i], Z[i], dT_rel[i] = Kepler2ECEF(x, y, z).kepler2ecef(efemeris, Tj_GPS[i])
-
+                    # X[i], Y[i], Z[i], dT_rel[i] = self.navdata.get_sat_ecef_coordinates(
+                    #     desired_time=np.array([Tj_GPS[i]]), PRN=PRN)
+                    desired_time = np.atleast_1d(Tj_GPS[i]).astype(float)
+                    coords = self.navdata.get_sat_ecef_coordinates(
+                        desired_time=desired_time, PRN=PRN)
+                    X[i] = np.asarray(coords[0]).item()
+                    Y[i] = np.asarray(coords[1]).item()
+                    Z[i] = np.asarray(coords[2]).item()
+                    dT_rel[i] = np.asarray(coords[3]).item()
                 else:
                     # Correct observed pseudorange
                     Rji[i] = rji[i] + dTj[i] * c
@@ -386,11 +397,17 @@ class BroadNavPositionEstimator:
                     Tj_GPS[i] = t - Rji[i] / c
 
                     # Compute satellite ECEF position and relativistic clock correction (dT_rel in this case is not only relativitic correction (GLONASS efemerids))
-                    X[i], Y[i], Z[i], dT_rel[i] = self.navdata.get_sat_ecef_coordinates(desired_time=np.array([Tj_GPS[i]]), PRN=PRN)
-
+                    desired_time = np.atleast_1d(Tj_GPS[i]).astype(float)
+                    coords = self.navdata.get_sat_ecef_coordinates(
+                        desired_time=desired_time, PRN=PRN)
+                    X[i] = np.asarray(coords[0]).item()
+                    Y[i] = np.asarray(coords[1]).item()
+                    Z[i] = np.asarray(coords[2]).item()
+                    dT_rel[i] = np.asarray(coords[3]).item()
 
             # Compute the vector differences between receiver and satellite positions
-            diff = np.column_stack([X - x, Y - y, Z - z])  # Shape (num_sats, 3)
+            # Shape (num_sats, 3)
+            diff = np.column_stack([X - x, Y - y, Z - z])
 
             # Compute distances and partial derivatives
             rho = np.linalg.norm(diff, axis=1)
@@ -423,11 +440,10 @@ class BroadNavPositionEstimator:
             # print(f"Iteration {iteration}: dx = {dx}") ### DELETE PRINT
             improvement = np.max(np.abs(dx))
 
-
-
         # Try to filter low satellites and update position
         try:
-            x, y, z, dTi0, A, l, N, h, sat_nr = self.__estimate_without_low_satellites(X, Y, Z, dT_rel, Rji, sat_nr, x, y, z, t, dTi0)
+            x, y, z, dTi0, A, l, N, h, sat_nr = self.__estimate_without_low_satellites(
+                X, Y, Z, dT_rel, Rji, sat_nr, x, y, z, t, dTi0)
         except Exception as e:
             logger.warning(
                 f"WARNING (GNSS_MultipathAnalysis): Failed to perform the final position estimation after removing low-elevation satellites. "
@@ -435,26 +451,18 @@ class BroadNavPositionEstimator:
             )
             pass
 
-        stats_report = StatisticalAnalysis(A,l,N,h).run_statistical_analysis()
+        stats_report = StatisticalAnalysis(
+            A, l, N, h).run_statistical_analysis()
 
         return np.array([x, y, z, dTi0]), stats_report
 
 
-
-
-
-
-
-
-
-
-if __name__=="__main__":
+if __name__ == "__main__":
 
     # rinObs = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles\OPEC00NOR_S_20220010000_01D_30S_MO_3.04.rnx"
     rinObs = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles\OPEC00NOR_S_20220010000_01D_30S_MO_3.04_croped.rnx"
     rinObs = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\ObservationFiles\OPEC00NOR_S_20220010000_01D_30S_MO_3.04_croped – Kopi.rnx"
     rinNav = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\NavigationFiles\BRDC00IGS_R_20220010000_01D_MN.rnx"
-
 
     fasit = np.array([3149785.9652, 598260.8822, 5495348.4927])
     x_rec, y_rec, z_rec = fasit.T
@@ -463,26 +471,26 @@ if __name__=="__main__":
     # desired_time = np.array([2022, 1, 1, 0, 5, 0.0000000])
     desired_system = "R"
 
-
-    ## Example of not using file as input
+    # Example of not using file as input
     fasit = np.array([3149785.9652, 598260.8822, 5495348.4927])
     x_rec, y_rec, z_rec = fasit.T
     desired_sys = "E"
     desired_time = np.array([2022, 1, 1, 0, 0, 30.0000000])
-    navObj = SatelliteEphemerisToECEF(rinNav,  x_rec, y_rec, z_rec, desired_sys)
+    navObj = SatelliteEphemerisToECEF(
+        rinNav,  x_rec, y_rec, z_rec, desired_sys)
     GNSS_obs, _, _, _, time_epochs, _, GNSSsystems, \
-        obsCodes, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ = readRinexObs(rinObs)
+        obsCodes, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ = readRinexObs(
+            rinObs)
 
     GNSSPos = BroadNavPositionEstimator(desired_time=desired_time,
-                                    desired_system=desired_sys,
-                                    navdata=navObj,
-                                    GNSS_obs=GNSS_obs,
-                                    time_epochs=time_epochs,
-                                    GNSSsystems=GNSSsystems,
-                                    obsCodes=obsCodes)
+                                        desired_system=desired_sys,
+                                        navdata=navObj,
+                                        GNSS_obs=GNSS_obs,
+                                        time_epochs=time_epochs,
+                                        GNSSsystems=GNSSsystems,
+                                        obsCodes=obsCodes)
     estimated_position, stats = GNSSPos.estimate_position()
-    X,Y,Z,dT = estimated_position.T
-    print(X,Y,Z,dT)
-    print(f"\nDifference: {np.round(fasit- np.array([X,Y,Z]), 3)}")
+    X, Y, Z, dT = estimated_position.T
+    print(X, Y, Z, dT)
+    print(f"\nDifference: {np.round(fasit - np.array([X, Y, Z]), 3)}")
     print(f"Stats:\n{stats}")
-

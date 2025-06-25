@@ -8,14 +8,8 @@ E-mail: per.helge.aarnes@gmail.com
 
 import sys
 import os
-import pytest
 import numpy as np
 from numpy.testing import assert_almost_equal
-import warnings
-
-warnings.filterwarnings("ignore", category=UserWarning)
-pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
-
 
 # Define the project path and append it to the system path
 project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -39,7 +33,6 @@ desired_system = "G"  # Desired system for GNSS
 
 
 
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_with_initial_coordinates():
     # Initialize the GNSSPositionEstimator object
     GNSSPos = GNSSPositionEstimator(
@@ -68,7 +61,6 @@ def test_with_initial_coordinates():
 
 
 
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_with_WGS84_UTM32_as_output():
     # Initialize the GNSSPositionEstimator object
     GNSSPos = GNSSPositionEstimator(

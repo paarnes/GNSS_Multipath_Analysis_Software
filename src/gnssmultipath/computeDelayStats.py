@@ -5,8 +5,7 @@ Made by: Per Helge Aarnes
 E-mail: per.helge.aarnes@gmail.com
 """
 
-
-from numpy import mean, sqrt, sin, nan,pi,isnan, sum, concatenate, zeros, where, intersect1d,nanmean,count_nonzero,union1d,arange, nanstd
+import numpy as np
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -162,43 +161,44 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
     nSat = len(range1_slip_periods)
 
     # set all 0 values to NaN so they are excluded from stats calculation
-    ion_delay_phase1[ion_delay_phase1==0] = nan
-    multipath_range1[multipath_range1==0] = nan
-    current_sat_elevation_angles[current_sat_elevation_angles==0] = nan
+    ion_delay_phase1[ion_delay_phase1==0] = np.nan
+    multipath_range1[multipath_range1==0] = np.nan
+    current_sat_elevation_angles[current_sat_elevation_angles==0] = np.nan
 
-    mean_multipath_range1 = nanmean(multipath_range1,axis=0)              # Compute mean
-    overall_mean_multipath_range1 = nanmean(mean_multipath_range1,axis=0) # overall mean multipath, excluding NaN values
-    rms_multipath_range1 = nanstd(multipath_range1,axis=0, ddof=0)        # RMS multipath of each satellite, excluding NaN
-    average_rms_multipath_range1 = nanstd(multipath_range1, ddof=0)       # Average RMS multipath, excluding NaN
+    mean_multipath_range1 = np.nanmean(multipath_range1,axis=0)              # Compute mean
+    overall_mean_multipath_range1 = np.nanmean(mean_multipath_range1,axis=0) # overall mean multipath, excluding NaN values
+    rms_multipath_range1 = np.nanstd(multipath_range1,axis=0, ddof=0)        # RMS multipath of each satellite, excluding NaN
+    average_rms_multipath_range1 = np.nanstd(multipath_range1, ddof=0)       # Average RMS multipath, excluding NaN
 
     #  Weighted RMS multipath
     weights     = current_sat_elevation_angles.copy()
-    crit_weight = 4*sin(30*pi/180)**2
-    weights     = 4*sin(weights*pi/180)**2
+    crit_weight = 4*np.sin(30*np.pi/180)**2
+    weights     = 4*np.sin(weights*np.pi/180)**2
     weights[weights > crit_weight] = 1
     elevation_weighted_multipath_range1 = multipath_range1*weights
 
     # RMS multipath of each satellite, excluding NaN
-    elevation_weighted_rms_multipath_range1 = sqrt(nanmean(elevation_weighted_multipath_range1*elevation_weighted_multipath_range1,axis=0))
+    elevation_weighted_rms_multipath_range1 = np.sqrt(np.nanmean(elevation_weighted_multipath_range1*elevation_weighted_multipath_range1,axis=0))
     # Average RMS multipath, excluding NaN
-    elevation_weighted_average_rms_multipath_range1 = sqrt(nanmean(elevation_weighted_multipath_range1*elevation_weighted_multipath_range1))
+    elevation_weighted_average_rms_multipath_range1 = np.sqrt(np.nanmean(elevation_weighted_multipath_range1*elevation_weighted_multipath_range1))
 
     # Ionosphere
-    mean_ion_delay_phase1 = nanmean(ion_delay_phase1,axis=0) # mean ionospheric delay for each satellite, excluding NaN
-    overall_mean_ion_delay_phase1 = nanmean(mean_ion_delay_phase1) # Overall mean ionospheric delay, excluding NaN
+    mean_ion_delay_phase1 = np.nanmean(ion_delay_phase1,axis=0) # mean ionospheric delay for each satellite, excluding NaN
+    overall_mean_ion_delay_phase1 = np.nanmean(mean_ion_delay_phase1) # Overall mean ionospheric delay, excluding NaN
 
     ## Average elevation angle for each satellite, excluding NaN
     dumm1 = (range1_observations!= 0)*1 # multiplying with 1 to get from True/False -> 1/0 # commented out 25.11.2023
-    dumm2 = (~isnan(range1_observations))*1
+    dumm2 = (~np.isnan(range1_observations))*1
     dummy = (dumm1 & dumm2)
     obs_elevations = current_sat_elevation_angles*dummy
-    obs_elevations[obs_elevations==0] =nan
-    mean_sat_elevation_angles = nanmean(obs_elevations,axis=0)
-    mean_sat_elevation_angles = nanmean(current_sat_elevation_angles,axis=0)
+    obs_elevations[obs_elevations==0]=np.nan
+
+    # Compute mean_sat_elevation_angles safely for current_sat_elevation_angles
+    mean_sat_elevation_angles = np.nanmean(current_sat_elevation_angles, axis=0)
 
     ## -- Amount of epochs with estimates
-    nEstimates = sum(~isnan(multipath_range1))
-    nEstimates_per_sat = sum(~isnan(multipath_range1),axis=0)
+    nEstimates = np.sum(~np.isnan(multipath_range1))
+    nEstimates_per_sat = np.sum(~np.isnan(multipath_range1),axis=0)
 
     ## -- Cycle slip distribution based on code-phase difference ---
     range1_slip_distribution_per_sat = {}
@@ -254,14 +254,14 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
     ambiguity_slip_distribution['n_slips_NaN']    = 0
     ambiguity_slip_distribution['n_slips_Tot']    = 0
 
-    for i in arange(0,nSat):
+    for i in np.arange(0,nSat):
         ## Create struct for current sat
         range1_slip_distribution_per_sat[i] = {}
         slip_epochs = []
         nSlipPeriods = len(range1_slip_periods[i+1])
 
        ## -- Get all slip epochs of current sat.
-        for j in arange(0,nSlipPeriods):
+        for j in np.arange(0,nSlipPeriods):
             ## if slip period is shorter than 60 seconds
             slip_epochs.append(int(range1_slip_periods[i+1][j,0]))
 
@@ -275,7 +275,7 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
         range1_slip_distribution_per_sat[i]['n_slips_30_40']   = len(slip_epoch_elevation_angles[(slip_epoch_elevation_angles >=30) & (slip_epoch_elevation_angles <40)])
         range1_slip_distribution_per_sat[i]['n_slips_40_50']   = len(slip_epoch_elevation_angles[(slip_epoch_elevation_angles >=40) & (slip_epoch_elevation_angles <50)])
         range1_slip_distribution_per_sat[i]['n_slips_over50']  = len(slip_epoch_elevation_angles[(slip_epoch_elevation_angles >=50)])
-        range1_slip_distribution_per_sat[i]['n_slips_NaN']     = len(slip_epoch_elevation_angles[isnan(slip_epoch_elevation_angles)])
+        range1_slip_distribution_per_sat[i]['n_slips_NaN']     = len(slip_epoch_elevation_angles[np.isnan(slip_epoch_elevation_angles)])
         range1_slip_distribution_per_sat[i]['n_slips_Tot']     = len(slip_epoch_elevation_angles)
 
         range1_slip_distribution['n_slips_0_10']   = range1_slip_distribution['n_slips_0_10']     + range1_slip_distribution_per_sat[i]['n_slips_0_10']
@@ -293,11 +293,11 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
         nSlipPeriods = len(LLI_slip_periods[i])
 
         ## -- Get all LLI slip epochs of current sat.
-        for j in arange(0,nSlipPeriods):
+        for j in np.arange(0,nSlipPeriods):
             LLI_slip_epochs.append(int(LLI_slip_periods[i][j,0]))
 
         ## Get elevation angles for every LLI slip of current sat
-        if not isnan(current_sat_elevation_angles[LLI_slip_epochs, i+1]).any():
+        if not np.isnan(current_sat_elevation_angles[LLI_slip_epochs, i+1]).any():
             LLI_slip_epoch_elevation_angles = current_sat_elevation_angles[LLI_slip_epochs, i+1].astype(int)
         else:
             LLI_slip_epoch_elevation_angles = current_sat_elevation_angles[LLI_slip_epochs, i+1]
@@ -309,7 +309,7 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
         LLI_slip_distribution_per_sat[i]['n_slips_30_40']   = len(LLI_slip_epoch_elevation_angles[(LLI_slip_epoch_elevation_angles >=30) & (LLI_slip_epoch_elevation_angles <40)])
         LLI_slip_distribution_per_sat[i]['n_slips_40_50']   = len(LLI_slip_epoch_elevation_angles[(LLI_slip_epoch_elevation_angles >=40) & (LLI_slip_epoch_elevation_angles <50)])
         LLI_slip_distribution_per_sat[i]['n_slips_over50']  = len(LLI_slip_epoch_elevation_angles[(LLI_slip_epoch_elevation_angles >=50)])
-        LLI_slip_distribution_per_sat[i]['n_slips_NaN']     = len(LLI_slip_epoch_elevation_angles[isnan(LLI_slip_epoch_elevation_angles)])
+        LLI_slip_distribution_per_sat[i]['n_slips_NaN']     = len(LLI_slip_epoch_elevation_angles[np.isnan(LLI_slip_epoch_elevation_angles)])
         LLI_slip_distribution_per_sat[i]['n_slips_Tot']     = len(LLI_slip_epoch_elevation_angles)
 
         LLI_slip_distribution['n_slips_0_10']   = LLI_slip_distribution['n_slips_0_10']     + LLI_slip_distribution_per_sat[i]['n_slips_0_10']
@@ -328,7 +328,7 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
         ambiguity_nSlipPeriods = len(ambiguity_slip_periods[i+1])
 
        ## -- Get all slip epochs of current sat.
-        for j in arange(0,ambiguity_nSlipPeriods):
+        for j in np.arange(0,ambiguity_nSlipPeriods):
             ## if slip period is shorter than 60 seconds
             ambiguity_slip_epochs.append(int(ambiguity_slip_periods[i+1][j,0]))
 
@@ -342,7 +342,7 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
         ambiguity_slip_distribution_per_sat[i]['n_slips_30_40']   = len(slip_epoch_elevation_angles[(slip_epoch_elevation_angles >=30) & (slip_epoch_elevation_angles <40)])
         ambiguity_slip_distribution_per_sat[i]['n_slips_40_50']   = len(slip_epoch_elevation_angles[(slip_epoch_elevation_angles >=40) & (slip_epoch_elevation_angles <50)])
         ambiguity_slip_distribution_per_sat[i]['n_slips_over50']  = len(slip_epoch_elevation_angles[(slip_epoch_elevation_angles >=50)])
-        ambiguity_slip_distribution_per_sat[i]['n_slips_NaN']     = len(slip_epoch_elevation_angles[isnan(slip_epoch_elevation_angles)])
+        ambiguity_slip_distribution_per_sat[i]['n_slips_NaN']     = len(slip_epoch_elevation_angles[np.isnan(slip_epoch_elevation_angles)])
         ambiguity_slip_distribution_per_sat[i]['n_slips_Tot']     = len(slip_epoch_elevation_angles)
 
         ambiguity_slip_distribution['n_slips_0_10']   = ambiguity_slip_distribution['n_slips_0_10']     + ambiguity_slip_distribution_per_sat[i]['n_slips_0_10']
@@ -361,7 +361,7 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
         combined_slip_distribution_per_sat[i] = {}
 
         ## -- Get all combined slips for current satellite
-        combined_slip_epochs = union1d(slip_epochs, LLI_slip_epochs) ## må være union her??
+        combined_slip_epochs = np.union1d(slip_epochs, LLI_slip_epochs) ## må være union her??
 
         # get elevation angles for every combined slip of current sat
         if len(combined_slip_epochs) != 0:
@@ -375,7 +375,7 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
             combined_slip_distribution_per_sat[i]['n_slips_30_40']   = len(combined_slip_epoch_elevation_angles[(combined_slip_epoch_elevation_angles >=30) & (combined_slip_epoch_elevation_angles <40)])
             combined_slip_distribution_per_sat[i]['n_slips_40_50']   = len(combined_slip_epoch_elevation_angles[(combined_slip_epoch_elevation_angles >=40) & (combined_slip_epoch_elevation_angles <50)])
             combined_slip_distribution_per_sat[i]['n_slips_over50']  = len(combined_slip_epoch_elevation_angles[(combined_slip_epoch_elevation_angles >=50)])
-            combined_slip_distribution_per_sat[i]['n_slips_NaN']     = len(combined_slip_epoch_elevation_angles[isnan(combined_slip_epoch_elevation_angles)])
+            combined_slip_distribution_per_sat[i]['n_slips_NaN']     = len(combined_slip_epoch_elevation_angles[np.isnan(combined_slip_epoch_elevation_angles)])
             combined_slip_distribution_per_sat[i]['n_slips_Tot']     = len(combined_slip_epoch_elevation_angles)
 
             combined_slip_distribution['n_slips_0_10']   = combined_slip_distribution['n_slips_0_10']     + combined_slip_distribution_per_sat[i]['n_slips_0_10']
@@ -410,8 +410,8 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
 
 
     ## --Amount of range1 observations
-    nRange1Obs_Per_Sat = sum(~isnan(range1_observations),axis=0).reshape(1, -1) # reshape to get 2D array
-    nRange1Obs =  sum(~isnan(range1_observations))
+    nRange1Obs_Per_Sat = np.sum(~np.isnan(range1_observations),axis=0).reshape(1, -1) # reshape to get 2D array
+    nRange1Obs =  np.sum(~np.isnan(range1_observations))
 
 
     return mean_multipath_range1, overall_mean_multipath_range1, rms_multipath_range1, average_rms_multipath_range1,\

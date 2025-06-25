@@ -353,10 +353,13 @@ class SP3PositionEstimator:
         while improvement > tol and iteration < max_iterations:
             for i, PRN in enumerate(prn_lst):
                 signal_transmission_time = np.array([self.desired_time[0], Tj_GPS[i]])
-                dT_rel[i] = sp3_interpolator.compute_relativistic_correction_single_sat(PRN, signal_transmission_time)
+                rel_corr = sp3_interpolator.compute_relativistic_correction_single_sat(PRN, signal_transmission_time)
+                dT_rel[i] = rel_corr.item() if hasattr(rel_corr, "item") else rel_corr
                 interpolated_positions, interpolated_clock_bias = sp3_interpolator.interpolate_single_satellite(PRN, signal_transmission_time)
-                X[i], Y[i], Z[i] = interpolated_positions.T
-                dTj[i] = interpolated_clock_bias
+                # Ensure interpolated_positions is a 1D array before unpacking
+                interpolated_positions = np.asarray(interpolated_positions).flatten()
+                X[i], Y[i], Z[i] = interpolated_positions[0], interpolated_positions[1], interpolated_positions[2]
+                dTj[i] = interpolated_clock_bias.item() if hasattr(interpolated_clock_bias, "item") else interpolated_clock_bias
 
                 # Apply Sagnac correction
                 X_sagnac, Y_sagnac, Z_sagnac = self.apply_sagnac_correction(X[i], Y[i], Z[i], x, y, z)

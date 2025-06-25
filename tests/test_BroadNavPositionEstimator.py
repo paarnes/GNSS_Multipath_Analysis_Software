@@ -15,10 +15,6 @@ import numpy as np
 from numpy.testing import assert_almost_equal
 import warnings
 
-warnings.filterwarnings("ignore", category=UserWarning)
-pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
-
-
 # Define the project path and append it to the system path
 project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(project_path)  # REMOVE AFTER FILE IS MOVED INTO GNSS MULTIPATH
@@ -42,7 +38,6 @@ desired_system = "G"  # Desired system for GNSS
 
 
 
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_with_initial_coordinates():
     # Initialize the BroadNavPositionEstimator object
     GNSSPos = BroadNavPositionEstimator(
@@ -63,7 +58,6 @@ def test_with_initial_coordinates():
     assert_almost_equal(computed_clock_error, expected_clock_error, decimal=8)
 
 
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_without_initial_coordinates():
     # Initialize the BroadNavPositionEstimator object
     GNSSPos = BroadNavPositionEstimator(
@@ -83,7 +77,6 @@ def test_without_initial_coordinates():
     assert_almost_equal(computed_clock_error, expected_clock_error, decimal=8)
 
 
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_GLONASS_without_initial_coordinates():
     # Initialize the BroadNavPositionEstimator object
     desired_system ="R"
@@ -105,7 +98,6 @@ def test_GLONASS_without_initial_coordinates():
     assert_almost_equal(computed_clock_error, expected_clock_error, decimal=8)
 
 
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_GLONASS_with_initial_coordinates():
     # Initialize the BroadNavPositionEstimator object
     desired_system ="R"

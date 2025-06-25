@@ -42,7 +42,8 @@ jobs:
           git config user.email github-actions@github.com
           git add pyproject.toml
           git commit -m "Bump version to ${{ steps.increment_version.outputs.version }}"
-          git push origin HEAD:${{ github.ref }}
+          # Push the changes directly to the master branch
+          git push origin HEAD:master
 
       - name: Build and upload to PyPI
         run: |

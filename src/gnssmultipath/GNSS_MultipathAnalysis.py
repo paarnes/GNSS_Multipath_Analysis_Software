@@ -359,7 +359,7 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
                 estimated_position, stats = position_estimator.estimate_position()
                 x_rec_approx, y_rec_approx, z_rec_approx,_ = estimated_position.flatten()
 
-        df_az_el = sat_obj.compute_azimuth_and_elevation(receiver_position=(x_rec_approx, y_rec_approx, z_rec_approx))
+        df_az_el = sat_obj.compute_azimuth_and_elevation(receiver_position=(x_rec_approx, y_rec_approx, z_rec_approx), drop_below_horizon=True)
         sat_dict = sat_obj.create_satellite_data_dict(df_sat_coordinates, df_az_el)
 
         # Create dicts for each data type
@@ -583,9 +583,12 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
                                         continue
 
                                     ## Execute the analysis of current combination of observations. Return statistics on analysis
-                                    currentStats, success = signalAnalysis(currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, frequencyOverview, nepochs, tInterval, \
-                                    int(max_sat[sys]), GNSS_SVs[currentGNSSsystem], obsCodes[sys+1], GNSS_obs[currentGNSSsystem], GNSS_LLI[currentGNSSsystem],\
-                                        sat_elevation_angles[sys], phaseCodeLimit, ionLimit, cutoff_elevation_angle)
+                                    current_max_sat = int(max_sat[sys].item()) if hasattr(max_sat[sys], "item") else int(max_sat[sys])
+                                    currentStats, success = signalAnalysis(
+                                        currentGNSSsystem, range1_Code, range2_Code, GNSSsystems, frequencyOverview, nepochs, tInterval,
+                                        current_max_sat, GNSS_SVs[currentGNSSsystem], obsCodes[sys+1], GNSS_obs[currentGNSSsystem], GNSS_LLI[currentGNSSsystem],
+                                        sat_elevation_angles[sys], phaseCodeLimit, ionLimit, cutoff_elevation_angle
+                                    )
 
                                     if not success:
                                         return success

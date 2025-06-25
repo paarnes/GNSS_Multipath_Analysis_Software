@@ -29,8 +29,7 @@
 				"files.autoSave": "onFocusChange",
 				"jupyter.kernels.excludePythonEnvironments": [
 					"/usr/bin/python3"
-				], //making VS CODE pick the local installed Python interpreter as kernel
-				"editor.formatOnSave": true
+				] //making VS CODE pick the local installed Python interpreter as kernel
 			},
 			// Add the IDs of extensions you want installed when the container is created.
 			"extensions": [
