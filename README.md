@@ -87,7 +87,7 @@ pip install gnssmultipath
 ```
 
 ### Prerequisites
-- **Python >=3.8**: Ensure you have Python 3.8 or newer installed.
+- **Python >=3.10**: Ensure you have Python 3.10 or newer installed.
 - **LaTeX** (optional): Required for generating plots with LaTeX formatting.
 
 Note: In the example plots, TEX is used to get prettier text formatting. However, this requires TEX/LaTex to be installed on your computer. The program will first try to use TEX, and if it's not possible, standard text formatting will be used. So TEX/LaTex is not required to run the program and make plots.
