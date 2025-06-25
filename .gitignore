@@ -129,8 +129,6 @@ dmypy.json
 .pyre/
 
 Admin
-launch.json
 SLETT_*
 
 Output_Files/
-.vscode/
