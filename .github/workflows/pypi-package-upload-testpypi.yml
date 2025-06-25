@@ -28,9 +28,12 @@ jobs:
         id: get_version
         run: echo "::set-output name=version::$(grep -oP '(?<=version = ")[^"]*' pyproject.toml)"
 
-      - name: Increment version
+      - name: Increment version with random patch
         id: increment_version
-        run: echo "::set-output name=version::$(python -c "version='${{ steps.get_version.outputs.version }}'.split('.'); version[-1] = str(int(version[-1]) + 1); print('.'.join(version))")"
+        run: |
+          major_minor=$(echo "${{ steps.get_version.outputs.version }}" | awk -F. '{print $1"."$2}')
+          random_patch=$(python -c "import random; print(random.randint(10000,99999))")
+          echo "::set-output name=version::${major_minor}.${random_patch}"
 
       - name: Update version in pyproject.toml
         run: sed -i "s/version = \".*\"/version = \"${{ steps.increment_version.outputs.version }}\"/" pyproject.toml
