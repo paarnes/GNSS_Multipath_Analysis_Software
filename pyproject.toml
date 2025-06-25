@@ -47,6 +47,7 @@ dependencies = [
   "zstandard==0.23.0",
   "pytest",
   "pyproj",
+  "pyproj",
   ]
 
 [project.urls]
