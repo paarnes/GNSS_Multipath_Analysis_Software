@@ -46,7 +46,7 @@ dependencies = [
   "tqdm==4.66.5",
   "zstandard==0.23.0",
   "pytest",
-  "pyproj",
+  "pyproj=3.6.1",
   ]
 
 [project.urls]
