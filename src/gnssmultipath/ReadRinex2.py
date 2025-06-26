@@ -30,28 +30,6 @@ class Rinex2Reader:
     
     def save_dataframe_as_csv(self, df, fname="rinex_data.csv", sep=";"):
         df.to_csv(fname, sep=sep, index=False, encoding='utf-8')
-
-    def build_dataframe(self, GNSS_obs, GNSS_LLI, GNSS_SS, time_epochs, obsCodes) -> pd.DataFrame:
-        def format_epoch(t):
-            return f"{t[0]:04}:{t[1]:02}:{t[2]:02}:{t[3]:02}:{t[4]:02}:{t[5]:09.6f}"
-        records = []
-        for sv, obs_list in GNSS_obs.items():
-            for epoch_idx, obs in enumerate(obs_list):
-                row = {
-                    'epoch': format_epoch(time_epochs[epoch_idx]),
-                    'sat': sv
-                }
-                for i, code in enumerate(obsCodes):
-                    row[code] = obs[i]
-                # Only add LLI if the code is a phase observation (starts with 'L')
-                    if code.startswith('L') and GNSS_LLI[sv][epoch_idx][i] is not None:
-                        row[f'LLI_{code}'] = GNSS_LLI[sv][epoch_idx][i]
-                    if GNSS_SS[sv][epoch_idx][i] is not None:
-                        row[f'SS_{code}'] = GNSS_SS[sv][epoch_idx][i]
-                records.append(row)
-
-        df = pd.DataFrame.from_records(records)
-        return df
     
     def filter_by_satellite(self, df: pd.DataFrame, satellite: str) -> pd.DataFrame:
         """Filter the DataFrame to include only rows from a specific satellite (e.g. 'G10')."""
@@ -72,7 +50,16 @@ class Rinex2Reader:
         base_cols = ['epoch', 'sat']
         matching_cols = [col for col in df.columns if col.endswith(f"_{signal_type}") or col == signal_type]
         return df[base_cols + matching_cols].copy()
-
+    
+    def filter_by_system(self, df: pd.DataFrame, system_letter: str) -> pd.DataFrame:
+        """
+        Filter the DataFrame to include only rows for a specific GNSS system.
+    
+        Parameters:
+            df (pd.DataFrame): The observation DataFrame.
+            system_letter (str): A single character identifying the system ('G', 'E', 'R', etc.)
+        """
+        return df[df['sat'].str.startswith(system_letter)].copy()
 
     def parse(self, system_filter=None):
         with open(self.filepath, 'r') as f:
@@ -80,30 +67,16 @@ class Rinex2Reader:
 
         header_end_idx = self._parse_header(lines)
 
-        GNSS_obs = defaultdict(list)
-        GNSS_LLI = defaultdict(list)
-        GNSS_SS = defaultdict(list)
-        GNSS_SVs = []
-        time_epochs = []
-
         obs_types = self.header.get('OBS_TYPES', [])
-        approxPosition = self.header.get('APPROX_POSITION', None)
-        antDelta = self.header.get('ANTENNA_DELTA', None)
         tInterval = self.header.get('INTERVAL', None)
-        markerName = self.header.get('MARKER_NAME', None)
-        rinexVersion = self.header.get('RINEX_VERSION', None)
-        recType = self.header.get('REC_TYPE', None)
-        timeSystem = self.header.get('TIME_SYSTEM', None)
-        leapSec = self.header.get('LEAP_SECONDS', None)
-        gnssType = self.header.get('GNSS_TYPE', None)
-        rinexProgr = self.header.get('RINEX_PROGR', None)
-        rinexDate = self.header.get('RINEX_DATE', None)
-        tFirstObs = self.header.get('TIME_FIRST_OBS', None)
-        tLastObs = self.header.get('TIME_LAST_OBS', None)
-        clockOffsetsON = self.header.get('RCV_CLOCK_OFFS_APPL', None)
-
 
         obs_idx = header_end_idx + 1
+        records = []
+        time_epochs = []
+
+        def format_epoch(t):
+            return f"{t[0]:04}:{t[1]:02}:{t[2]:02}:{t[3]:02}:{t[4]:02}:{t[5]:09.6f}"
+
         while obs_idx < len(lines):
             line = lines[obs_idx]
             if len(line) < 32:
@@ -111,6 +84,7 @@ class Rinex2Reader:
                 continue
 
             dt = self._parse_epoch_time(line[:26])
+            epoch_str = format_epoch(dt)
             nsats = int(line[29:32])
             sats = []
 
@@ -126,18 +100,17 @@ class Rinex2Reader:
 
             obs_idx += 1  # Move to start of observation data
 
-            GNSS_SVs.append(sats)
             time_epochs.append(dt)
 
             for sv in sats:
-                if system_filter and sv[0] not in system_filter:
-                    obs_idx += (len(obs_types) + 4) // 5
-                    continue
-
+                n_obs_lines = (len(obs_types) + 4) // 5
                 data = []
-                for _ in range((len(obs_types) + 4) // 5):
+                for _ in range(n_obs_lines):
                     data.extend(lines[obs_idx][i:i+16] for i in range(0, 80, 16) if i < len(lines[obs_idx]))
                     obs_idx += 1
+
+                if system_filter and sv[0] not in system_filter:
+                    continue  # skip storing, but lines already read
 
                 obs_vals, lli_vals, ss_vals = [], [], []
                 for d in data[:len(obs_types)]:
@@ -148,26 +121,23 @@ class Rinex2Reader:
                     lli_vals.append(int(lli) if lli else 0)
                     ss_vals.append(int(ss) if ss else None)
 
-                GNSS_obs[sv].append(obs_vals)
-                GNSS_LLI[sv].append(lli_vals)
-                GNSS_SS[sv].append(ss_vals)
+                row = {
+                    'epoch': epoch_str,
+                    'sat': sv
+                }
+                for i, code in enumerate(obs_types):
+                    row[code] = obs_vals[i]
+                    if code.startswith('L') and lli_vals[i] is not None:
+                        row[f'LLI_{code}'] = lli_vals[i]
+                    if ss_vals[i] is not None:
+                        row[f'SS_{code}'] = ss_vals[i]
+                records.append(row)
 
         # Determine the interval if None
         if tInterval is None:
-            tInterval = reader.infer_interval_from_epochs(time_epochs)
+            tInterval = self.infer_interval_from_epochs(time_epochs)
 
-        nepochs = len(time_epochs)
-        GNSSsystems = list({sv[0] for sats in GNSS_SVs for sv in sats})
-        obsCodes = obs_types
-        max_sat = max(len(s) for s in GNSS_SVs)
-
-        # Build dataframe
-        df = self.build_dataframe(GNSS_obs, GNSS_LLI, GNSS_SS, time_epochs, obsCodes)
-
-        # return GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems, \
-        #     obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, \
-        #     timeSystem, leapSec, gnssType, rinexProgr, rinexDate, antDelta, tFirstObs, \
-        #     tLastObs, clockOffsetsON
+        df = pd.DataFrame.from_records(records)
 
         return self.header, df
 
@@ -232,23 +202,16 @@ if __name__=="__main__":
     rin_obs = path_to_testdata + 'OPEC00NOR_S_20220010000_01D_30S_MO_v211.obs'
 
     reader = Rinex2Reader(rin_obs)
-    # result = reader.parse(system_filter=['G'])  # Only GPS
-    # GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems, \
-    #         obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, \
-    #         timeSystem, leapSec, gnssType, rinexProgr, rinexDate, antDelta, tFirstObs, \
-    #         tLastObs, clockOffsetsON = reader.parse(system_filter="G")
-
-    # header, df = reader.parse(system_filter="G")
     header, df = reader.parse(system_filter=None)
     
-    print(df)
+    print(len(df['epoch'].unique()))
     
 
-    from readRinexObs import readRinexObs304
+    # from readRinexObs import readRinexObs304
 
-    rin_obs = r"TestData\ObservationFiles\OPEC00NOR_S_20220010000_01D_30S_MO_3.04.rnx"
-    GNSS_obs_304, GNSS_LLI_304, GNSS_SS_304, GNSS_SVs_304, time_epochs_304, nepochs_304, GNSSsystems_304,\
-        obsCodes_304, approxPosition_304, max_sat_304, tInterval_304, markerName_304, rinexVersion_304, recType_304, timeSystem_304, leapSec_304, gnssType_304,\
-        rinexProgr_304, rinexDate_304, antDelta_304, tFirstObs_304, tLastObs_304, clockOffsetsON_304, GLO_Slot2ChannelMap_304, success_304 = readRinexObs304(rin_obs)
+    # rin_obs = r"TestData\ObservationFiles\OPEC00NOR_S_20220010000_01D_30S_MO_3.04.rnx"
+    # GNSS_obs_304, GNSS_LLI_304, GNSS_SS_304, GNSS_SVs_304, time_epochs_304, nepochs_304, GNSSsystems_304,\
+    #     obsCodes_304, approxPosition_304, max_sat_304, tInterval_304, markerName_304, rinexVersion_304, recType_304, timeSystem_304, leapSec_304, gnssType_304,\
+    #     rinexProgr_304, rinexDate_304, antDelta_304, tFirstObs_304, tLastObs_304, clockOffsetsON_304, GLO_Slot2ChannelMap_304, success_304 = readRinexObs304(rin_obs)
 
-    print(rin_obs)
+    # print(rin_obs)
