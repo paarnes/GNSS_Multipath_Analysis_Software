@@ -5,8 +5,12 @@ from collections import Counter
 import pandas as pd
 import numpy as np
 from Geodetic_functions import date2gpstime_vectorized
+from tqdm.auto import tqdm
 
 class Rinex2Reader:
+
+    EPOCH_LINE_PATTERN = re.compile(r'^\s*\d{2,4}\s+\d{2}\s+\d{2}\s+\d{2}\s+\d{2}\s+\d{1,2}\.\d+')
+
     def __init__(self, filepath):
         self.filepath = filepath
         self.header = {}
@@ -60,22 +64,33 @@ class Rinex2Reader:
             system_letter (str): A single character identifying the system ('G', 'E', 'R', etc.)
         """
         return df[df['sat'].str.startswith(system_letter)].copy()
+    
+    def get_nepochs(self, lines):
+        return sum(1 for line in lines if self.EPOCH_LINE_PATTERN.match(line))
 
-    def parse(self, system_filter=None):
+    def parse(self, system_filter=None, obs_filter=None):
         with open(self.filepath, 'r') as f:
             lines = f.readlines()
-
         header_end_idx = self._parse_header(lines)
-
-        obs_types = self.header.get('OBS_TYPES', [])
+        full_obs_types = self.header.get('OBS_TYPES', [])
         tInterval = self.header.get('INTERVAL', None)
+
+        # Filter observation types if specified
+        if obs_filter:
+            obs_types = [code for code in full_obs_types if code in obs_filter]
+        else:
+            obs_types = full_obs_types
 
         obs_idx = header_end_idx + 1
         records = []
         time_epochs = []
+        nepochs = self.get_nepochs(lines[header_end_idx::])
 
         def format_epoch(t):
             return f"{t[0]:04}:{t[1]:02}:{t[2]:02}:{t[3]:02}:{t[4]:02}:{t[5]:09.6f}"
+
+        bar_format = '{desc}: {percentage:3.0f}%|{bar}| ({n_fmt}/{total_fmt})'
+        pbar = tqdm(total=nepochs, desc="Parsing epochs",position=0, leave=True,  bar_format=bar_format)
 
         while obs_idx < len(lines):
             line = lines[obs_idx]
@@ -101,37 +116,40 @@ class Rinex2Reader:
             obs_idx += 1  # Move to start of observation data
 
             time_epochs.append(dt)
+            pbar.update(1)  # Progress bar increment
 
             for sv in sats:
-                n_obs_lines = (len(obs_types) + 4) // 5
-                data = []
-                for _ in range(n_obs_lines):
-                    data.extend(lines[obs_idx][i:i+16] for i in range(0, 80, 16) if i < len(lines[obs_idx]))
-                    obs_idx += 1
+                n_obs_lines = (len(full_obs_types) + 4) // 5
+                data_lines = lines[obs_idx:obs_idx + n_obs_lines]
+                obs_idx += n_obs_lines  # Always skip based on full obs types
 
                 if system_filter and sv[0] not in system_filter:
-                    continue  # skip storing, but lines already read
+                    continue  # skip storing
 
-                obs_vals, lli_vals, ss_vals = [], [], []
-                for d in data[:len(obs_types)]:
+                data = []
+                for line in data_lines:
+                    data.extend([line[i:i + 16] for i in range(0, 80, 16) if i < len(line)])
+
+                obs_vals_all, lli_vals_all, ss_vals_all = [], [], []
+                for d in data[:len(full_obs_types)]:
                     val = d[0:14].strip()
                     lli = d[14:15].strip()
                     ss = d[15:16].strip()
-                    obs_vals.append(float(val) if val else None)
-                    lli_vals.append(int(lli) if lli else 0)
-                    ss_vals.append(int(ss) if ss else None)
+                    obs_vals_all.append(float(val) if val else None)
+                    lli_vals_all.append(int(lli) if lli else 0)
+                    ss_vals_all.append(int(ss) if ss else None)
 
-                row = {
-                    'epoch': epoch_str,
-                    'sat': sv
-                }
-                for i, code in enumerate(obs_types):
-                    row[code] = obs_vals[i]
-                    if code.startswith('L') and lli_vals[i] is not None:
-                        row[f'LLI_{code}'] = lli_vals[i]
-                    if ss_vals[i] is not None:
-                        row[f'SS_{code}'] = ss_vals[i]
+                row = {'epoch': epoch_str, 'sat': sv}
+                for i, code in enumerate(full_obs_types):
+                    if code not in obs_types:
+                        continue  # only store selected codes
+                    row[code] = obs_vals_all[i]
+                    if code.startswith('L') and lli_vals_all[i] is not None:
+                        row[f'LLI_{code}'] = lli_vals_all[i]
+                    if ss_vals_all[i] is not None:
+                        row[f'SS_{code}'] = ss_vals_all[i]
                 records.append(row)
+        pbar.close()
 
         # Determine the interval if None
         if tInterval is None:
@@ -199,12 +217,16 @@ if __name__=="__main__":
 
     ## Rinex observation file
     path_to_testdata = "TestData/rin_211/"
-    rin_obs = path_to_testdata + 'OPEC00NOR_S_20220010000_01D_30S_MO_v211.obs'
+    # rin_obs = path_to_testdata + 'OPEC00NOR_S_20220010000_01D_30S_MO_v211.obs'
+    rin_obs = path_to_testdata + 'p0803430.24o'
 
     reader = Rinex2Reader(rin_obs)
-    header, df = reader.parse(system_filter=None)
+    # system_filter = ['E']  # Example filter for GPS, Galileo, and GLONASS
+    # obs_filter = ['C1', 'L1']  # Example filter for specific observation codes
+    # header, df = reader.parse(system_filter=system_filter, obs_filter=obs_filter)
+    header, df = reader.parse()
+    print(df)
     
-    print(len(df['epoch'].unique()))
     
 
     # from readRinexObs import readRinexObs304
