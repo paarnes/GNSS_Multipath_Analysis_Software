@@ -11,7 +11,7 @@ import numpy as np
 from numpy import ndarray
 from tqdm import tqdm
 from gnssmultipath.Geodetic_functions import date2gpstime_vectorized, get_leap_seconds, gpstime2date_arrays, ECEF2enu, ECEF2geodb
-from gnssmultipath.RinexNav import Rinex_v3_Reader
+from gnssmultipath.RinexNav import RinexNav, Rinex_v3_Reader, Rinex_v2_Reader
 
 
 
@@ -364,9 +364,11 @@ class SatelliteEphemerisToECEF:
         if isinstance(rinex_nav_file, list):
             self.ephemerides, self.glo_fcn = self.read_a_list_of_nav_files(rinex_nav_file, data_rate=data_rate)
         else:
-            self.nav_data = Rinex_v3_Reader().read_rinex_nav(rinex_nav_file, desired_systems, data_rate=data_rate)
-            self.ephemerides = self.nav_data['ephemerides']
-            self.glo_fcn = self.nav_data['glonass_fcn']
+            # self.nav_data = Rinex_v3_Reader().read_rinex_nav(rinex_nav_file, desired_systems, data_rate=data_rate)
+            # self.ephemerides = self.nav_data['ephemerides']
+            # self.glo_fcn = self.nav_data['glonass_fcn']
+            self.nav_data, self.ephemerides, self.glo_fcn = self.read_rinex_nav_file(rinex_nav_file, desired_systems, data_rate=data_rate)
+
 
         self.x_rec = x_rec
         self.y_rec = y_rec
@@ -381,15 +383,40 @@ class SatelliteEphemerisToECEF:
         self.sys_names = [self.system_code_mapper[sys_code] for sys_code in self.available_systems]
         self.total_sats = sum(len(self.prn_overview[sys])for sys in self.available_systems)
 
+    def read_rinex_nav_file(self, rinex_nav_file: str, desired_systems: list= ['G', 'R', 'E', 'C'], data_rate=60) -> Tuple[ndarray, ndarray, Optional[ndarray]]:
+        rin_ver = self.get_rinex_version(rinex_nav_file)
+        if rin_ver == "v2":
+            nav_data = Rinex_v2_Reader().read_rinex_nav(rinex_nav_file, dataframe=False)
+            ephemerides = nav_data['ephemerides']
+            glo_fcn = None  # GLONASS frequency channel numbers are not available in RINEX v2
+        else:
+            nav_data = Rinex_v3_Reader().read_rinex_nav(rinex_nav_file, desired_systems, data_rate=data_rate)
+            ephemerides = self.nav_data['ephemerides']
+            glo_fcn = self.nav_data['glonass_fcn']
+        
+        return nav_data, ephemerides, glo_fcn
 
-    def read_a_list_of_nav_files(self, rinex_nav_file, data_rate):
+    def get_rinex_version(self, rinex_nav_file: str) -> Literal['v2', 'v3']:
+        """ Detect RINEX version from the header """
+        header_lines = RinexNav().read_header_lines(rinex_nav_file)
+        for line in header_lines:
+            label = line[60:].strip()
+            if label == 'RINEX VERSION / TYPE':
+                version_str = line[:9].strip()
+                version = float(version_str)
+        return 'v3' if version >= 3.0 else 'v2'
+
+
+    def read_a_list_of_nav_files(self, rinex_nav_files: list, data_rate: int):
         """
         Reads in a list of RINEX navigation files and merge the data
         into one data array.
         """
-        nav_files = [nav_file for nav_file in rinex_nav_file if nav_file != ""]
-        first_nav_data = Rinex_v3_Reader().read_rinex_nav(nav_files[0], data_rate=data_rate)
-        data = np.concatenate([first_nav_data['ephemerides']] + [Rinex_v3_Reader().read_rinex_nav(nav_file, data_rate=data_rate)['ephemerides'] for nav_file in nav_files[1:]], axis=0)
+        nav_files = [nav_file for nav_file in rinex_nav_files if nav_file != ""]
+        # first_nav_data = Rinex_v3_Reader().read_rinex_nav(nav_files[0], data_rate=data_rate)
+        first_nav_data, _,_ = self.read_rinex_nav_file(nav_files[0], data_rate=data_rate)
+        # data = np.concatenate([first_nav_data['ephemerides']] + [Rinex_v3_Reader().read_rinex_nav(nav_file, data_rate=data_rate)['ephemerides'] for nav_file in nav_files[1:]], axis=0)
+        data = np.concatenate([first_nav_data['ephemerides']] + [self.read_rinex_nav_file(nav_file, data_rate=data_rate)['ephemerides'] for nav_file in nav_files[1:]], axis=0)
         glonass_fcn = first_nav_data.get('glonass_fcn', None)
         data = np.unique(data, axis=0) # ensure no duplicates
         return data, glonass_fcn

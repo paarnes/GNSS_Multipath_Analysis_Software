@@ -11,9 +11,14 @@ from datetime import datetime
 import numpy as np
 from tqdm import tqdm
 from gnssmultipath.Geodetic_functions import date2gpstime
-
+from gnssmultipath.RinexV2Reader import RinexV2Reader, RinexUtils
 
 global tFirstObs
+
+max_GPS_PRN     = 36 # Max number of GPS PRN in constellation
+max_GLONASS_PRN = 36 # Max number of GLONASS PRN in constellation
+max_Galileo_PRN = 36 # Max number of Galileo PRN in constellation
+max_Beidou_PRN  = 100 # Max number of BeiDou PRN in constellation
 
 def readRinexObs(filename, readSS=None, readLLI=None, includeAllGNSSsystems=None,includeAllObsCodes=None, \
                                       desiredGNSSsystems=None, desiredObsCodes=None, desiredObsBands=None):
@@ -27,10 +32,44 @@ def readRinexObs(filename, readSS=None, readLLI=None, includeAllGNSSsystems=None
     line = fid.readline().rstrip()
     rinexVersion = line[0:9].strip()
     if '2' in rinexVersion.split('.')[0]:
-        GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems,\
-            obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType,\
-            rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, success=  readRinexObs211(filename, readSS=None, readLLI=None, includeAllGNSSsystems=None,includeAllObsCodes=None, \
-                            desiredGNSSsystems=desiredGNSSsystems, desiredObsCodes=None, desiredObsBands=None) ## WHEN A SOUTION IS FOUND ON desiredGNSSsystems, =None must be removed.
+        reader = RinexV2Reader(filename)
+        header, df, GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs = reader.parse(readSS, readLLI, includeAllGNSSsystems, includeAllObsCodes, desiredGNSSsystems, desiredObsCodes, desiredObsBands)
+        # Extract header information
+        # obsCodes = header.get('OBS_TYPES', [])
+        obsCodes = header.get('GNSS_OBS_CODES', {})
+        approxPosition = header.get('APPROX_POSITION', None)
+        antDelta = header.get('ANTENNA_DELTA', None)
+        tInterval = header.get('INTERVAL', None)
+        markerName = header.get('MARKER_NAME', None)
+        rinexVersion = header.get('RINEX_VERSION', None)
+        recType = header.get('REC_TYPE', None)
+        timeSystem = header.get('TIME_SYSTEM', None)
+        leapSec = header.get('LEAP_SECONDS', None)
+        gnssType = header.get('GNSS_TYPE', None)
+        rinexProgr = header.get('RINEX_PROGR', None)
+        rinexDate = header.get('RINEX_DATE', None)
+        tFirstObs = header.get('TIME_FIRST_OBS', [])
+        tLastObs = header.get('TIME_LAST_OBS', [])
+        if tFirstObs:
+            tFirstObs = np.array(tFirstObs, dtype=float).reshape((6,1))
+        if tLastObs:
+            tLastObs = np.array(tLastObs, dtype=float).reshape((6,1))
+        clockOffsetsON = header.get('RCV_CLOCK_OFFS_APPL', None)
+        nepochs = header.get('NEPOCHS', None)
+        GNSSsystems = header.get('GNSS_SYSTEMS', [])
+        GNSSsystems = {i+1: GNSSsystems[i] for i in range(len(GNSSsystems))} # Convert to dict with index as key
+        GLO_Slot2ChannelMap = header.get('GLO_SLOT2CHANNEL_MAP', None)
+        success = True
+        max_sat_dict = {"G": max_GPS_PRN,"R": max_GLONASS_PRN, "E": max_Galileo_PRN, "C": max_Beidou_PRN}                       
+        max_sat = np.array([max_sat_dict.get(sys) for sys in GNSS_obs.keys()])
+        time_epochs = RinexUtils.get_gpstime_array(header['TIME_EPOCHS']) 
+
+        
+
+        # GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems,\
+        #     obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType,\
+        #     rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, success=  readRinexObs211(filename, readSS=None, readLLI=None, includeAllGNSSsystems=None,includeAllObsCodes=None, \
+        #                     desiredGNSSsystems=desiredGNSSsystems, desiredObsCodes=None, desiredObsBands=None) ## WHEN A SOUTION IS FOUND ON desiredGNSSsystems, =None must be removed.
     else:
         GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems,\
             obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType,\
@@ -355,10 +394,6 @@ def readRinexObs304(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
         success = 0
         return
 
-    max_GPS_PRN     = 36 # Max number of GPS PRN in constellation
-    max_GLONASS_PRN = 36 # Max number of GLONASS PRN in constellation
-    max_Galileo_PRN = 36 # Max number of Galileo PRN in constellation
-    max_Beidou_PRN  = 100 # Max number of BeiDou PRN in constellation
 
     ## -- Read header of observation file
     [success, rinexVersion, gnssType, markerName, recType, antDelta,\
@@ -3219,3 +3254,6 @@ def rinexReadObsBlockHead211(fid):
     SVlist = re.findall(r'[A-Z][0-9]{2}', line)
 
     return success, epochflag, clockOffset, date, numSV, SVlist, eof
+
+
+

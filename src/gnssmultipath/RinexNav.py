@@ -35,7 +35,8 @@ class RinexNav:
         for the desired GNSS systems only. The rate of data can be set by the user.
         Default value is 30 min.
         """
-        pattern = r'^[' + ''.join(desired_GNSS) + ']\d{2}'
+        # pattern = r'^[' + ''.join(desired_GNSS) + ']\d{2}'
+        pattern = r'^[' + ''.join(desired_GNSS) + r']\d{2}' 
         with open(filename, "r") as f:
             lines = f.readlines()
         desired_lines = [lines[idx:idx + self.block_len[line[0]] + 1] for idx, line in enumerate(lines) if re.match(pattern, line) is not None]
@@ -164,7 +165,7 @@ class Rinex_v2_Reader(RinexNav):
 
 
         try:
-            print('Reading broadcast ephemeris from RINEX-navigation file.....')
+            print('Reading broadcast ephemeris from RINEX V2-navigation file.....')
             filnr = open(filename, 'r')
         except OSError:
             print("Could not open/read file: %s", filename)
@@ -172,9 +173,21 @@ class Rinex_v2_Reader(RinexNav):
 
         line = filnr.readline().rstrip()
         header = []
+        system_id = 'G'  # Default to GPS
+        line = filnr.readline().rstrip()
         while 'END OF HEADER' not in line:
-            line = filnr.readline().rstrip()
             header.append(line)
+            if 'RINEX VERSION / TYPE' in line:
+                sys_flag = line[40:60].strip()
+                if 'N: GPS' in sys_flag:
+                    system_id = 'G'
+                elif 'R: GLONASS' in sys_flag:
+                    system_id = 'R'
+                elif 'E: GALILEO' in sys_flag:
+                    system_id = 'E'
+                elif 'C: BDS' in sys_flag:
+                    system_id = 'C'
+            line = filnr.readline().rstrip()
 
         data  = np.zeros((1,36))
 
@@ -194,6 +207,9 @@ class Rinex_v2_Reader(RinexNav):
                     line = line[:idx+4] + " " + line[idx+4:]
 
             fl = [el for el in line.split(" ") if el != ""]
+            # Right after parsing fl[]
+            if fl:
+                fl[0] = f"{system_id}{int(fl[0]):02d}"  # Prefix PRN with GNSS system ID
             block_arr =np.append(block_arr,np.array([fl]))
             block_arr = block_arr.reshape(1,len(block_arr))
 
@@ -227,8 +243,8 @@ class Rinex_v2_Reader(RinexNav):
 
         filnr.close()
         n_eph = len(data)
-        data = data.astype(float)
-        if dataframe == 'yes' or dataframe == 'YES':
+        # data = data.astype(float)
+        if dataframe:
             data = DataFrame(data)
 
         # Create a dictinary for the data
@@ -425,6 +441,14 @@ class Rinex_v3_Reader(RinexNav):
 
 
 if __name__=="__main__":
-    # brod1 = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\NavigationFiles\BRDC00IGS_R_20220010000_01D_MN.rnx"
-    # data = Rinex_v3_Reader().read_rinex_nav(brod1, dataframe=True, data_rate=60)
-    pass
+    brod1 = r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\TestData\NavigationFiles\BRDC00IGS_R_20220010000_01D_MN.rnx"
+    data = Rinex_v3_Reader().read_rinex_nav(brod1, dataframe=False, data_rate=120)
+
+    path_to_testdata = "TestData/rin_211/"
+    rin_obs = path_to_testdata + 'OPEC00NOR_S_20220010000_01D_30S_MO_v211.obs'
+    rin_nav = path_to_testdata + 'ascg0010.22n'
+    data_rin2 = Rinex_v2_Reader().read_rinex_nav(rin_nav, dataframe=False)
+    print(data_rin2['ephemerides'])
+
+
+
