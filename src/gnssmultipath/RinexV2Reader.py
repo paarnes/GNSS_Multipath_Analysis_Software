@@ -90,6 +90,46 @@ class RinexUtils:
     
 
 
+def build_gnss_obs_from_df(df: pd.DataFrame, obs_types: list) -> dict:
+    """
+    Build GNSS_obs structure from a DataFrame.
+
+    Parameters:
+    -----------
+    df : pd.DataFrame
+        Must contain columns 'epoch', 'sat', and observation codes (e.g., 'C1', 'L1', etc.)
+    obs_types : list of str
+        List of observation types to include (e.g., ['C1', 'L1', 'D1', ...])
+
+    Returns:
+    --------
+    GNSS_obs : dict
+        GNSS_obs[system] = np.ndarray[prn, obs_type, epoch]
+    """
+    systems = sorted(df['sat'].str[0].unique())
+    epochs = sorted(df['epoch'].unique())
+    epoch_map = {ep: idx for idx, ep in enumerate(epochs, 1)}
+    GNSS_obs = {}
+    max_sat_dict = {"G": 36, "E": 36, "R": 36, "C": 100}
+    for sys in systems:
+        df_sys = df[df['sat'].str.startswith(sys)]
+        prn_max = max_sat_dict.get(sys)
+        n_obs = len(obs_types)
+        obs_array = np.full((prn_max + 1, n_obs), 0.0)
+        obs_dict = {}
+        for _, row in df_sys.iterrows():
+            prn = int(row['sat'][1:])
+            epoch_idx = epoch_map[row['epoch']]
+            for i, obs in enumerate(obs_types):
+                val = row.get(obs)
+                if pd.notna(val):
+                    obs_array[prn, i] = val
+
+            obs_dict[epoch_idx] = obs_array
+        GNSS_obs[sys] = obs_dict
+    return GNSS_obs
+
+
 
 class RinexV2Reader:
 
@@ -301,6 +341,7 @@ class RinexV2Reader:
         self.header['TIME_EPOCHS'] = time_epochs
         df = pd.DataFrame.from_records(records)
 
+        GNSS_obs = build_gnss_obs_from_df(df, obs_types)
         return self.header, df, GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs
 
     def _parse_header(self, lines):
