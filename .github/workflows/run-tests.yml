@@ -28,15 +28,10 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest
+          pip install pytest pytest-xdist
           pip install -e .
           pip install -r .devcontainer/requirements.txt
 
-      - name: Print root directory
-        run: |
-          echo "Root directory: $PWD"
-
       - name: Test with pytest
         run: |
-          export PYTHONPATH=$PYTHONPATH:/src/GNSS_MultipathAnalysis.py
-          python -m pytest tests/test_GNSS_MultipathAnalysis.py -v
+          python -m pytest tests -v -n auto
