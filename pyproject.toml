@@ -51,3 +51,11 @@ dependencies = [
 [project.urls]
 "Homepage" = "https://github.com/paarnes/GNSS_Multipath_Analysis_Software"
 "Bug Tracker" = "https://github.com/paarnes/GNSS_Multipath_Analysis_Software/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["gnssmultipath*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
