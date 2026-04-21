@@ -2,9 +2,21 @@
 
 [![Python application](https://github.com/paarnes/GNSS_Multipath_Analysis_Software/actions/workflows/run-tests.yml/badge.svg)](https://github.com/paarnes/GNSS_Multipath_Analysis_Software/actions/workflows/run-tests.yml)
 [![PyPI version](https://badge.fury.io/py/gnssmultipath.svg)](https://badge.fury.io/py/gnssmultipath)
+[![PyPI - Status](https://img.shields.io/pypi/status/gnssmultipath.svg)](https://pypi.org/project/gnssmultipath/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Versions](https://img.shields.io/pypi/pyversions/gnssmultipath.svg)](https://pypi.org/project/gnssmultipath/)
 [![Downloads](https://pepy.tech/badge/gnssmultipath)](https://pepy.tech/project/gnssmultipath)
+[![Open Issues](https://img.shields.io/github/issues/paarnes/GNSS_Multipath_Analysis_Software.svg)](https://github.com/paarnes/GNSS_Multipath_Analysis_Software/issues)
+
+## In short
+`gnssmultipath` is an end-to-end Python toolkit for **quality control of GNSS measurements**, with a particular focus on quantifying the **code multipath effect** for every signal and every constellation (GPS, GLONASS, Galileo and BeiDou) present in a RINEX observation file. From a single observation file plus an ephemeris source it produces multipath and ionospheric-delay time series, RMS statistics, cycle-slip diagnostics, SNR plots, az/el heatmaps and a full text/CSV report — and it can also estimate the receiver position by least-squares from the pseudoranges.
+
+The software reads observations and ephemerides directly, with no external GNSS toolbox required:
+
+- **RINEX observation files**: v2.xx, v3.xx and v4.xx
+- **RINEX navigation files (broadcast ephemerides)**: v2.xx, v3.xx and v4.xx, including the new RINEX 4 message types (GPS LNAV, GLONASS FDMA, Galileo I/F/INAV-FNAV, BeiDou D1/D2).
+- **SP3 files (precise satellite coordinates)**: SP3-c and SP3-d are interpolated to the observation epochs using Neville's algorithm.
+
 
 
 ## Introduction
