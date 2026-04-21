@@ -27,7 +27,7 @@ from gnssmultipath.readers.readRinexObs import readRinexObs
 
 
 # Test data paths
-rinObs = os.path.join(project_path,"TestData/ObservationFiles/OPEC00NOR_S_20220010000_01D_30S_MO_3.04_croped.rnx")
+rinObs = os.path.join(project_path,"TestData/ObservationFiles/v3/OPEC00NOR_S_20220010000_01D_30S_MO_3.04_croped.rnx")
 sp3 = os.path.join(project_path,"TestData/SP3/Testfile_20220101.eph")
 
 

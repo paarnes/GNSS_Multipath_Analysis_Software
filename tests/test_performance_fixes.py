@@ -32,7 +32,7 @@ LAT_REC, LON_REC, _ = ECEF2geodb(a_WGS84, b_WGS84, *REC_ECEF)
 
 # Test data paths
 sp3_path = os.path.join(project_path, "TestData/SP3/Testfile_20220101.eph")
-rinObs_path = os.path.join(project_path, "TestData/ObservationFiles/OPEC00NOR_S_20220010000_01D_30S_MO_3.04_croped.rnx")
+rinObs_path = os.path.join(project_path, "TestData/ObservationFiles/v3/OPEC00NOR_S_20220010000_01D_30S_MO_3.04_croped.rnx")
 
 
 # ═══════════════════════════════════════════════════════════════════════

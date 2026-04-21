@@ -73,7 +73,7 @@ def test_GNSS_MultipathAnalysis_sp3_file():
     Test the results from OPEC2022 and sp3 files
     """
 
-    rinObs_file = "../TestData/ObservationFiles/NMBUS_SAMSUNG_S20.20o"
+    rinObs_file = "../TestData/ObservationFiles/v3/NMBUS_SAMSUNG_S20.20o"
     sp3Nav_file = "../TestData/SP3/NMBUS_2020 10 30.SP3"
     expected_res = "../tests/analysisResults.pkl.zst"
     result = GNSS_MultipathAnalysis(rinObsFilename=rinObs_file, sp3NavFilename_1=sp3Nav_file,
@@ -107,8 +107,8 @@ def test_GNSS_MultipathAnalysis_broadcast_navfile():
     Test the results from OPEC2022 and use of broadcast ephemerids
     """
     # os.chdir('src')
-    rinObs_file =  "../TestData/ObservationFiles/OPEC00NOR_S_20220010000_01D_30S_MO_3.04_croped.rnx"
-    broadNav_file = "../TestData/NavigationFiles/BRDC00IGS_R_20220010000_01D_MN.rnx"
+    rinObs_file =  "../TestData/ObservationFiles/v3/OPEC00NOR_S_20220010000_01D_30S_MO_3.04_croped.rnx"
+    broadNav_file = "../TestData/NavigationFiles/v3/BRDC00IGS_R_20220010000_01D_MN.rnx"
     expected_res = "../tests/analysisResults_OPEC00NOR_S_20220010000_01D_30S_MO_3.04_croped.pkl.zst"
 
     result = GNSS_MultipathAnalysis(rinObsFilename=rinObs_file, broadcastNav1=broadNav_file,
