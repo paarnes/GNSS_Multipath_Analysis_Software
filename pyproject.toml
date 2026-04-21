@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gnssmultipath"
-version = "1.6.1"
+version = "2.0.0"
 authors = [
   { name="Per Helge Aarnes", email="per.helge.aarnes@gmail.com" },
 ]
@@ -29,7 +29,7 @@ keywords = [
 ]
 license = { text = "MIT" }
 classifiers = [
-
+    "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
