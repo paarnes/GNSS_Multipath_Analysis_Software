@@ -128,7 +128,7 @@ class RinexObsData:
 def readRinexObs(filename, readSS=None, readLLI=None,
                  includeAllGNSSsystems=None, includeAllObsCodes=None,
                  desiredGNSSsystems=None, desiredObsCodes=None,
-                 desiredObsBands=None):
+                 desiredObsBands=None, desired_data_rate=None):
     """Read a RINEX observation file (v2 / v3 / v4).
 
     Dispatches to the correct version-specific reader and returns
@@ -138,6 +138,25 @@ def readRinexObs(filename, readSS=None, readLLI=None,
         GNSS_obs, GNSS_LLI, ..., success = readRinexObs(file)
 
     continue to work unchanged.
+
+    Parameters
+    ----------
+    desired_data_rate : float | int | None, optional
+        Desired observation interval in **seconds**.  When provided, the
+        epochs are decimated (down-sampled) so that the resulting interval
+        is approximately ``desired_data_rate`` seconds.  Useful for
+        reducing the amount of data when the file has a higher native
+        rate than required (e.g. read 1 Hz data as 30 s).
+
+        Behaviour:
+
+        * ``None`` (default) -- keep all epochs (no decimation).
+        * Value ``<=`` the file's native ``tInterval`` -- no decimation.
+        * Value ``>`` ``tInterval`` -- keep every ``round(desired_data_rate /
+          tInterval)``-th epoch starting from the first epoch.
+
+        After decimation, ``RinexObsData.tInterval`` is updated to the
+        effective interval and ``nepochs`` reflects the new epoch count.
     """
     if os.stat(filename).st_size == 0:
         raise ValueError('ERROR: This file seems to be empty')
@@ -154,21 +173,163 @@ def readRinexObs(filename, readSS=None, readLLI=None,
             desiredGNSSsystems=desiredGNSSsystems,
             desiredObsCodes=None, desiredObsBands=None,
         )
+        v3_path_handled_decimation = False
     else:
         result = readRinexObs304(
             filename, readSS, readLLI,
             includeAllGNSSsystems, includeAllObsCodes,
             desiredGNSSsystems, desiredObsCodes, desiredObsBands,
+            desired_data_rate=desired_data_rate,
         )
+        v3_path_handled_decimation = True
 
     if isinstance(result, RinexObsData):
-        return result
-    # Legacy reader still returns a raw tuple — wrap it
-    return RinexObsData.from_tuple(result)
+        data = result
+    else:
+        # Legacy reader still returns a raw tuple — wrap it
+        data = RinexObsData.from_tuple(result)
+
+    # v2 path: apply post-decimation fallback (parser-level skip not supported there)
+    if desired_data_rate is not None and not v3_path_handled_decimation:
+        data = _decimate_rinex_obs_data(data, float(desired_data_rate))
+    elif desired_data_rate is not None and desired_data_rate <= 0:
+        # Validate even when v3 path didn't get to (e.g. tInterval was NaN)
+        raise ValueError(
+            f"desired_data_rate must be positive (got {desired_data_rate})"
+        )
+    return data
+
+
+def _decimate_rinex_obs_data(data: 'RinexObsData', desired_data_rate: float) -> 'RinexObsData':
+    """Down-sample :class:`RinexObsData` to a coarser data rate.
+
+    Keeps every ``stride``-th epoch where ``stride = round(desired_data_rate
+    / tInterval)``.  When the desired rate is finer (smaller) than the
+    file's native rate, the data is returned unchanged.
+
+    Parameters
+    ----------
+    data : RinexObsData
+        Parsed RINEX observation data.
+    desired_data_rate : float
+        Desired interval in seconds (must be > 0).
+
+    Returns
+    -------
+    RinexObsData
+        New object containing only the retained epochs.  ``tInterval``,
+        ``nepochs`` and ``tLastObs`` are updated to reflect the
+        decimated data.
+    """
+    if desired_data_rate <= 0:
+        raise ValueError(
+            f"desired_data_rate must be positive (got {desired_data_rate})"
+        )
+
+    t_interval = data.tInterval
+    if t_interval is None or (isinstance(t_interval, float) and np.isnan(t_interval)) or t_interval <= 0:
+        # Cannot decimate without a known native interval
+        return data
+
+    stride = int(round(desired_data_rate / t_interval))
+    if stride <= 1:
+        # Desired rate is finer than (or equal to) native rate — nothing to do
+        return data
+
+    nepochs = int(data.nepochs)
+    if nepochs == 0:
+        return data
+
+    # 0-based indices of epochs to keep
+    keep_idx = list(range(0, nepochs, stride))
+    if not keep_idx:
+        return data
+
+    # ── Re-key per-system epoch dicts (1-based) ──
+    def _reindex(epoch_dict_per_sys):
+        if not isinstance(epoch_dict_per_sys, dict):
+            return epoch_dict_per_sys
+        new = {}
+        for sys, epoch_dict in epoch_dict_per_sys.items():
+            if not isinstance(epoch_dict, dict):
+                new[sys] = epoch_dict
+                continue
+            new_sys = {}
+            for new_e_idx, old_idx in enumerate(keep_idx, start=1):
+                old_key = old_idx + 1  # 1-based original epoch key
+                if old_key in epoch_dict:
+                    new_sys[new_e_idx] = epoch_dict[old_key]
+            new[sys] = new_sys
+        return new
+
+    new_GNSS_obs = _reindex(data.GNSS_obs)
+    new_GNSS_LLI = _reindex(data.GNSS_LLI)
+    new_GNSS_SS  = _reindex(data.GNSS_SS)
+
+    # ── Decimate GNSS_SVs (per-system 2D ndarray, rows = epochs) ──
+    new_GNSS_SVs = {}
+    if isinstance(data.GNSS_SVs, dict):
+        for sys, arr in data.GNSS_SVs.items():
+            if isinstance(arr, np.ndarray) and arr.ndim == 2 and arr.shape[0] == nepochs:
+                new_GNSS_SVs[sys] = arr[keep_idx, :].copy()
+            else:
+                new_GNSS_SVs[sys] = arr
+    else:
+        new_GNSS_SVs = data.GNSS_SVs
+
+    # ── Decimate time_epochs (rows = epochs) ──
+    if isinstance(data.time_epochs, np.ndarray) and data.time_epochs.ndim == 2 and data.time_epochs.shape[0] == nepochs:
+        new_time_epochs = data.time_epochs[keep_idx, :].copy()
+    else:
+        new_time_epochs = data.time_epochs
+
+    # ── Compute new metadata ──
+    new_nepochs = len(keep_idx)
+    new_tInterval = float(t_interval * stride)
+
+    # tLastObs: derive from last kept epoch in time_epochs if possible
+    new_tLastObs = data.tLastObs
+    if isinstance(new_time_epochs, np.ndarray) and new_time_epochs.size and new_time_epochs.shape[0] >= 1:
+        try:
+            from gnssmultipath.Geodetic_functions import gpstime2date
+            last_week = float(new_time_epochs[-1, 0])
+            last_tow  = float(new_time_epochs[-1, 1])
+            ymd_hms = gpstime2date(last_week, last_tow)  # [Y, M, D, H, M, S]
+            new_tLastObs = np.array([[float(v)] for v in ymd_hms])
+        except Exception:
+            pass
+
+    return RinexObsData(
+        GNSS_obs=new_GNSS_obs,
+        GNSS_LLI=new_GNSS_LLI,
+        GNSS_SS=new_GNSS_SS,
+        GNSS_SVs=new_GNSS_SVs,
+        time_epochs=new_time_epochs,
+        nepochs=new_nepochs,
+        GNSSsystems=data.GNSSsystems,
+        obsCodes=data.obsCodes,
+        approxPosition=data.approxPosition,
+        max_sat=data.max_sat,
+        tInterval=new_tInterval,
+        markerName=data.markerName,
+        rinexVersion=data.rinexVersion,
+        recType=data.recType,
+        timeSystem=data.timeSystem,
+        leapSec=data.leapSec,
+        gnssType=data.gnssType,
+        rinexProgr=data.rinexProgr,
+        rinexDate=data.rinexDate,
+        antDelta=data.antDelta,
+        tFirstObs=data.tFirstObs,
+        tLastObs=new_tLastObs,
+        clockOffsetsON=data.clockOffsetsON,
+        GLO_Slot2ChannelMap=data.GLO_Slot2ChannelMap,
+        success=data.success,
+    )
 
 
 def readRinexObs304(filename, readSS=None, readLLI=None, includeAllGNSSsystems=None,includeAllObsCodes=None, \
-                    desiredGNSSsystems=None, desiredObsCodes=None, desiredObsBands=None):
+                    desiredGNSSsystems=None, desiredObsCodes=None, desiredObsBands=None, desired_data_rate=None):
     """
     Program/function to read GNSS observations in RINEX 3.04/4.xx observation files.
 
@@ -527,6 +688,26 @@ def readRinexObs304(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
                             [int(_lp[3])], [int(_lp[4])], [int(_lp[5])]])
         print('INFO(readRinexObs304): TIME OF LAST OBS computed from observation data')
 
+    ## -- Determine decimation stride for parser-level down-sampling
+    decim_stride = 1
+    if desired_data_rate is not None:
+        if desired_data_rate <= 0:
+            raise ValueError(
+                f"desired_data_rate must be positive (got {desired_data_rate})"
+            )
+        if not (isinstance(tInterval, float) and np.isnan(tInterval)) and tInterval > 0:
+            s = int(round(float(desired_data_rate) / float(tInterval)))
+            if s > 1:
+                decim_stride = s
+                # nepochs becomes the count of epochs we will actually keep
+                nepochs = (nepochs + decim_stride - 1) // decim_stride
+                tInterval = float(tInterval * decim_stride)
+                print(
+                    f'INFO(readRinexObs304): Decimating observations by stride {decim_stride} '
+                    f'(desired_data_rate={desired_data_rate}s -> tInterval={tInterval}s, '
+                    f'kept {nepochs} epochs)'
+                )
+
     success = 1
     nGNSSsystems = len(GNSSsystems)
     GNSS_SVs = {}
@@ -580,6 +761,7 @@ def readRinexObs304(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
 
     GNSS_names = dict(zip(['G', 'R', 'E', 'C'],['GPS','GLONASS','Galileo','Beidou']))
     current_epoch      = 0
+    file_epoch_index   = -1  # 0-based count of epochs encountered in file (incl. skipped)
 
     ## -- Pre-compute system-to-index lookup (avoids list comprehension per satellite)
     sys_to_idx = {v: k for k, v in GNSSsystems.items()}
@@ -628,6 +810,13 @@ def readRinexObs304(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
                 break
 
             numSV = int(line[32:35])
+
+            ## -- Parser-level decimation: skip non-kept epochs entirely
+            file_epoch_index += 1
+            if decim_stride > 1 and (file_epoch_index % decim_stride) != 0:
+                # Advance past this epoch's satellite lines without parsing
+                line_cursor += numSV
+                continue
 
             ## -- Parse epoch date
             date = [float(el) for el in line[1:].split() if el][:6]
@@ -711,6 +900,18 @@ def readRinexObs304(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
 
     ## -- Build time_epochs array (once, at end)
     time_epochs = np.column_stack((t_week, t_tow)) if t_week else np.empty((0, 2))
+
+    ## -- When parser-level decimation is active, recompute tLastObs
+    ##    from the last kept epoch (header value referred to original last epoch)
+    if decim_stride > 1 and time_epochs.shape[0] > 0:
+        try:
+            from gnssmultipath.Geodetic_functions import gpstime2date
+            last_week = float(time_epochs[-1, 0])
+            last_tow  = float(time_epochs[-1, 1])
+            ymd_hms = gpstime2date(last_week, last_tow)
+            tLastObs = np.array([[float(v)] for v in ymd_hms])
+        except Exception:
+            pass
 
     ## -- Storing observation in dictionary
     GNSS_obs['G'] = GPS

@@ -131,6 +131,7 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
                           write_results_to_csv: bool = True,
                           output_csv_delimiter: str = ';',
                           nav_data_rate: int = 60,
+                          desired_obs_data_rate: Union[float, int, None] = None,
                           includeResultSummary: Union[bool, None] = None,
                           includeCompactSummary: Union[bool, None] = None,
                           includeObservationOverview: Union[bool, None] = None,
@@ -229,6 +230,13 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
                               parameter is to speed up processing time. Both reading the RINEX navigation file and looping through the
                               ephemerides aftwerward will be significatnly faster by increasing this value. Note: A too high value will
                               degrade the accuracy of the interploated satellite coordinates.
+
+    desired_obs_data_rate:    float | int | None. Desired observation data rate in **seconds** for down-sampling (decimating)
+                              the RINEX observation file at read-time. Use this to reduce the amount of data when the file
+                              has a higher native rate than required (e.g. read a 1 Hz file at 30 s by passing ``30``).
+                              The reader keeps every ``round(desired_obs_data_rate / native_tInterval)``-th epoch starting
+                              from the first epoch. ``None`` (default) keeps all epochs. A value smaller than or equal to the
+                              file's native interval also keeps all epochs (no up-sampling is performed).
 
     includeResultSummary:     boolean. 1 if user desires output file to
                               include more detailed overview of statistics,
@@ -331,7 +339,8 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
                      includeAllObsCodes=0,
                      desiredGNSSsystems=desiredGNSSsystems,
                      desiredObsCodes=desiredObsCodes,
-                     desiredObsBands=list(range(1, 10)))
+                     desiredObsBands=list(range(1, 10)),
+                     desired_data_rate=desired_obs_data_rate)
     GNSS_obs = rinex_data.GNSS_obs
     GNSS_LLI = rinex_data.GNSS_LLI
     GNSS_SS = rinex_data.GNSS_SS
