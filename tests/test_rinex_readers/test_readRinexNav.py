@@ -56,6 +56,12 @@ class TestRinexNavHeaderDetection:
         assert version == 2
         assert len(header) > 0
 
+    def test_v2_glonass_header(self, nav_v2_glonass_file):
+        version, header = _read_header(nav_v2_glonass_file)
+        assert version == 2
+        header_text = "\n".join(header)
+        assert "GLONASS NAV DATA" in header_text
+
     def test_header_contains_end_of_header(self, nav_gps_file):
         _, header = _read_header(nav_gps_file)
         header_text = "\n".join(header)
@@ -537,6 +543,60 @@ class TestRinexV2GPSNav:
     def test_v2_dataframe_output(self, nav_v2_gps_file):
         result = RinexNav.read_nav(nav_v2_gps_file, dataframe=True)
         import pandas as pd
+        assert isinstance(result.ephemerides, pd.DataFrame)
+        assert len(result.ephemerides) > 0
+
+
+class TestRinexV2GLONASSNav:
+    """Test reading a RINEX v2.10 GLONASS navigation file."""
+
+    @pytest.fixture(autouse=True, scope="class")
+    def _read_nav(self, nav_v2_glonass_file):
+        cls = type(self)
+        cls.result = RinexNav.read_nav(nav_v2_glonass_file)
+
+    def test_result_has_ephemerides(self):
+        assert hasattr(self.result, "ephemerides")
+
+    def test_ephemerides_not_empty(self):
+        assert len(self.result.ephemerides) > 0
+
+    def test_ephemerides_shape(self):
+        # GLONASS rows are zero-padded out to the unified 36-column layout.
+        assert self.result.ephemerides.shape[1] == 36
+
+    def test_all_satellites_are_glonass(self):
+        prns = self.result.ephemerides[:, 0]
+        for prn in prns:
+            assert str(prn).startswith("R"), f"Expected GLONASS PRN, got {prn}"
+
+    def test_prn_two_digit_format(self):
+        # All PRNs should be R + 2-digit slot number (e.g. R01, R24).
+        for prn in self.result.ephemerides[:, 0]:
+            prn_str = str(prn)
+            assert len(prn_str) == 3, f"Expected 3-char PRN, got {prn_str!r}"
+            assert prn_str[1:].isdigit()
+
+    def test_glonass_fcn_populated(self):
+        assert hasattr(self.result, "glonass_fcn")
+        assert self.result.glonass_fcn is not None
+        assert len(self.result.glonass_fcn) > 0
+        # Slot numbers must be ints; FCN values must be ints in [-7, 6].
+        for slot, fcn in self.result.glonass_fcn.items():
+            assert isinstance(slot, (int, np.integer))
+            assert isinstance(fcn, (int, np.integer))
+            assert -7 <= int(fcn) <= 6
+
+    def test_desired_gnss_filter_includes_glonass(self, nav_v2_glonass_file):
+        # ``desired_GNSS=['R']`` must keep all rows; ``['G']`` must drop them.
+        keep = RinexNav.read_nav(nav_v2_glonass_file, desired_GNSS=["R"])
+        drop = RinexNav.read_nav(nav_v2_glonass_file, desired_GNSS=["G"])
+        assert len(keep.ephemerides) == len(self.result.ephemerides)
+        assert len(drop.ephemerides) == 0
+
+    def test_v2_glonass_dataframe_output(self, nav_v2_glonass_file):
+        import pandas as pd
+        result = RinexNav.read_nav(nav_v2_glonass_file, dataframe=True)
         assert isinstance(result.ephemerides, pd.DataFrame)
         assert len(result.ephemerides) > 0
 

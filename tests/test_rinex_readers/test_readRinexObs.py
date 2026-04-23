@@ -400,3 +400,40 @@ class TestRinex211ObservationFile:
 
     def test_time_epochs_shape(self):
         assert self.time_epochs.shape[0] == self.nepochs
+
+
+class TestRinex210EventFlagsObservationFile:
+    """
+
+    The file ``OPEC0010_truncated.22o`` is a truncated RINEX 2.10 mixed
+    observation file (GPS + GLONASS) with ``nObsCodes == 10`` (an exact
+    multiple of 5) and event-flag blocks (flag 2 with 6 records, flag 5
+    with 1 record) embedded between epochs.
+
+    Before the fix, ``rinexReadObsBlock211`` over-read one continuation
+    line per satellite when ``nObsCodes`` was a multiple of 5, leaving
+    leftover observation lines in the stream. The next call to
+    ``rinexReadObsBlockHead211`` then misinterpreted a data line as an
+    epoch header, raising
+    ``ValueError: invalid literal for int() with base 10: '  '``.
+    """
+
+    def test_parses_without_exception(self, rinex210_obs_file_event_flags):
+        data = readRinexObs(rinex210_obs_file_event_flags)
+        assert data.success == 1
+
+    def test_expected_systems_and_epochs(self, rinex210_obs_file_event_flags):
+        data = readRinexObs(rinex210_obs_file_event_flags)
+        # Truncated to the first 5 epochs.
+        assert data.nepochs == 5
+        assert set(data.GNSS_obs.keys()) == {"G", "R"}
+
+    def test_obs_code_count_is_multiple_of_five(
+        self, rinex210_obs_file_event_flags
+    ):
+        # Triggering condition: exactly 10 obs codes per system.
+        data = readRinexObs(rinex210_obs_file_event_flags)
+        for sys_idx in data.obsCodes:
+            for sys_code in data.obsCodes[sys_idx]:
+                assert len(data.obsCodes[sys_idx][sys_code]) == 10
+

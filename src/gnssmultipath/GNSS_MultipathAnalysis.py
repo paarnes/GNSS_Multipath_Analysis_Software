@@ -596,8 +596,11 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
                                 "Therefore, this linear combination cannot be utilized.")
                             continue
 
-                        # Execute the analysis of current combination of observations
-                        stats, success = SignalAnalyzer(
+                        # Execute the analysis of current combination of observations.
+                        # NOTE: name kept distinct from the outer ``stats`` (position
+                        # estimator output) so it isn't accidentally shadowed and later
+                        # reused as ``Estimated_Receiver_Approx_Pos_stats``.
+                        signal_stats, success = SignalAnalyzer(
                             gnss_system=currentGNSSsystem,
                             range1_code=range1_Code,
                             range2_code=range2_Code,
@@ -619,7 +622,7 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
                         if not success:
                             return success
 
-                        currentStats = stats.to_dict()
+                        currentStats = signal_stats.to_dict()
                         current_nEstimates = currentStats['nEstimates']
                         if current_nEstimates == 0:
                             logger.warning(

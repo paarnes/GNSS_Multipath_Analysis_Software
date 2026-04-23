@@ -369,8 +369,16 @@ def computeDelayStats(ion_delay_phase1, multipath_range1, current_sat_elevation_
         ## create dict for current sat
         combined_slip_distribution_per_sat[i] = {}
 
-        ## -- Get all combined slips for current satellite
-        combined_slip_epochs = np.union1d(slip_epochs, LLI_slip_epochs) ## må være union her??
+        ## -- Get all combined slips for current satellite.
+        ## Three-way union of the threshold (range1), ambiguity (cycle-slip /
+        ## ionospheric residual) and LLI detectors. Earlier this only OR-ed
+        ## ``slip_epochs`` (range1) with ``LLI_slip_epochs``, silently
+        ## dropping every ambiguity-detector slip the threshold detector
+        ## missed and breaking parity with TEQC's qcMP fusion.
+        combined_slip_epochs = np.union1d(
+            np.union1d(slip_epochs, ambiguity_slip_epochs),
+            LLI_slip_epochs,
+        )
 
         # get elevation angles for every combined slip of current sat
         if len(combined_slip_epochs) != 0:

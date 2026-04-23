@@ -3485,8 +3485,16 @@ def rinexReadObsBlock211(fid, numSV, nObsCodes, GNSSsystems, obsCodeIndex, readS
                     SS[sat - removed_sat, obs_num]  = newSS
 
                     # if np.mod(obs_num+1, 5) == 0 and nObsCodes > 5 and factor*sat < factor*numSV:
-                    # Matches the case where three lines are read
-                    if np.mod(obs_num+1, 5) == 0 and nObsCodes>5 and nNew_line <= factor:
+                    # Matches the case where three lines are read.
+                    # Guard with `obs_num+1 < n_obs_current_system` so we don't
+                    # over-read past the last observation code (off-by-one when
+                    # nObsCodes is an exact multiple of 5, e.g. nObsCodes==10
+                    # consumes a continuation line that belongs to the next
+                    # satellite, corrupting the parser state for subsequent
+                    # epoch headers).
+                    if (np.mod(obs_num+1, 5) == 0 and nObsCodes > 5
+                            and nNew_line <= factor
+                            and obs_num + 1 < n_obs_current_system):
                         nNew_line += 1
                         line = fid.readline().rstrip()
 

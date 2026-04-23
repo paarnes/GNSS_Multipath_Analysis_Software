@@ -248,8 +248,13 @@ def _parse_v3_epoch_line(line: str) -> list:
     return [prn, year, month, day, hour, minute, int(float(second)), af0, af1, af2]
 
 
-def _parse_v2_epoch_line(line: str) -> list:
-    """Parse a RINEX v2 GPS epoch line into v3-compatible tokens."""
+def _parse_v2_epoch_line(line: str, sys_char: str = "G") -> list:
+    """Parse a RINEX v2 epoch line into v3-compatible tokens.
+
+    Works for both GPS (`sys_char='G'`) and GLONASS (`sys_char='R'`) v2
+    navigation files.  The slot/PRN integer in the first field is
+    rewritten as ``f"{sys_char}{int:02d}"``.
+    """
     line = _fortran_to_float_str(line.rstrip())
     # Ensure space between seconds field and af0 (position 22).
     if len(line) > 22 and line[22] not in (" ", "\t"):
@@ -259,7 +264,7 @@ def _parse_v2_epoch_line(line: str) -> list:
     parts = line.split()
     if not parts:
         return []
-    prn = f"G{int(parts[0]):02d}"
+    prn = f"{sys_char}{int(parts[0]):02d}"
     year_2d = int(parts[1])
     year = str(2000 + year_2d) if year_2d < 80 else str(1900 + year_2d)
     second = int(float(parts[6]))
@@ -310,16 +315,20 @@ _V2_EPOCH_RE = re.compile(r"^\s*\d{1,2}\s+\d{2}\s+\d{1,2}\s+\d{1,2}")
 _V3_EPOCH_RE = re.compile(r"^[GREC]\d{2}")
 
 
-def _extract_v2_blocks(body: list[str]) -> list[list[str]]:
-    """Extract 8-line ephemeris blocks from RINEX v2 body lines (GPS only)."""
+def _extract_v2_blocks(body: list[str], n_lines: int = 8) -> list[list[str]]:
+    """Extract fixed-size ephemeris blocks from RINEX v2 body lines.
+
+    ``n_lines`` is 8 for GPS (epoch + 7 broadcast-orbit lines) and 4 for
+    GLONASS (epoch + 3 broadcast-orbit lines).
+    """
     blocks: list[list[str]] = []
     idx = 0
     n = len(body)
     while idx < n:
         if _V2_EPOCH_RE.match(body[idx]):
-            end = min(idx + 8, n)
+            end = min(idx + n_lines, n)
             block = body[idx:end]
-            if len(block) == 8:
+            if len(block) == n_lines:
                 blocks.append(block)
             idx = end
         else:
@@ -407,17 +416,24 @@ def _extract_v4_blocks(all_lines: list[str], desired_systems: set[str]) -> list[
 
     return blocks
 
-def _parse_v2_block(block: list[str]) -> ndarray:
-    """Parse one v2 8-line block into a ``(1, 36)`` object ndarray."""
-    tokens = _parse_v2_epoch_line(block[0])
+def _parse_v2_block(block: list[str], sys_char: str = "G") -> ndarray:
+    """Parse one v2 ephemeris block into a ``(1, 36)`` object ndarray.
+
+    GPS blocks are 8 lines (epoch + 7 orbit lines).  GLONASS blocks are
+    4 lines (epoch + 3 orbit lines) and are zero-padded to 36 columns so
+    that GLONASS rows interoperate with the GPS layout downstream
+    (column 17 = frequency-channel number, matching the v3 layout).
+    """
+    tokens = _parse_v2_epoch_line(block[0], sys_char=sys_char)
     if not tokens:
         return np.empty((0, _N_COLS), dtype=object)
     row: list = list(tokens)
     for line in block[1:]:
         row.extend(_parse_v2_data_line(line))
+    pad = "0" if sys_char == "R" else "nan"
     row = row[:_N_COLS]
     while len(row) < _N_COLS:
-        row.append("0")
+        row.append(pad)
     return np.array(row, dtype=object).reshape(1, _N_COLS)
 
 
@@ -523,7 +539,8 @@ class RinexNav:
             desired_GNSS = ["G", "R", "E", "C"]
         version, header = _read_header(filename)
         if version == 2:
-            return _read_v2(filename, header, dataframe=dataframe)
+            return _read_v2(filename, header, dataframe=dataframe,
+                            desired_systems=set(desired_GNSS))
         return _read_v3v4(
             filename, header, version,
             desired_systems=set(desired_GNSS),
@@ -531,24 +548,52 @@ class RinexNav:
             data_rate=data_rate,
         )
 
-def _read_v2(filename: str, header: list[str], dataframe: bool = False) -> RinexNavData:
-    """Read a RINEX v2 navigation file (GPS only)."""
-    print("Reading broadcast ephemeris from RINEX-navigation file.....")
-    body = _read_body_lines(filename)
-    blocks = _extract_v2_blocks(body)
-    if not blocks:
-        return RinexNavData(ephemerides=np.empty((0, _N_COLS), dtype=object), header=header, nepochs=0)
+def _v2_system_from_header(header: list[str]) -> str:
+    """Detect the GNSS system encoded by a RINEX v2 nav file from its header.
 
-    rows = [_parse_v2_block(b) for b in blocks if b]
+    Returns ``'R'`` for GLONASS nav files (header contains
+    ``GLONASS NAV DATA``) and ``'G'`` otherwise (default GPS).
+    """
+    for line in header:
+        upper = line.upper()
+        if "RINEX VERSION / TYPE" in upper:
+            if "GLONASS" in upper:
+                return "R"
+            # Galileo / BeiDou v2 nav are not standard; fall through to GPS.
+            return "G"
+    return "G"
+
+
+def _read_v2(filename: str, header: list[str], dataframe: bool = False,
+             desired_systems: Optional[set[str]] = None) -> RinexNavData:
+    """Read a RINEX v2 navigation file (GPS or GLONASS)."""
+    print("Reading broadcast ephemeris from RINEX-navigation file.....")
+    sys_char = _v2_system_from_header(header)
+    if desired_systems is not None and sys_char not in desired_systems:
+        empty = np.empty((0, _N_COLS), dtype=object)
+        return RinexNavData(ephemerides=empty, header=header, nepochs=0,
+                            glonass_fcn=None)
+
+    n_block_lines = 4 if sys_char == "R" else 8
+    body = _read_body_lines(filename)
+    blocks = _extract_v2_blocks(body, n_lines=n_block_lines)
+    if not blocks:
+        return RinexNavData(ephemerides=np.empty((0, _N_COLS), dtype=object),
+                            header=header, nepochs=0, glonass_fcn=None)
+
+    rows = [_parse_v2_block(b, sys_char=sys_char) for b in blocks if b]
     rows = [r for r in rows if r.size > 0]
     if not rows:
-        return RinexNavData(ephemerides=np.empty((0, _N_COLS), dtype=object), header=header, nepochs=0)
+        return RinexNavData(ephemerides=np.empty((0, _N_COLS), dtype=object),
+                            header=header, nepochs=0, glonass_fcn=None)
 
     data = np.vstack(rows).astype(str)
+    glo_fcn = _extract_glonass_fcn(data) if sys_char == "R" else None
     n_eph = len(data)
     if dataframe in (True, "yes", "YES"):
         data = DataFrame(data)
-    return RinexNavData(ephemerides=data, header=header, nepochs=n_eph)
+    return RinexNavData(ephemerides=data, header=header, nepochs=n_eph,
+                        glonass_fcn=glo_fcn)
 
 
 def _read_v3v4(
