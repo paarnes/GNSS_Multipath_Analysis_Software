@@ -1,7 +1,7 @@
 # GNSS Multipath Analysis
 
 [![Python application](https://github.com/paarnes/GNSS_Multipath_Analysis_Software/actions/workflows/run-tests.yml/badge.svg)](https://github.com/paarnes/GNSS_Multipath_Analysis_Software/actions/workflows/run-tests.yml)
-[![PyPI version](https://badge.fury.io/py/gnssmultipath.svg)](https://badge.fury.io/py/gnssmultipath)
+[![PyPI version](https://img.shields.io/pypi/v/gnssmultipath.svg)](https://pypi.org/project/gnssmultipath/)
 [![PyPI - Status](https://img.shields.io/pypi/status/gnssmultipath.svg)](https://pypi.org/project/gnssmultipath/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Versions](https://img.shields.io/pypi/pyversions/gnssmultipath.svg)](https://pypi.org/project/gnssmultipath/)
