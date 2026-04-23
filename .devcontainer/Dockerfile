@@ -1,20 +1,12 @@
-# [Choice] Python version (use -bullseye variants on local arm64/Apple Silicon): ...
-ARG VARIANT="3.12-bullseye"
-FROM mcr.microsoft.com/vscode/devcontainers/python:${VARIANT}
+# Debian 13 "trixie" based Python image.
+# Python 3.14 is not yet published as an official devcontainer variant,
+# so we pin to the latest available trixie variant (3.13).
+ARG VARIANT="3.13-trixie"
+FROM mcr.microsoft.com/devcontainers/python:${VARIANT}
 
-COPY .devcontainer/requirements.txt /tmp/pip-tmp/
-RUN pip3 --disable-pip-version-check --no-cache-dir install -r /tmp/pip-tmp/requirements.txt \
-    && rm -rf /tmp/pip-tmp
-
-RUN python -m pip install --upgrade pip
-RUN python -m pip install notebook jupyterlab
-
-# Install system dependencies + GitHub CLI
+# Install GitHub CLI
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends \
-        libpq-dev \
-        gdal-bin \
-        libgdal-dev \
         curl \
         gnupg \
     && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
@@ -24,3 +16,10 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get update \
     && apt-get install -y gh \
     && rm -rf /var/lib/apt/lists/*
+
+# Python tooling: upgrade pip, install project requirements + Jupyter
+COPY .devcontainer/requirements.txt /tmp/pip-tmp/
+RUN python -m pip install --upgrade pip \
+    && pip3 --disable-pip-version-check --no-cache-dir install -r /tmp/pip-tmp/requirements.txt \
+    && pip3 --disable-pip-version-check --no-cache-dir install notebook jupyterlab ipykernel \
+    && rm -rf /tmp/pip-tmp

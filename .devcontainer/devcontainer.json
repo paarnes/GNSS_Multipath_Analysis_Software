@@ -1,11 +1,10 @@
 {
-	"name": "Python 3.12",
+	"name": "Python 3.13 (trixie)",
 	"build": {
 		"dockerfile": "Dockerfile",
 		"context": "..",
 		"args": {
-			"VARIANT": "3.12-bullseye",
-			"NODE_VERSION": "lts/*"
+			"VARIANT": "3.13-trixie"
 		}
 	},
 	"customizations": {
@@ -25,15 +24,21 @@
 			"extensions": [
 				"ms-python.python",
 				"ms-python.vscode-pylance",
-				"42Crunch.vscode-openapi",
 				"ms-python.black-formatter",
 				"ms-toolsai.jupyter",
 				"ms-toolsai.jupyter-keymap",
-				"ms-toolsai.jupyter-renderers"
+				"ms-toolsai.jupyter-renderers",
+				"ms-toolsai.vscode-jupyter-cell-tags",
+				"ms-toolsai.vscode-jupyter-slideshow",
+				"mechatroner.rainbow-csv",
+				"GrapeCity.gc-excelviewer",
+				"GitHub.copilot",
+				"GitHub.copilot-chat",
+				"GitHub.vscode-pull-request-github"
 			]
 		}
 	},
-	// Run GitHub auth right after container is built
-  "postCreateCommand": "bash -lc 'unset GITHUB_TOKEN; gh config set git_protocol https >/dev/null; gh auth status >/dev/null 2>&1 || (yes | gh auth login --hostname github.com --git-protocol https --web); true'",
-  "remoteUser": "vscode"
+	// Configure gh and (only outside Codespaces) trigger an interactive login.
+	"postCreateCommand": "bash .devcontainer/post-create.sh",
+	"remoteUser": "vscode"
 }
