@@ -7,10 +7,9 @@ from gnssmultipath.readers.readRinexObs import readRinexObs
 from gnssmultipath.readers.SP3Reader import SP3Reader
 from gnssmultipath.SatelliteEphemerisToECEF import SatelliteEphemerisToECEF, Kepler2ECEF
 from gnssmultipath.Geodetic_functions import date2gpstime, date2gpstime_vectorized, gpstime2date_arrays, gpstime2date_arrays_with_microsec
+from gnssmultipath.constants import SPEED_OF_LIGHT as c
 from tqdm import tqdm
 
-
-c = 299792458  # Speed of light [m/s]
 
 class SP3Interpolator:
     """

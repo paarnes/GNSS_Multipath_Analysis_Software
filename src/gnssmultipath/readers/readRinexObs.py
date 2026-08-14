@@ -113,12 +113,19 @@ class RinexObsData:
             obs.galileo.phase_codes          # ['L1X', 'L5X', ...]
         """
         if not hasattr(self, '_observation_store'):
+            glo_map = self.GLO_Slot2ChannelMap
             self._observation_store = GNSSObservationData(
                 self.GNSS_obs,
                 self.obsCodes,
                 self.GNSSsystems,
                 self.GNSS_LLI,
                 self.GNSS_SS,
+                time_epochs=self.time_epochs if isinstance(self.time_epochs, np.ndarray) else None,
+                gnss_svs=self.GNSS_SVs if isinstance(self.GNSS_SVs, dict) else None,
+                glo_slot2channel=glo_map if isinstance(glo_map, dict) else None,
+                t_interval=self.tInterval,
+                marker_name=self.markerName,
+                approx_position=self.approxPosition,
             )
         return self._observation_store
 

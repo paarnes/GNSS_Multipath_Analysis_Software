@@ -8,6 +8,7 @@ E-mail: per.helge.aarnes@gmail.com
 
 import warnings
 import numpy as np
+from gnssmultipath.constants import SPEED_OF_LIGHT
 from gnssmultipath.detectCycleSlips import detectCycleSlips, orgSlipEpochs
 warnings.filterwarnings("ignore")
 
@@ -142,7 +143,7 @@ def estimateSignalDelays(range1_Code, range2_Code,phase1_Code, phase2_Code, carr
         alpha = carrier_freq1**2/carrier_freq2**2 # amplfication factor
 
     # Define parameters
-    c = 299792458 # speed of light
+    c = SPEED_OF_LIGHT
 
     if ionLimit ==0:
         ionLimit = 4/60   # critical rate of change of ionosphere delay  to indicate ambiguity slip on either

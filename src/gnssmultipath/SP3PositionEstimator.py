@@ -14,11 +14,11 @@ from gnssmultipath.readers.SP3Reader import SP3Reader
 from gnssmultipath.SP3Interpolator import SP3Interpolator
 from gnssmultipath.readers.readRinexObs import readRinexObs
 from gnssmultipath.utils.StatisticalAnalysis import StatisticalAnalysis
+from gnssmultipath.constants import SPEED_OF_LIGHT as c
 
 warnings.filterwarnings("ignore")
 logger = logging.getLogger(__name__)
 
-c = 299792458  # Speed of light [m/s]
 OMEGA_EARTH = 7.2921151467e-5  # Earth's rotational speed [rad/s]
 
 

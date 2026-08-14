@@ -13,6 +13,7 @@ from typing import Union, List
 import numpy as np
 from tqdm import tqdm
 from gnssmultipath.readers.readRinexObs import readRinexObs
+from gnssmultipath.constants import SYSTEM_BANDS as _SYSTEM_BANDS_BY_CODE, build_frequency_overview
 from gnssmultipath.Geodetic_functions import gpstime_to_utc_datefmt, gpstime2date
 from gnssmultipath.computeSatElevAzimuth_fromNav import computeSatElevAzimuth_fromNav
 from gnssmultipath.signalAnalysis import SignalAnalyzer
@@ -36,20 +37,7 @@ _CODE2NAME = {'G': 'GPS', 'R': 'GLONASS', 'E': 'Galileo', 'C': 'BeiDou'}
 _NAME2CODE = {v: k for k, v in _CODE2NAME.items()}
 
 _SYSTEM_BANDS = {
-    'GPS': [1, 2, 5],
-    'GLONASS': [1, 2, 3, 4, 6],
-    'Galileo': [1, 5, 6, 7, 8],
-    'BeiDou': [1, 2, 5, 6, 7, 8],
-}
-
-_FREQ_OVERVIEW = {
-    'G': np.array([[1.57542e+09], [1.22760e+09], [np.nan], [np.nan], [1.17645e+09], [np.nan], [np.nan], [np.nan], [np.nan]]),
-    'R': np.array([
-        [1.602000e+09, 5.625000e+05], [1.246000e+09, 4.375000e+05], [1.202025e+09, 0.0], [1.600995e+09, 0.0],
-        [np.nan, 0.0], [1.248060e+09, 0.0], [np.nan, 0.0], [np.nan, 0.0], [np.nan, 0.0],
-    ]),
-    'E': np.array([[1.575420e+09], [np.nan], [np.nan], [np.nan], [1.176450e+09], [1.278750e+09], [1.207140e+09], [1.191795e+09], [np.nan]]),
-    'C': np.array([[1.575420e+09], [1.561098e+09], [np.nan], [np.nan], [1.176450e+09], [1.268520e+09], [1.207140e+09], [1.191795e+09], [np.nan]]),
+    _CODE2NAME[code]: list(bands) for code, bands in _SYSTEM_BANDS_BY_CODE.items()
 }
 
 
@@ -439,32 +427,12 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
 
     # ── Build carrier frequency overview ──────────────────────────────────────
     nGNSSsystems = len(GNSSsystems)
-    max_GLO_ID = 36
 
-    frequencyOverview = {}
-    for i in range(nGNSSsystems):
-        frequencyOverview[i + 1] = _FREQ_OVERVIEW[GNSSsystems[i + 1]]
+    if "R" in GNSSsystems.values() and not isinstance(GLO_Slot2ChannelMap, dict):
+        # Fall back to the k-numbers decoded from the navigation file
+        GLO_Slot2ChannelMap = glo_fcn
 
-    if "R" in GNSSsystems.values():
-        glo_sys_key = next(k for k, v in GNSSsystems.items() if v == 'R')
-        try:
-            GLOSatID = list(GLO_Slot2ChannelMap.keys())
-        except Exception:
-            if glo_fcn:
-                GLO_Slot2ChannelMap = glo_fcn
-                GLOSatID = list(GLO_Slot2ChannelMap.keys())
-            else:
-                raise ValueError(
-                    "ERROR! GLONASS k-numbers do not exist. This is mandatory to be able to run analysis for GLONASS. "
-                    "Please add GLONASS SLOT / FRQ to RINEX header or use a rinex navigation file instead of SP3.")
-
-        freq_glo = np.full([9, max_GLO_ID + 1], np.nan)
-        for k in range(9):
-            for j in range(max_GLO_ID):
-                if j in GLOSatID:
-                    freq_glo[k, j] = (frequencyOverview[glo_sys_key][k, 0]
-                                      + GLO_Slot2ChannelMap[j] * frequencyOverview[glo_sys_key][k, 1])
-        frequencyOverview[glo_sys_key] = freq_glo
+    frequencyOverview = build_frequency_overview(GNSSsystems, GLO_Slot2ChannelMap)
 
     # ── Build observation code overview (per system, per band) ────────────────
     obsCodeOverview = {}

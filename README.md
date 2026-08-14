@@ -494,10 +494,184 @@ analysisResults = GNSS_MultipathAnalysis(rinObsFilename=rinObs_file, sp3NavFilen
 from gnssmultipath import readRinexObs
 
 rinObs_file = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04'
+rinex_data = readRinexObs(rinObs_file)
+
+# Every field is available as an attribute
+rinex_data.GNSS_obs
+rinex_data.time_epochs
+rinex_data.approxPosition
+```
+
+The legacy 25-value tuple unpacking is still supported:
+
+```python
 GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems, \
         obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType, \
         rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, success = \
         readRinexObs(rinObs_file)
+```
+
+### Work with the observation data
+
+`rinex_data.observations` provides a pythonic accessor for retrieving observations by
+GNSS system, signal code, observation type or frequency band, together with the carrier
+frequencies needed to form linear combinations.
+
+There are three complementary ways to slice the data:
+
+| Slice | Call | Result |
+| --- | --- | --- |
+| one signal, all epochs and satellites | `gps['C1C']` | 2-D `[epochs, PRN]` |
+| one signal, one satellite | `gps.sat(23)['C1C']` | 1-D over epochs |
+| all signals, one epoch | `gps.epoch(34)` | 1-D over PRN per code |
+
+#### Explore what a file contains
+
+```python
+from gnssmultipath import readRinexObs
+
+rinex = readRinexObs('OPEC00NOR_S_20220010000_01D_30S_MO_3.04.rnx')
+obs   = rinex.observations           # GNSSObservationData
+
+obs.summary()                        # overview of systems, bands and signals
+obs.systems                          # ['G', 'R', 'E', 'C']
+obs.select(obs_type='L', band=5)     # {'G': ['L5X'], 'E': ['L5X']}
+obs.select(system='G', band=1)       # {'G': ['C1C', 'L1C', 'S1C']}
+
+# Per-system accessor, by property or by bracket
+gps = obs.gps                        # SystemObservations
+gal = obs['E']
+
+gps.codes                            # ['C1C', 'L1C', 'S1C', 'C2W', 'L2W', 'C5X', ...]
+gps.pseudorange_codes                # ['C1C', 'C2W', 'C5X', ...]
+gps.phase_codes                      # ['L1C', 'L2W', 'L5X', ...]
+gps.snr_codes                        # ['S1C', 'S2W', ...]
+gps.doppler_codes                    # ['D1C', ...]
+gps.bands                            # ['1', '2', '5']
+gps.select(obs_type='C', band=1)     # ['C1C']
+
+'C1C' in gps                         # True
+gps.n_epochs                         # 2880
+gps.n_satellites                     # 37  (max PRN + 1, row 0 unused)
+gps.prns                             # observed satellites, e.g. [1, 3, 4, 6, ...]
+gps.system_name                      # 'GPS'
+```
+
+#### Signal metadata and carrier frequencies
+
+```python
+sig = gps.signal('L1C')                  # ObsCode
+sig.obs_type, sig.band, sig.attribute    # 'L', 1, 'C'
+sig.type_name                            # 'phase'
+sig.band_description                     # 'L1 (1575.42 MHz)'
+sig.frequency(), sig.wavelength()        # 1575420000.0, 0.19029...
+
+gps.signals                              # every code as an ObsCode
+gps.frequency('L1C')                     # 1575420000.0
+gps.wavelength('L1C')                    # 0.19029...
+
+# GLONASS is FDMA, so its frequencies are satellite specific
+obs.glonass.glonass_channel(1)           # 1
+obs.glonass.frequency('C1C', prn=1)      # 1602562500.0
+obs.glonass.frequency('C1C')             # ndarray indexed by PRN
+```
+
+#### Retrieve observations
+
+```python
+# One signal, all epochs and satellites -> 2-D array [epochs, PRN]
+gps['C1C']                           # raw values, missing observations are 0.0
+gps.get('C1C')                       # independent copy, missing observations are NaN
+
+# Grouped retrieval -> {code: array}
+gps.band(1)                          # {'C1C': arr, 'L1C': arr, 'S1C': arr}
+gps.by_type('L')                     # {'L1C': arr, 'L2W': arr, 'L5X': arr}
+
+# One satellite -> 1-D array over epochs
+sat = gps.sat(23)
+sat.sv_id                            # 'G23'
+sat.get('C1C')
+sat.frequency('L1C')
+
+# One epoch -> all signals of that epoch (0-based, like the array row index)
+ep = gps.epoch(34)                   # epoch(-1) is the last epoch
+ep.number, ep.datetime               # 35, numpy.datetime64('2022-01-01T00:17:00')
+ep.prns                              # satellites observed in this epoch
+ep.get('C1C')                        # 1-D array over PRN
+ep.sat(23)                           # {'C1C': ..., 'L1C': ..., ...}
+ep.matrix                            # [max_sat, n_codes] block, no copy
+ep.to_dataframe()                    # satellites x signals table
+```
+
+`gps['C1C']` returns a cached array shared between callers, while `gps.get('C1C')`
+always returns an independent copy. Only the codes you actually ask for are built,
+so a single signal never materialises the full `[epochs, satellites, codes]` cube.
+
+#### Loss-of-lock, signal strength and epoch times
+
+```python
+# 'S1C' is a normal observable holding the SNR in dB-Hz
+gps['S1C']
+
+# .lli and .ss are the single-digit flags appended to each RINEX observation
+# record, and are -999 where the field was left blank
+gps.lli['L1C']                       # ndarray [epochs, PRN]
+gps.ss['L1C']
+gps.sat(23).lli['L1C']               # 1-D over epochs
+gps.epoch(34).lli['L1C']             # 1-D over PRN
+
+obs.time_epochs                      # [[gps_week, time_of_week], ...]
+obs.datetimes                        # ndarray of datetime64 (GPS time scale)
+obs.interval                         # 30.0
+obs.approx_position                  # ECEF X/Y/Z from the header
+```
+
+#### Export to pandas
+
+```python
+# Long / tidy format: epoch, datetime, sv, prn, code, value
+gps.to_dataframe(codes=['C1C', 'L1C'], prns=[1, 3])
+gps.to_dataframe(codes=['L1C'], include_lli=True, include_ss=True)
+obs.to_dataframe(systems=['G', 'E'], codes=['C1C', 'C1X'])
+
+# Wide format for a single epoch: satellites x signals
+gps.epoch(34).to_dataframe(codes=['C1C', 'L1C', 'C2W', 'L2W'])
+```
+
+#### Build your own linear combinations
+
+With the arrays and matching carrier frequencies in hand, dual-frequency combinations
+are a one-liner:
+
+```python
+# Ionosphere-free pseudorange
+f1, f2 = gps.frequency('C1C'), gps.frequency('C2W')
+P1, P2 = gps.get('C1C'), gps.get('C2W')
+P_IF = (f1**2 * P1 - f2**2 * P2) / (f1**2 - f2**2)
+
+# Geometry-free phase (ionospheric observable), in metres
+L_GF = gps.get('L1C') * gps.wavelength('L1C') - gps.get('L2W') * gps.wavelength('L2W')
+```
+
+The same code works for any system and signal pair:
+
+```python
+for system, code1, code2 in [('G', 'C1C', 'C2W'), ('E', 'C1X', 'C5X')]:
+    sys_obs = obs[system]
+    f1, f2 = sys_obs.frequency(code1), sys_obs.frequency(code2)
+    P1, P2 = sys_obs.get(code1), sys_obs.get(code2)
+    P_IF = (f1**2 * P1 - f2**2 * P2) / (f1**2 - f2**2)
+```
+
+Carrier frequencies are also available directly:
+
+```python
+from gnssmultipath import carrier_frequency, wavelength
+
+carrier_frequency('G', 1)       # 1575420000.0
+carrier_frequency('E', 5)       # 1176450000.0
+carrier_frequency('R', 1, -4)   # GLONASS G1 on FDMA channel k = -4
+wavelength('G', 2)              # 0.24421021...
 ```
 
 ### Read a RINEX navigation file (v2, v3, or v4)

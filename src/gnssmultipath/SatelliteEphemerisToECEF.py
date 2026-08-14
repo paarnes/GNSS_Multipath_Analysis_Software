@@ -12,6 +12,7 @@ from numpy import ndarray
 from tqdm import tqdm
 from gnssmultipath.Geodetic_functions import date2gpstime_vectorized, get_leap_seconds, gpstime2date_arrays, ECEF2enu, ECEF2enu_batch, ECEF2geodb
 from gnssmultipath.readers.RinexNav import RinexNav
+from gnssmultipath.constants import SPEED_OF_LIGHT
 
 
 
@@ -198,7 +199,7 @@ class Kepler2ECEF:
         """
         GM         = 3.986005e14      # Product of Earth's mass and the gravitational constant
         omega_e    = 7.2921151467e-5  # Earth's angular velocity [rad/second]
-        c          = 299792458        # Speed of light [m/s]
+        c          = SPEED_OF_LIGHT
 
         gnss_sys = filtered_eph_data[0,0][0]
         filtered_eph_data[:,0] = np.nan  # Remove cell containing a string representing PRN with system code (to be able to convert array to float)
