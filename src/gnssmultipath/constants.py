@@ -1,10 +1,18 @@
 """
 Physical and GNSS signal constants shared across the package.
 
-This module is the single source of truth for carrier frequencies, wavelengths
-and the speed of light.  Frequencies follow the RINEX 3/4 band-digit
-convention, i.e. the second character of an observation code such as ``C1C``
-(band 1), ``L5Q`` (band 5) or ``C2I`` (band 2).
+This module is the single source of truth for carrier frequencies, wavelengths,
+the speed of light and the per-constellation Earth model parameters.
+Frequencies follow the RINEX 3/4 band-digit convention, i.e. the second
+character of an observation code such as ``C1C`` (band 1), ``L5Q`` (band 5) or
+``C2I`` (band 2).
+
+References
+----------
+Teunissen, P.J.G. and Montenbruck, O. (eds.), *Springer Handbook of Global
+Navigation Satellite Systems*, Springer, 2017.  Table 3.4 "Physical parameters
+of GNSS almanac and ephemeris models", p. 80 — source of :data:`GM` and
+:data:`EARTH_ROTATION_RATE`.
 
 Usage
 -----
@@ -16,6 +24,11 @@ Usage
     carrier_frequency('E', 5)              # 1176450000.0  (Galileo E5a)
     carrier_frequency('R', 1, -4)          # GLONASS G1, FDMA channel k = -4
     wavelength('G', 2)                     # 0.2442102134...
+
+    from gnssmultipath.constants import earth_gravitational_constant, earth_rotation_rate
+
+    earth_gravitational_constant('C')      # 3.986004418e14  (BeiDou SIS ICD)
+    earth_rotation_rate('C')               # 7.292115e-05
 
 Made by: Per Helge Aarnes
 E-mail: per.helge.aarnes@gmail.com
@@ -133,7 +146,60 @@ MAX_GLONASS_SLOT = 36
 """Highest GLONASS slot (PRN) number handled by the software."""
 
 
-# ── Public helpers ────────────────────────────────────────────────────────────
+# ── Earth model parameters ───────────────────────────────────────────────
+
+# Source: Teunissen, P.J.G. and Montenbruck, O. (eds.), "Springer Handbook of
+# Global Navigation Satellite Systems", Springer, 2017.
+# Table 3.4 "Physical parameters of GNSS almanac and ephemeris models", p. 80.
+#
+# Each constellation's Interface Control Document defines its own values, and a
+# receiver must reconstruct the orbit with the same constants the control
+# segment used to fit the broadcast elements.  Mixing them up shifts the
+# satellite along-track: using the GPS rotation rate for BeiDou is worth up to
+# ~25 m (MEO) at the end of a BDT week, because of the -omega*toe term.
+
+GM: Dict[str, float] = {
+    'G': 398600.5e9,      # IS-GPS-200
+    'R': 398600.4418e9,   # GLONASS ICD (PZ-90)
+    'E': 398600.4418e9,   # Galileo OS SIS ICD
+    'C': 398600.4418e9,   # BeiDou SIS ICD
+    'J': 398600.5e9,      # QZSS IS-QZSS (follows GPS)
+}
+"""Earth gravitational constant ``GM`` [m^3/s^2] per GNSS."""
+
+EARTH_ROTATION_RATE: Dict[str, float] = {
+    'G': 7.2921151467e-5,
+    'R': 7.292115e-5,
+    'E': 7.2921151467e-5,
+    'C': 7.2921150e-5,
+    'J': 7.2921151467e-5,
+}
+"""Earth rotation rate ``omega`` [rad/s] per GNSS."""
+
+J2 = 1.0826257e-3
+"""Second zonal harmonic coefficient, as used by the GLONASS equations of motion."""
+
+PZ90_SEMI_MAJOR_AXIS = 6378136.0
+"""Semi-major axis of the PZ-90 ellipsoid [m]."""
+
+
+# ── Public helpers ────────────────────────────────────────────────────────
+
+def earth_gravitational_constant(system: str) -> float:
+    """Return ``GM`` [m^3/s^2] for *system*.
+
+    Unknown systems fall back to the GPS value.
+    """
+    return GM.get(_normalise_system(system), GM['G'])
+
+
+def earth_rotation_rate(system: str) -> float:
+    """Return the Earth rotation rate [rad/s] for *system*.
+
+    Unknown systems fall back to the GPS value.
+    """
+    return EARTH_ROTATION_RATE.get(_normalise_system(system), EARTH_ROTATION_RATE['G'])
+
 
 def carrier_frequency(system: str, band: int, glonass_channel: Optional[int] = None) -> float:
     """Return the carrier frequency in Hz for *system* and *band*.

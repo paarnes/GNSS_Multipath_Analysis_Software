@@ -11,12 +11,16 @@ sys.path.append(os.path.join(project_path, 'src'))
 
 from gnssmultipath.constants import (
     CARRIER_FREQUENCIES,
+    EARTH_ROTATION_RATE,
     GLONASS_FDMA,
+    GM,
     SPEED_OF_LIGHT,
     SYSTEM_BANDS,
     band_label,
     build_frequency_overview,
     carrier_frequency,
+    earth_gravitational_constant,
+    earth_rotation_rate,
     wavelength,
 )
 from gnssmultipath.readers.GNSSObservationData import SystemObservations
@@ -203,6 +207,94 @@ class TestGlonassFdmaTable:
     def test_step_sizes(self):
         assert GLONASS_FDMA[1] == (1602.0e6, 562500.0)
         assert GLONASS_FDMA[2] == (1246.0e6, 437500.0)
+
+
+class TestEarthModelParameters:
+    """Each constellation's ICD defines its own GM and Earth rotation rate.
+
+    Reference values: Table 3.4, "Physical parameters of GNSS almanac and
+    ephemeris models".
+    """
+
+    @pytest.mark.parametrize("system, expected", [
+        ('C', 398600.4418e9),
+        ('E', 398600.4418e9),
+        ('R', 398600.4418e9),
+        ('G', 398600.5e9),
+        ('J', 398600.5e9),
+    ])
+    def test_gm(self, system, expected):
+        assert GM[system] == expected
+        assert earth_gravitational_constant(system) == expected
+
+    @pytest.mark.parametrize("system, expected", [
+        ('C', 7.2921150e-5),
+        ('E', 7.2921151467e-5),
+        ('R', 7.292115e-5),
+        ('G', 7.2921151467e-5),
+        ('J', 7.2921151467e-5),
+    ])
+    def test_earth_rotation_rate(self, system, expected):
+        assert EARTH_ROTATION_RATE[system] == expected
+        assert earth_rotation_rate(system) == expected
+
+    def test_gps_and_galileo_share_the_rotation_rate(self):
+        assert earth_rotation_rate('G') == earth_rotation_rate('E')
+
+    def test_beidou_rotation_rate_differs_from_gps(self):
+        assert earth_rotation_rate('C') != earth_rotation_rate('G')
+
+    def test_gps_gm_differs_from_the_others(self):
+        assert earth_gravitational_constant('G') != earth_gravitational_constant('E')
+
+    def test_accepts_full_system_name(self):
+        assert earth_gravitational_constant('BeiDou') == GM['C']
+        assert earth_rotation_rate('GLONASS') == EARTH_ROTATION_RATE['R']
+
+    def test_unknown_system_falls_back_to_gps(self):
+        assert earth_gravitational_constant('X') == GM['G']
+        assert earth_rotation_rate('X') == EARTH_ROTATION_RATE['G']
+
+    def test_beidou_rotation_rate_error_is_metre_level(self):
+        """Using the GPS rate for BeiDou shifts the orbit along-track.
+
+        The -omega*toe term makes the error grow across the BDT week, so it
+        reaches tens of metres by the end of the week for a MEO satellite.
+        """
+        d_omega = earth_rotation_rate('G') - earth_rotation_rate('C')
+        r_meo = 27.9064e6
+        end_of_week = 604800.0
+        assert r_meo * d_omega * end_of_week == pytest.approx(24.8, abs=0.5)
+
+    def test_gm_error_is_decimetre_level_over_an_hour(self):
+        """Using the GPS GM for Galileo shifts the orbit along-track."""
+        a = 29.5998e6
+        n0 = np.sqrt(earth_gravitational_constant('E') / a**3)
+        d_n0 = 0.5 * (GM['G'] - GM['E']) / GM['G'] * n0
+        assert a * d_n0 * 3600 == pytest.approx(0.96, abs=0.05)
+
+
+class TestEarthModelParametersInUse:
+    """The orbit propagator must pick the constants up from the system code."""
+
+    def test_kepler2ecef_uses_the_system_specific_constants(self):
+        import inspect
+        from gnssmultipath.SatelliteEphemerisToECEF import Kepler2ECEF
+
+        source = inspect.getsource(Kepler2ECEF.kepler2ecef)
+        assert 'earth_gravitational_constant(gnss_sys)' in source
+        assert 'earth_rotation_rate(gnss_sys)' in source
+        assert '3.986005e14' not in source
+        assert '7.2921151467e-5' not in source
+
+    def test_glonass_equations_use_the_glonass_constants(self):
+        import inspect
+        from gnssmultipath.SatelliteEphemerisToECEF import GLOStateVec2ECEF
+
+        source = inspect.getsource(GLOStateVec2ECEF.glonass_diff_eq)
+        assert "earth_gravitational_constant('R')" in source
+        assert "earth_rotation_rate('R')" in source
+
 
 
 class TestGlonassSlot36Regression:

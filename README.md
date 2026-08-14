@@ -168,11 +168,27 @@ $\sqrt{\overline{x^2}}$ (true RMS, not standard deviation).
 
 ### Coordinate frames, constants and time systems
 
-- ECEF / WGS-84 is used throughout. Earth rotation rate
-  $\omega_e = 7.2921151467\times10^{-5}\ \text{rad s}^{-1}$ is used for both
-  Kepler propagation (GPS / Galileo / BeiDou) and the Sagnac correction.
+- ECEF / WGS-84 is used throughout.
+- Kepler propagation uses the $GM$ and Earth rotation rate defined by **each
+  constellation's own ICD**, since the broadcast elements are only consistent
+  with the constants the control segment used to fit them:
+
+  | System | $GM$ (m³ s⁻²) | $\omega_\oplus$ (rad s⁻¹) |
+  | --- | --- | --- |
+  | GPS | $398\,600.5\cdot10^{9}$ | $7.2921151467\cdot10^{-5}$ |
+  | Galileo | $398\,600.4418\cdot10^{9}$ | $7.2921151467\cdot10^{-5}$ |
+  | BeiDou | $398\,600.4418\cdot10^{9}$ | $7.2921150\cdot10^{-5}$ |
+  | GLONASS | $398\,600.4418\cdot10^{9}$ | $7.292115\cdot10^{-5}$ |
+
+  Values from Teunissen & Montenbruck (2017), Table 3.4, p. 80 (see
+  [References](#references)). They live in `gnssmultipath.constants` and are
+  reachable via `earth_gravitational_constant(system)` and
+  `earth_rotation_rate(system)`. Using the GPS rotation rate for BeiDou shifts
+  the orbit along-track by up to ~25 m (MEO) at the end of a BDT week because of
+  the $-\omega_\oplus t_{oe}$ term.
+- The Sagnac correction uses the GPS rotation rate; the difference between the
+  constellations is $\sim3\cdot10^{-6}$ m over a signal travel time and is ignored.
 - GLONASS broadcast orbits are integrated with RK4 in PZ-90 with
-  $\mu = 3.9860044\times10^{14}\ \text{m}^3 \text{s}^{-2}$ and
   $J_2 = 1.0826257\times10^{-3}$.
 - Eccentric anomaly is solved with Newton-Raphson and a
   step-size convergence test of $10^{-12}$ rad.
@@ -406,6 +422,15 @@ The `GNSS_MultipathAnalysis` function accepts several keyword arguments that all
 ## Compatibility
 - **Python Versions:** Compatible with Python 3.10 and above (tested on 3.10, 3.11, 3.12, and 3.13).
 - **Dependencies:** All dependencies will be automatically installed with `pip install gnssmultipath`.
+
+
+## References
+
+- Teunissen, P.J.G. and Montenbruck, O. (eds.), *Springer Handbook of Global
+  Navigation Satellite Systems*, Springer, 2017.
+  Table 3.4 "Physical parameters of GNSS almanac and ephemeris models", p. 80 —
+  source of the per-constellation $GM$ and Earth rotation rate used for orbit
+  propagation.
 
 
 ## License
@@ -820,16 +845,19 @@ This section explains step-by-step how satellite positions in Keplerian elements
 #### **Steps for Conversion**
 
 #### 1. **Constants and Inputs**
-- **Gravitational Constant and Earth's Mass** ($GM$):
+- **Gravitational Constant and Earth's Mass** ($GM$), taken from the ICD of the
+  system the ephemeris belongs to (Teunissen & Montenbruck 2017, Table 3.4, p. 80):
 
 $$
-GM = 3.986005 \times 10^{14} \, \text{m}^3/\text{s}^2
+GM = 398\,600.5 \times 10^{9} \, \text{m}^3/\text{s}^2 \quad \text{(GPS)}, \qquad
+GM = 398\,600.4418 \times 10^{9} \, \text{m}^3/\text{s}^2 \quad \text{(Galileo, BeiDou)}
 $$
 
-- **Earth's Angular Velocity** ($\omega_e $):
+- **Earth's Angular Velocity** ($\omega_e $), likewise per system:
 
 $$
-\omega_e = 7.2921151467 \times 10^{-5} \, \text{rad/s}
+\omega_e = 7.2921151467 \times 10^{-5} \, \text{rad/s} \quad \text{(GPS, Galileo)}, \qquad
+\omega_e = 7.2921150 \times 10^{-5} \, \text{rad/s} \quad \text{(BeiDou)}
 $$
 
 - **Speed of Light** ($c$):
@@ -1263,7 +1291,7 @@ $$
 $$
 
 where:
-- $\mu = 3.9860044 \times 10^{14}$ $[m^3/s^2]$ is the gravitational constant.
+- $\mu = 398\,600.4418 \times 10^{9}$ $[m^3/s^2]$ is the gravitational constant.
 - $J_2 = 1.0826257 \times 10^{-3}$ is the Earth's oblateness factor.
 - $\omega = 7.292115 \times 10^{-5}$ $[rad/s]$ is the Earth's rotation rate.
 - $a_e = 6378136.0$ $[m]$ is the semi-major axis of the Earth (PZ-90 ellipsoid).

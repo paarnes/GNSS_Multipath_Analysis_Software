@@ -12,7 +12,13 @@ from numpy import ndarray
 from tqdm import tqdm
 from gnssmultipath.Geodetic_functions import date2gpstime_vectorized, get_leap_seconds, gpstime2date_arrays, ECEF2enu, ECEF2enu_batch, ECEF2geodb
 from gnssmultipath.readers.RinexNav import RinexNav
-from gnssmultipath.constants import SPEED_OF_LIGHT
+from gnssmultipath.constants import (
+    J2,
+    PZ90_SEMI_MAJOR_AXIS,
+    SPEED_OF_LIGHT,
+    earth_gravitational_constant,
+    earth_rotation_rate,
+)
 
 
 
@@ -120,10 +126,10 @@ class GLOStateVec2ECEF:
         ae    : float. Semi-major axis of the PZ-90 ellipsoid [m].
         """
 
-        J2 = 1.0826257e-3     # Second zonal coefficient of spherical harmonic expression.
-        mu = 3.9860044e14     # Gravitational constant [m3/s2]   (product of the mass of the earth and and gravity constant)
-        omega = 7.292115e-5   # Earth rotation rate    [rad/sek]
-        ae = 6378136.0        # Semi-major axis PZ-90   [m]
+        j2 = J2
+        mu = earth_gravitational_constant('R')
+        omega = earth_rotation_rate('R')
+        ae = PZ90_SEMI_MAJOR_AXIS
 
         r = np.linalg.norm(state[:, :3], axis=1)  # Euclidean norm for the radius
         der_state = np.zeros((state.shape[0], 6))
@@ -131,7 +137,7 @@ class GLOStateVec2ECEF:
         zero_indices = r**2 < 0
         der_state[zero_indices] = 0  # Set derivatives to zero for cases where r^2 < 0
 
-        a = 1.5 * J2 * mu * (ae**2) / (r**5)
+        a = 1.5 * j2 * mu * (ae**2) / (r**5)
         b = 5 * (state[:, 2]**2) / (r**2)
         c = -mu / (r**3) - a * (1 - b)
 
@@ -197,11 +203,16 @@ class Kepler2ECEF:
         The Earth rotation correction ensures the satellite's position aligns with the time of signal transmission.
         This is not necessary for SP3 files which already provide satellite positions in the Earth-Centered Earth-Fixed (ECEF) frame.
         """
-        GM         = 3.986005e14      # Product of Earth's mass and the gravitational constant
-        omega_e    = 7.2921151467e-5  # Earth's angular velocity [rad/second]
-        c          = SPEED_OF_LIGHT
+        c = SPEED_OF_LIGHT
 
         gnss_sys = filtered_eph_data[0,0][0]
+
+        # Each constellation's ICD defines its own GM and rotation rate; the
+        # broadcast elements are only consistent with the system's own values.
+        # See gnssmultipath.constants (Teunissen & Montenbruck 2017, Table 3.4).
+        GM = earth_gravitational_constant(gnss_sys)
+        omega_e = earth_rotation_rate(gnss_sys)
+
         filtered_eph_data[:,0] = np.nan  # Remove cell containing a string representing PRN with system code (to be able to convert array to float)
         filtered_eph_data = filtered_eph_data.astype(float)
 
@@ -595,7 +606,11 @@ class SatelliteEphemerisToECEF:
         """
 
         if time_fmt == "GREGORIAN":
-            desired_time = np.atleast_2d(date2gpstime_vectorized(desired_time)).T
+            # date2gpstime_vectorized returns (weeks, tows); everything downstream
+            # works with time-of-week only.
+            _, desired_time = date2gpstime_vectorized(np.atleast_2d(desired_time))
+        desired_time = np.asarray(desired_time, dtype=float).ravel()
+
         if PRN and 'R' not in PRN:
             filtered_eph_data = self.get_closest_ephemerides_for_PRN_at_time(PRN, desired_time)
             xs, ys, zs, dTrel = Kepler2ECEF(self.x_rec, self.y_rec, self.z_rec).kepler2ecef(filtered_eph_data,desired_time)
