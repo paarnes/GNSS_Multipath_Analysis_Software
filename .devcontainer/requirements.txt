@@ -1,8 +1,14 @@
+# Runtime dependencies mirror [project.dependencies] in pyproject.toml so the
+# image layer caches them; post-create.sh then runs `pip install -e .`, which is
+# what actually resolves them. Keep the two lists in sync when bumping versions.
 matplotlib>=3.9.2
 numpy>=2.1.0
 pandas>=2.3.0
 tqdm>=4.66.5
 zstandard>=0.23.0
-pytest
-pyproj
+pyproj>=3.7.1
 hatanaka
+
+# Test tooling (not shipped with the package)
+pytest
+pytest-xdist
