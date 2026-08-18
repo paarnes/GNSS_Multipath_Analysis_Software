@@ -183,14 +183,16 @@ class TestPreciseSatCoordsAzEl:
     """Tests for PreciseSatCoords.compute_azimuth_and_elevation DataFrame building."""
 
     @pytest.fixture(scope="class")
-    def az_el_df(self):
+    @classmethod
+    def az_el_df(cls):
         """Build azimuth/elevation DataFrame from real test data."""
         from gnssmultipath.PreciseSatCoords import PreciseSatCoords
         precise = PreciseSatCoords(sp3_file=sp3_path, rinex_obs_file=rinObs_path)
         return precise.compute_azimuth_and_elevation(tuple(REC_ECEF), drop_below_horizon=False)
 
     @pytest.fixture(scope="class")
-    def az_el_df_drop(self):
+    @classmethod
+    def az_el_df_drop(cls):
         """Build with drop_below_horizon=True."""
         from gnssmultipath.PreciseSatCoords import PreciseSatCoords
         precise = PreciseSatCoords(sp3_file=sp3_path, rinex_obs_file=rinObs_path)
@@ -249,7 +251,8 @@ class TestSP3InterpolatorDataFrame:
     """Tests for SP3Interpolator.interpolate_sat_coordinates DataFrame output."""
 
     @pytest.fixture(scope="class")
-    def sp3_setup(self):
+    @classmethod
+    def sp3_setup(cls):
         """Read SP3 and RINEX obs data once for all tests."""
         from gnssmultipath.readers.readRinexObs import readRinexObs
         reader = SP3Reader(sp3_path, coords_in_meter=True, desiredGNSSsystems=["G", "E"])
@@ -262,13 +265,15 @@ class TestSP3InterpolatorDataFrame:
         return sp3_df, metadata["epoch_interval_sec"], time_epochs
 
     @pytest.fixture(scope="class")
-    def interpol_df(self, sp3_setup):
+    @classmethod
+    def interpol_df(cls, sp3_setup):
         sp3_df, interval, time_epochs = sp3_setup
         interp = SP3Interpolator(sp3_df, interval)
         return interp.interpolate_sat_coordinates(time_epochs, ["G", "E"], output_format="pd.DataFrame")
 
     @pytest.fixture(scope="class")
-    def interpol_dict(self, sp3_setup):
+    @classmethod
+    def interpol_dict(cls, sp3_setup):
         sp3_df, interval, time_epochs = sp3_setup
         interp = SP3Interpolator(sp3_df, interval)
         return interp.interpolate_sat_coordinates(time_epochs, ["G", "E"], output_format="dict")
@@ -337,7 +342,8 @@ class TestSP3ToAzElPipeline:
     """Smoke-test the full SP3 interpolation → azimuth/elevation pipeline."""
 
     @pytest.fixture(scope="class")
-    def pipeline_result(self):
+    @classmethod
+    def pipeline_result(cls):
         from gnssmultipath.PreciseSatCoords import PreciseSatCoords
         precise = PreciseSatCoords(sp3_file=sp3_path, rinex_obs_file=rinObs_path)
         az_el = precise.compute_azimuth_and_elevation(tuple(REC_ECEF), drop_below_horizon=True)

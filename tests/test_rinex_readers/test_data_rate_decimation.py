@@ -30,7 +30,8 @@ class TestObsDecimationRinex304:
     """Down-sampling a 30 s RINEX 3.04 file."""
 
     @pytest.fixture(scope="class")
-    def native(self, rinex304_obs_file):
+    @classmethod
+    def native(cls, rinex304_obs_file):
         return readRinexObs(rinex304_obs_file)
 
     def test_native_interval_is_30s(self, native):
@@ -126,7 +127,8 @@ class TestObsDecimationRinex211:
     """Down-sampling a RINEX 2.11 file."""
 
     @pytest.fixture(scope="class")
-    def native(self, rinex211_obs_file):
+    @classmethod
+    def native(cls, rinex211_obs_file):
         return readRinexObs(rinex211_obs_file)
 
     def test_decimation_halves_epochs(self, rinex211_obs_file, native):
@@ -240,7 +242,8 @@ class TestNavDataRate:
     """`RinexNav.read_nav` ``data_rate`` argument (interval in minutes)."""
 
     @pytest.fixture(scope="class")
-    def all_records(self, nav_mixed_file):
+    @classmethod
+    def all_records(cls, nav_mixed_file):
         return RinexNav.read_nav(nav_mixed_file, data_rate=0)
 
     def test_zero_disables_filtering(self, all_records):

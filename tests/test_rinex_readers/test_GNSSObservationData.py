@@ -19,8 +19,8 @@ class TestGNSSObservationDataFromSynthetic:
     """Unit tests with hand-crafted synthetic data (no I/O)."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _build_store(self):
-        cls = type(self)
+    @classmethod
+    def _build_store(cls):
         n_epochs, n_sat, n_codes = 5, 4, 3
         rng = np.random.default_rng(42)
 
@@ -193,8 +193,8 @@ class TestGNSSObservationDataFromRealData:
     """Integration tests using a real RINEX 3.04 observation file."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_obs(self, rinex304_obs_file):
-        cls = type(self)
+    @classmethod
+    def _read_obs(cls, rinex304_obs_file):
         cls.rinex = readRinexObs(rinex304_obs_file)
         cls.store = cls.rinex.observations
 
@@ -265,8 +265,8 @@ class TestSelectAndSignals:
     """Filtering, signal metadata and carrier frequencies on real data."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_obs(self, rinex304_obs_file):
-        cls = type(self)
+    @classmethod
+    def _read_obs(cls, rinex304_obs_file):
         cls.rinex = readRinexObs(rinex304_obs_file)
         cls.store = cls.rinex.observations
 
@@ -369,8 +369,8 @@ class TestDataRetrieval:
     """get(), per-satellite views, PRNs and epoch times on real data."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_obs(self, rinex304_obs_file):
-        cls = type(self)
+    @classmethod
+    def _read_obs(cls, rinex304_obs_file):
         cls.rinex = readRinexObs(rinex304_obs_file)
         cls.store = cls.rinex.observations
 
@@ -502,8 +502,8 @@ class TestEpochObservations:
     """Single-epoch views: all signals of one epoch."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_obs(self, rinex304_obs_file):
-        cls = type(self)
+    @classmethod
+    def _read_obs(cls, rinex304_obs_file):
         cls.rinex = readRinexObs(rinex304_obs_file)
         cls.store = cls.rinex.observations
 
@@ -652,8 +652,8 @@ class TestEpochObservations:
 class TestDataFrameExport:
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_obs(self, rinex304_obs_file):
-        cls = type(self)
+    @classmethod
+    def _read_obs(cls, rinex304_obs_file):
         cls.rinex = readRinexObs(rinex304_obs_file)
         cls.store = cls.rinex.observations
 
@@ -715,8 +715,8 @@ class TestRinex211Compatibility:
     """Two-character RINEX 2 observation codes."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_obs(self, rinex211_obs_file):
-        cls = type(self)
+    @classmethod
+    def _read_obs(cls, rinex211_obs_file):
         cls.rinex = readRinexObs(rinex211_obs_file)
         cls.store = cls.rinex.observations
 

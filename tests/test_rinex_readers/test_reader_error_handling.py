@@ -174,7 +174,8 @@ class TestInvalidArguments:
     """Invalid flags must raise rather than return None."""
 
     @pytest.fixture(scope="class")
-    def obs_file(self):
+    @classmethod
+    def obs_file(cls):
         return os.path.join(project_path, "TestData", "ObservationFiles", "v3",
                             "OPEC00NOR_S_20220010000_01D_30S_MO_3.04_croped.rnx")
 
