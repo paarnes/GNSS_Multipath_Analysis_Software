@@ -4,6 +4,18 @@ import re
 from typing import Union, List
 from datetime import datetime
 
+
+def _parse_sp3_float(field: str) -> float:
+    """Parse a fixed-width SP3 numeric field, returning NaN when it is blank."""
+    text = field.strip()
+    if not text:
+        return np.nan
+    try:
+        return float(text)
+    except ValueError:
+        return np.nan
+
+
 class SP3Reader:
     """
     SP3Reader Class
@@ -93,10 +105,10 @@ class SP3Reader:
                 if gnss_system not in self.desiredGNSSsystems:
                     continue
 
-                x = float(line[4:18].strip())  # X coordinate
-                y = float(line[18:32].strip())  # Y coordinate
-                z = float(line[32:46].strip())  # Z coordinate
-                clk = float(line[46:60].strip())  # Clock bias
+                x = _parse_sp3_float(line[4:18])   # X coordinate
+                y = _parse_sp3_float(line[18:32])  # Y coordinate
+                z = _parse_sp3_float(line[32:46])  # Z coordinate
+                clk = _parse_sp3_float(line[46:60])  # Clock bias
 
                 # SP3 marks bad/missing satellite positions with exactly
                 # 0.000000 in all three coordinate columns. Without this

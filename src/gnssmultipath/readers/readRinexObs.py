@@ -24,7 +24,7 @@ from gnssmultipath.readers.GNSSObservationData import GNSSObservationData
 global tFirstObs
 
 
-# ── RINEX observation data container ─────────────────────────────────────────
+# RINEX observation data container
 
 @dataclass
 class RinexObsData:
@@ -71,7 +71,7 @@ class RinexObsData:
     GLO_Slot2ChannelMap: Any = np.nan
     success: int = 1
 
-    # ── Tuple interop ────────────────────────────────────────────────────
+    # Tuple interop
 
     _FIELDS_ORDERED = (
         'GNSS_obs', 'GNSS_LLI', 'GNSS_SS', 'GNSS_SVs', 'time_epochs',
@@ -130,7 +130,25 @@ class RinexObsData:
         return self._observation_store
 
 
-# ── Public dispatcher ────────────────────────────────────────────────────────
+
+
+def _as_path_str(filename, caller):
+    """Accept ``str`` or any ``os.PathLike`` and return a plain string path."""
+    if isinstance(filename, str):
+        return filename
+    try:
+        fspath = os.fspath(filename)
+    except TypeError:
+        fspath = None
+    if isinstance(fspath, bytes):
+        fspath = fspath.decode()
+    if not isinstance(fspath, str):
+        raise TypeError(
+            f'INPUT ERROR({caller}): The input argument filename is of type '
+            f'{type(filename)}. Must be a string or os.PathLike.'
+        )
+    return fspath
+
 
 def readRinexObs(filename, readSS=None, readLLI=None,
                  includeAllGNSSsystems=None, includeAllObsCodes=None,
@@ -165,6 +183,7 @@ def readRinexObs(filename, readSS=None, readLLI=None,
         After decimation, ``RinexObsData.tInterval`` is updated to the
         effective interval and ``nepochs`` reflects the new epoch count.
     """
+    filename = _as_path_str(filename, 'readRinexObs')
     if os.stat(filename).st_size == 0:
         raise ValueError('ERROR: This file seems to be empty')
 
@@ -640,16 +659,12 @@ def readRinexObs304(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
 
     ## -- Test if readSS is boolean
     if readSS!=1 and readSS!=0:
-        print('INPUT ERROR(readRinexObs304): The input argument readSS must be either 1 or 0')
-        success = 0
-        return
+        raise ValueError('INPUT ERROR(readRinexObs304): The input argument readSS must be either 1 or 0')
 
 
     ## -- Test if readLLI is boolean
     if readLLI!=1 and readLLI!=0:
-        print('INPUT ERROR(readRinexObs304): The input argument readLLI must be either 1 or 0')
-        success = 0
-        return
+        raise ValueError('INPUT ERROR(readRinexObs304): The input argument readLLI must be either 1 or 0')
 
     max_GPS_PRN     = 36 # Max number of GPS PRN in constellation
     max_GLONASS_PRN = 36 # Max number of GLONASS PRN in constellation
@@ -663,7 +678,7 @@ def readRinexObs304(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
     rinexReadObsFileHeader304(filename, includeAllGNSSsystems, includeAllObsCodes,desiredGNSSsystems, desiredObsCodes, desiredObsBands)
 
     if success==0:
-        return
+        raise ValueError(f"ERROR(readRinexObs304): Failed to read the header of '{filename}'")
 
     ## -- Read all remaining observation data at once for fast processing
     remaining_lines = fid.readlines()
@@ -674,9 +689,10 @@ def readRinexObs304(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
     nepochs = len(epoch_line_indices)
 
     if nepochs == 0:
-        print('ERROR(readRinexObs304): No epoch records found in observation file')
-        success = 0
-        return
+        raise ValueError(
+            f"ERROR(readRinexObs304): No epoch records found in '{filename}'. "
+            'The file contains a header but no observation data.'
+        )
 
     # Compute tInterval from first two epoch headers if not in header
     if np.isnan(tInterval) and nepochs >= 2:
@@ -1053,11 +1069,7 @@ def rinexFindNEpochs304(filename, tFirstObs, tLastObs, tInterval):
     success = 1
     nepochs = 0
 
-    ## --Test if filename is valid format
-    if type(filename) is not str:
-        raise TypeError('INPUT ERROR(rinexFindNEpoch): The input argument filename'\
-            'is of type %s. Must be of type string' % type(filename))
-
+    filename = _as_path_str(filename, 'rinexFindNEpochs304')
 
     ## --Open observation file
     fid = open(filename, 'rt')
@@ -1346,13 +1358,8 @@ def rinexReadObsFileHeader304(filename, includeAllGNSSsystems, includeAllObsCode
     recType = np.nan
     GLO_Slot2ChannelMap = np.nan
 
-    ## -------Testing input arguments
-    # Test if filename is valid format
-    if type(filename) != str:
-        print('INPUT ERROR(rinexReadsObsHeader304): The input argument filename is of type %s.\n Must be of type string or char' %(type(filename)))
-        success = 0
-        fid     = 0
-        return success
+    filename = _as_path_str(filename, 'rinexReadObsFileHeader304')
+
     ## -- Open rinex observation file
     fid = open(filename,'r')
     if os.stat(filename).st_size == 0:
@@ -1369,22 +1376,25 @@ def rinexReadObsFileHeader304(filename, includeAllGNSSsystems, includeAllObsCode
             rinexType = line[20]
             # if rinex file is not an observation file
             if rinexType != 'O':  # Rinex file is oservation file
-                print('ERROR(rinexReadObsFileHeader304): the file is not a RINEX observations data file!')
-                success = 0
                 fid.close()
-                return
+                raise ValueError(
+                    f"ERROR(rinexReadObsFileHeader304): '{filename}' is not a RINEX observation "
+                    f"file (RINEX file type is '{rinexType}'). Expected an observation file ('O')."
+                )
 
             ## -- Check gnss type  ## Changend indent here 09.12.2022 (was apart of the if test above earlier, and thats wrong)
             gnssType = line[40] # reads the GNSS system type
             if gnssType not in [' ', 'G', 'R', 'C', 'E', 'M' ]:
-                if gnssType in ['J', 'I', 'S']:
-                    print('ERROR(rinexReadObsFileHeader304): This software is meant for reading GNSS data only.\
-                           %s is an invalid satellite system type.' %(gnssType))
-                else:
-                    print('ERROR(rinexReadObsFileHeader304): %s is an unrecognized satellite system type.' %(gnssType))
-
-                success = 0
                 fid.close()
+                if gnssType in ['J', 'I', 'S']:
+                    raise ValueError(
+                        'ERROR(rinexReadObsFileHeader304): This software is meant for reading '
+                        f"GNSS data only. '{gnssType}' is an invalid satellite system type."
+                    )
+                raise ValueError(
+                    f"ERROR(rinexReadObsFileHeader304): '{gnssType}' is an unrecognized "
+                    'satellite system type.'
+                )
             ## -- If no system type, set G
             if gnssType == ' ':
                 gnssType = 'G'
@@ -1394,7 +1404,7 @@ def rinexReadObsFileHeader304(filename, includeAllGNSSsystems, includeAllObsCode
             rinexDate = line[40:60] # rinex date
 
         if 'MARKER NAME' in line:
-            markerName = line.strip() # markername
+            markerName = line[0:60].strip() # markername (columns 1-60; 61-80 hold the label)
 
         ## if no marker name, "MARKER" is read, so set to blank
         if 'Marker' in markerName:
@@ -1440,8 +1450,11 @@ def rinexReadObsFileHeader304(filename, includeAllGNSSsystems, includeAllObsCode
                         # store index of discareded obsCode
                         undesiredobsCodeIndex.append(k)
 
-                    # Every 13 obsCodes is at end of line. In this case read next line and continue
-                    if np.mod(k+1, 13) == 0 and nObs != 13:
+                    # Every 13 obsCodes is at end of line. In this case read next line and continue.
+                    # Guard with `(k+1) < nObs` so the continuation line is only
+                    # consumed when codes actually remain; otherwise a system with
+                    # an exact multiple of 13 codes swallows the next header record.
+                    if np.mod(k+1, 13) == 0 and (k + 1) < nObs:
                         numHeaderLines = numHeaderLines + 1
                         line = fid.readline().rstrip()
                         line = line[0:60]     # deletes 'SYS / # / OBS TYPES'
@@ -2213,16 +2226,12 @@ def readRinexObs211(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
 
     ## -- Test if readSS is boolean
     if readSS!=1 and readSS!=0:
-        print('INPUT ERROR(readRinexObs211): The input argument readSS must be either 1 or 0')
-        success = 0
-        return
+        raise ValueError('INPUT ERROR(readRinexObs211): The input argument readSS must be either 1 or 0')
 
 
     ## -- Test if readLLI is boolean
     if readLLI!=1 and readLLI!=0:
-        print('INPUT ERROR(readRinexObs211): The input argument readLLI must be either 1 or 0')
-        success = 0
-        return
+        raise ValueError('INPUT ERROR(readRinexObs211): The input argument readLLI must be either 1 or 0')
 
     max_GPS_PRN     = 36 # Max number of GPS PRN in constellation
     max_GLONASS_PRN = 36 # Max number of GLONASS PRN in constellation
@@ -2236,7 +2245,7 @@ def readRinexObs211(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
     rinexReadObsFileHeader211(filename, includeAllGNSSsystems, includeAllObsCodes,desiredGNSSsystems, desiredObsCodes, desiredObsBands)
 
     if success==0:
-        return
+        raise ValueError(f"ERROR(readRinexObs211): Failed to read the header of '{filename}'")
 
     ## -- Read all remaining observation data at once for fast processing
     remaining_lines = fid.readlines()
@@ -2248,9 +2257,10 @@ def readRinexObs211(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
     nepochs = len(epoch_line_indices)
 
     if nepochs == 0:
-        print('ERROR(readRinexObs211): No epoch records found in observation file')
-        success = 0
-        return
+        raise ValueError(
+            f"ERROR(readRinexObs211): No epoch records found in '{filename}'. "
+            'The file contains a header but no observation data.'
+        )
 
     # Compute tInterval from first two epoch headers if not in header
     if np.isnan(tInterval) and nepochs >= 2:
@@ -2583,11 +2593,7 @@ def rinexFindNEpochs211(filename, tFirstObs, tLastObs, tInterval):
     success = 1
     nepochs = 0
 
-    ## --Test if filename is valid format
-    if type(filename) is not str:
-        raise TypeError('INPUT ERROR(rinexFindNEpoch): The input argument filename'\
-            'is of type %s. Must be of type string' % type(filename))
-
+    filename = _as_path_str(filename, 'rinexFindNEpochs211')
 
     ## --Open observation file
     fid = open(filename, 'rt')
@@ -2979,14 +2985,7 @@ def rinexReadObsFileHeader211(filename, includeAllGNSSsystems, includeAllObsCode
     recType = np.nan
     GLO_Slot2ChannelMap = np.nan
 
-    ## -------Testing input arguments
-    # Test if filename is valid format
-    if type(filename) != str:
-        print('INPUT ERROR(rinexReadsObsHeader211): The input argument filename is of type %s.\n Must be of type string or char' %(type(filename)))
-        success = 0
-        fid     = 0
-        return success
-
+    filename = _as_path_str(filename, 'rinexReadObsFileHeader211')
 
     ## -- Open rinex observation file
     fid = open(filename,'r')
@@ -3007,22 +3006,25 @@ def rinexReadObsFileHeader211(filename, includeAllGNSSsystems, includeAllObsCode
             rinexType = line[20]
             # if rinex file is not an observation file
             if rinexType != 'O':  # Rinex file is oservation file
-                print('ERROR(rinexReadObsFileHeader211): the file is not a RINEX observations data file!')
-                success = 0
                 fid.close()
-                return
+                raise ValueError(
+                    f"ERROR(rinexReadObsFileHeader211): '{filename}' is not a RINEX observation "
+                    f"file (RINEX file type is '{rinexType}'). Expected an observation file ('O')."
+                )
 
             ## -- Check gnss type  ## Changend indent here 09.12.2022 (was apart of the if test above earlier, and thats wrong)
             gnssType = line[40] # reads the GNSS system type
             if gnssType not in [' ', 'G', 'R', 'C', 'E', 'M' ]:
-                if gnssType in ['J', 'I', 'S']:
-                    print('ERROR(rinexReadObsFileHeader211): This software is meant for reading GNSS data only.\
-                           %s is an invalid satellite system type.' %(gnssType))
-                else:
-                    print('ERROR(rinexReadObsFileHeader211): %s is an unrecognized satellite system type.' %(gnssType))
-
-                success = 0
                 fid.close()
+                if gnssType in ['J', 'I', 'S']:
+                    raise ValueError(
+                        'ERROR(rinexReadObsFileHeader211): This software is meant for reading '
+                        f"GNSS data only. '{gnssType}' is an invalid satellite system type."
+                    )
+                raise ValueError(
+                    f"ERROR(rinexReadObsFileHeader211): '{gnssType}' is an unrecognized "
+                    'satellite system type.'
+                )
             ## -- If no system type, set G
             if gnssType == ' ':
                 gnssType = 'G'
@@ -3033,7 +3035,7 @@ def rinexReadObsFileHeader211(filename, includeAllGNSSsystems, includeAllObsCode
             rinexDate = line[40:60] # rinex date
 
         if 'MARKER NAME' in line:
-            markerName = line.strip() # markername
+            markerName = line[0:60].strip() # markername (columns 1-60; 61-80 hold the label)
 
         ## if no marker name, "MARKER" is read, so set to blank
         if 'Marker' in markerName:

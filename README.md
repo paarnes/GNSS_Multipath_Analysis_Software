@@ -663,6 +663,61 @@ obs.to_dataframe(systems=['G', 'E'], codes=['C1C', 'C1X'])
 gps.epoch(34).to_dataframe(codes=['C1C', 'L1C', 'C2W', 'L2W'])
 ```
 
+##### Use of Pandas DataFrame: one row per satellite and epoch
+
+Pivoting the long frame gives one row per satellite and epoch, with the selected
+signals as columns. Putting `sv` first in the index groups and sorts the table by
+satellite, so all epochs for `G01` come first, then `G02`, and so on:
+
+```python
+CODES = ['C1C', 'C2W', 'L1C', 'L2W']
+
+df_gps = (gps.to_dataframe(codes=CODES)
+             .pivot(index=['sv', 'datetime'], columns='code', values='value')[CODES]
+             .reset_index()
+             .rename_axis(columns=None))
+
+df_gps.to_csv('gps_observations.csv', index=False)
+```
+
+```
+    sv            datetime           C1C           C2W           L1C           L2W
+0  G01 2022-01-01 00:00:00  2.461555e+07  2.461555e+07  1.293557e+08  1.007966e+08
+1  G01 2022-01-01 00:00:30  2.459352e+07  2.459353e+07  1.292399e+08  1.007064e+08
+```
+
+Notes:
+
+- A row is kept as long as **at least one** of the selected codes has a value; a
+  missing individual signal becomes `NaN` in its own column. Rows are therefore not
+  dropped just because, say, `C2W` is absent while `C1C` was tracked.
+- The table is not `n_epochs × n_satellites` rows, because satellites rise and set.
+  Pass `dropna=False` to `to_dataframe()` for the full rectangular grid.
+- Sorting on `sv` works because the identifier is zero-padded (`G01`…`G32`), so
+  lexicographic order equals PRN order. Use `index=['prn', 'datetime']` if you prefer
+  the numeric PRN in the table instead.
+- Add `prns=[23]` to `to_dataframe()`, or use `gps.sat(23).to_dataframe()`, to restrict
+  the table to a single satellite.
+
+##### All systems and all observation codes
+
+Omitting `systems` and `codes` includes every constellation and every code in the file.
+`system` must be part of the index, since PRN numbers repeat across constellations:
+
+```python
+df_all = (obs.to_dataframe()
+             .pivot(index=['system', 'sv', 'datetime'], columns='code', values='value')
+             .reset_index()
+             .rename_axis(columns=None))
+
+df_all.shape        # (101040, 42) for the 30 s OPEC test file
+```
+
+The column set is the union of the codes across the systems, so a code that only exists
+in one constellation (e.g. `C2W` for GPS) is `NaN` for the others. Codes that are
+declared in the RINEX header but never actually observed are dropped entirely; use
+`obs.to_dataframe(dropna=False)` to keep them as empty columns.
+
 #### Build your own linear combinations
 
 With the arrays and matching carrier frequencies in hand, dual-frequency combinations

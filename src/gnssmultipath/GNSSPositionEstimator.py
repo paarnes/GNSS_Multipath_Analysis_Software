@@ -34,7 +34,10 @@ class GNSSPositionEstimator:
         Coordinate Reference System (CRS) to define the coordinate format of the receiver's position.
                 - Default is EPSG:4978 which is WGS84 Cartesian 3D coordinates(ECEF).
                 - To get longitude, latitude, and altitude (LLA) coordinates, use EPSG:4326
-                - If an invalid CRS is provided, the transformation defaults to 'ECEF'.
+                - The default needs no transformation, so PROJ is only required when
+                  another CRS is requested.
+                - If the transformation fails, a RuntimeError is raised rather than
+                  silently returning ECEF coordinates.
                 - Use https://epsg.org/home.html to find the EPSG code for the desired CRS.
 
     Example:
@@ -106,13 +109,30 @@ class GNSSPositionEstimator:
             Transformed coordinates to the desired coordinate reference system.
         """
 
+        # The position is already estimated in EPSG:4978, so the default case
+        # needs no transformation - and therefore no working PROJ installation.
+        if str(self.crs).strip().upper().replace(" ", "") in ("EPSG:4978", "4978"):
+            return coords
+
         try:
             transformer = Transformer.from_crs("EPSG:4978", self.crs, always_xy=True)
             transformed_coords = transformer.transform(coords[0], coords[1], coords[2])
-            return np.array([transformed_coords[0], transformed_coords[1], transformed_coords[2], coords[3]])
         except Exception as e:
-            print(f"Error: Transformation not possible! Returning receiver coordinates in ECEF (EPSG:4978). Error message: {e}")
-            return coords
+            # Returning ECEF here would hand back numbers in a completely
+            # different frame than the caller asked for, so fail instead.
+            raise RuntimeError(
+                f"Could not transform the estimated position from EPSG:4978 to '{self.crs}'. "
+                f"Check that the CRS code is valid and that PROJ is installed correctly. "
+                f"Original error: {e}"
+            ) from e
+
+        if not all(np.isfinite(c) for c in transformed_coords[:3]):
+            raise RuntimeError(
+                f"Transformation from EPSG:4978 to '{self.crs}' produced a non-finite "
+                'result. Check that the CRS is appropriate for the receiver location.'
+            )
+
+        return np.array([transformed_coords[0], transformed_coords[1], transformed_coords[2], coords[3]])
 
 
     def estimate_position(self) -> Tuple[np.ndarray, Dict]:
