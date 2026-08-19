@@ -106,12 +106,15 @@ def make_polarplot(analysisResults, graph_dir, use_tex=True):
                     plt.close(fig)
 
 
-def make_skyplot(azimut_currentSys, elevation_currentSys, GNSSsystemName, graph_dir, use_tex=True):
+def make_skyplot(azimut_currentSys, elevation_currentSys, GNSSsystemName, graph_dir,
+                 use_tex=True, save=True, return_fig=False):
     """
-    Generates a skyplot for GPS based on azimuth and elevation angles.
+    Generates a skyplot based on azimuth and elevation angles.
     azimuth: list of azimuth angles in degrees
     elevation: list of elevation angles in degrees
     title: title of the skyplot
+    save: save the plot as a PDF when True (default)
+    return_fig: return the open Matplotlib figure when True
     """
     _configure_tex(use_tex)
     GNSS_Name2Code =  dict(zip(['GPS', 'GLONASS', 'Galileo', 'BeiDou'], ['G', 'R', 'E', 'C']))
@@ -146,13 +149,15 @@ def make_skyplot(azimut_currentSys, elevation_currentSys, GNSSsystemName, graph_
     ## Set the linewidth of each legend object (then not dependent of linewith in plot)
     set_linewidt_for_each_object(legend, 3.5)
 
-    filename = 'Skyplot_' + GNSSsystemName + '.png'
-    filename2 = 'Skyplot_' + GNSSsystemName + '.pdf'
-    # fig.savefig(graph_dir + "/" + filename, dpi=300, orientation='landscape')
-    fig.savefig(graph_dir + "/" + filename2, orientation='landscape',bbox_inches='tight')
-    plt.close(fig)
+    if save:
+        filename = 'Skyplot_' + GNSSsystemName + '.pdf'
+        fig.savefig(graph_dir + "/" + filename, orientation='landscape', bbox_inches='tight')
 
-    return
+    if return_fig:
+        return fig
+
+    plt.close(fig)
+    return None
 
 
 def make_polarplot_SNR(analysisResults, GNSS_obs, GNSSsystems, obsCodes, graphDir, use_tex=True):
