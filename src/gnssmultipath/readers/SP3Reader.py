@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 import re
@@ -43,23 +44,26 @@ class SP3Reader:
         metadata = sp3_reader.get_metadata()
     """
 
-    def __init__(self, filepaths: Union[str, List]=None, coords_in_meter: bool = True, clock_bias_in_sec: bool = True, desiredGNSSsystems: list = ["G", "R", "E", "C"]):
+    def __init__(self, filepaths: Union[str, os.PathLike, List[Union[str, os.PathLike]]]=None, coords_in_meter: bool = True, clock_bias_in_sec: bool = True, desiredGNSSsystems: list = ["G", "R", "E", "C"]):
         """
         Initialize the SP3Reader class with optional file paths, coordinate scaling, and GNSS filtering.
 
         Parameters:
         ----------
-        - filepaths: str or list of str, optional. Single SP3 file path or a list of SP3 file paths.
+        - filepaths: str, os.PathLike or list of these, optional. Single SP3 file path or a list of SP3 file paths.
         - coords_in_meter: bool, optional. Scale coordinates to meters if True (default is True).
         - clock_bias_in_sec: bool, optional. Convert clock bias to seconds if True (default is True).
         - desiredGNSSsystems: list of str, optional. GNSS systems to include (default is ["G", "R", "E", "C"]).
         """
-        if isinstance(filepaths, str):
-            self.filepaths = [filepaths]
-        elif isinstance(filepaths, list):
-            self.filepaths = filepaths
-        else:
+        if filepaths is None:
             self.filepaths = []
+        elif isinstance(filepaths, (str, os.PathLike)):
+            self.filepaths = [os.fspath(filepaths)]
+        elif isinstance(filepaths, (list, tuple)):
+            self.filepaths = [os.fspath(fp) for fp in filepaths if fp]
+        else:
+            raise TypeError(f"Unsupported type for 'filepaths': {type(filepaths).__name__}. "
+                            "Expected a path, a string or a list of these.")
 
         self.coords_in_meter = coords_in_meter
         self.clock_bias_in_sec = clock_bias_in_sec

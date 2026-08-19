@@ -16,6 +16,8 @@ from gnssmultipath.constants import (
     J2,
     PZ90_SEMI_MAJOR_AXIS,
     SPEED_OF_LIGHT,
+    WGS84_SEMI_MAJOR_AXIS,
+    WGS84_SEMI_MINOR_AXIS,
     earth_gravitational_constant,
     earth_rotation_rate,
 )
@@ -498,13 +500,8 @@ class SatelliteEphemerisToECEF:
         if not self.sat_coord_computed:
             raise ValueError('Satellite coordinates are not computed. Please compute coordinates by calling the method "get_sat_ecef_coordinates" before performing this operation.')
 
-
-        ## -- WGS 84 ellipsoid:
-        a   =  6378137.0         # semi-major ax
-        b   =  6356752.314245    # semi minor ax
-
         # Compute latitude and longitude for the receiver
-        lat,lon,h = ECEF2geodb(a, b, self.x_rec, self.y_rec, self.z_rec)
+        lat,lon,h = ECEF2geodb(WGS84_SEMI_MAJOR_AXIS, WGS84_SEMI_MINOR_AXIS, self.x_rec, self.y_rec, self.z_rec)
 
         bar_format = '{desc}:{percentage:3.0f}%|{bar}|({n_fmt}/{total_fmt} satellites)'
         desc = ', '.join(self.sys_names[:-1]) + (' and ' + self.sys_names[-1] if len(self.sys_names) > 1 else self.sys_names[0])
@@ -577,9 +574,7 @@ class SatelliteEphemerisToECEF:
         dZ = Z - z_rec
 
         # Compute the receiver's geodetic latitude and longitude using WGS-84 ellipsoid parameters
-        a = 6378137.0  # Semi-major axis (meters)
-        b = 6356752.314245  # Semi-minor axis (meters)
-        lat_rec, lon_rec, _ = ECEF2geodb(a, b, x_rec, y_rec, z_rec)
+        lat_rec, lon_rec, _ = ECEF2geodb(WGS84_SEMI_MAJOR_AXIS, WGS84_SEMI_MINOR_AXIS, x_rec, y_rec, z_rec)
 
         # Convert differences to local ENU (East, North, Up) coordinates
         east, north, up = ECEF2enu_batch(lat_rec, lon_rec, dX, dY, dZ)

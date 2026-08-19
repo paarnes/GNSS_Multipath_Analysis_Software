@@ -24,7 +24,7 @@ class SP3Interpolator:
         interpolated_positions = interpolator.interpolate_sat_coordinates(time_epochs, gnss_systems)
     """
 
-    def __init__(self, sp3_dataframe, epoch_interval, receiver_position: tuple = None):
+    def __init__(self, sp3_dataframe, epoch_interval):
         """
         Initializes the SP3 Interpolator with the provided SP3 DataFrame.
 
@@ -32,11 +32,9 @@ class SP3Interpolator:
         ----------
         - sp3_dataframe: Pandas DataFrame containing SP3 data (columns: ['Epoch', 'Satellite', 'X', 'Y', 'Z', 'Clock Bias']).
         - epoch_interval: Interval between each epoch in seconds.
-        - receiver_position: Tuple of receiver ECEF coordinates (x, y, z) in meters. Defaults to None.
         """
         self.sp3_dataframe = sp3_dataframe
         self.epoch_interval = epoch_interval
-        self.receiver_position = receiver_position  # Receiver ECEF coordinates
         # Lazy cache: PRN -> (sat_seconds, sat_xyz, sat_clock) sorted by epoch.
         # Built once on first access via _get_satellite_arrays()/_build_satellite_arrays_cache().
         self._sat_arrays_cache = None
@@ -57,27 +55,6 @@ class SP3Interpolator:
         base_time = datetime(2000, 1, 1)
         delta = epoch - base_time
         return delta.total_seconds()
-
-    @staticmethod
-    def interppol(x, y, n):
-        """
-        Polynomial interpolation using Neville's algorithm.
-
-        Parameter:
-        ----------
-        - x: Array of x values (time differences from the target epoch)
-        - y: Array of y values (positions or velocities to interpolate)
-        - n: Number of data points for interpolation
-
-        Return:
-        ------
-        - Interpolated value
-        """
-        y_copy = y.copy()  # Avoid modifying the original array
-        for j in range(1, n):
-            for i in range(n - j):
-                y_copy[i] = (x[i + j] * y_copy[i] - x[i] * y_copy[i + 1]) / (x[i + j] - x[i])
-        return y_copy[0]
 
     @staticmethod
     def _neville_vectorized(x, y):

@@ -182,6 +182,12 @@ J2 = 1.0826257e-3
 PZ90_SEMI_MAJOR_AXIS = 6378136.0
 """Semi-major axis of the PZ-90 ellipsoid [m]."""
 
+WGS84_SEMI_MAJOR_AXIS = 6378137.0
+"""Semi-major axis of the WGS 84 ellipsoid [m]."""
+
+WGS84_SEMI_MINOR_AXIS = 6356752.314245
+"""Semi-minor axis of the WGS 84 ellipsoid [m]."""
+
 
 # ── Public helpers ────────────────────────────────────────────────────────
 

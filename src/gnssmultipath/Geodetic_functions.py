@@ -4,6 +4,7 @@ from datetime import datetime,timedelta
 from datetime import date
 from typing import List, Union
 from numpy import ndarray
+from gnssmultipath.constants import WGS84_SEMI_MAJOR_AXIS, WGS84_SEMI_MINOR_AXIS
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -155,12 +156,8 @@ def compute_satellite_azimut_and_elevation_angle(X, Y, Z, xm, ym, zm):
     NOT IN USE AT THE MOMENT
     """
 
-    ## -- WGS 84 ellipsoid:
-    a   =  6378137.0         # semi-major ax
-    b   =  6356752.314245    # semi minor ax
-
     # Compute latitude and longitude for the receiver
-    lat,lon,h = ECEF2geodb(a,b,xm,ym,zm)
+    lat,lon,h = ECEF2geodb(WGS84_SEMI_MAJOR_AXIS,WGS84_SEMI_MINOR_AXIS,xm,ym,zm)
 
     # Find coordinate difference between satellite and receiver
     dX = (X - xm)
@@ -207,12 +204,8 @@ def compute_azimut_elev(X,Y,Z,xm,ym,zm):
     elev: Elevation angel in degrees
     """
 
-    ## -- WGS 84 datumsparametre:
-    a   =  6378137.0         # store halvakse
-    b   =  6356752.314245    # lille halvakse
-
     ## -- Beregner bredde og lengdegrad til mottakeren:
-    lat,lon,h = ECEF2geodb(a,b,xm,ym,zm)
+    lat,lon,h = ECEF2geodb(WGS84_SEMI_MAJOR_AXIS,WGS84_SEMI_MINOR_AXIS,xm,ym,zm)
 
     ## --Finner vektordifferansen:
     dX = (X - xm)

@@ -378,19 +378,18 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
             estimated_position, stats = position_estimator.estimate_position()
             x_rec_approx, y_rec_approx, z_rec_approx, _ = estimated_position.flatten()
 
-        df_az_el = sat_obj.compute_azimuth_and_elevation(
+        sat_dict = sat_obj.compute_satellite_azimut_and_elevation_angle(
             receiver_position=(x_rec_approx, y_rec_approx, z_rec_approx), drop_below_horizon=True)
-        sat_dict = sat_obj.create_satellite_data_dict(df_sat_coordinates, df_az_el)
 
         sat_coordinates, sat_elevation_angles, sat_azimut_angles = {}, {}, {}
         for idx, (system, data) in enumerate(sat_dict.items()):
-            sat_coordinates[system] = data.get('coordinates', {})
+            sat_coordinates[system] = data.get('position', {})
             sat_elevation_angles[idx] = data.get('elevation', None)
             sat_azimut_angles[idx] = data.get('azimuth', None)
 
         # Free intermediate per-satellite DataFrames now that the dense
         # NumPy arrays have been extracted.
-        del sat_dict, df_az_el, df_sat_coordinates
+        del sat_dict, df_sat_coordinates
 
     else:
         nav_files = [broadcastNav1, broadcastNav2, broadcastNav3, broadcastNav4]

@@ -367,7 +367,7 @@ class TestSP3ToAzElPipeline:
         sat_dict = PreciseSatCoords.create_satellite_data_dict(precise.satcoords, az_el)
         assert isinstance(sat_dict, dict)
         for gnss, data in sat_dict.items():
-            assert "coordinates" in data
+            assert "position" in data
             assert "azimuth" in data
             assert "elevation" in data
             assert isinstance(data["azimuth"], np.ndarray)
