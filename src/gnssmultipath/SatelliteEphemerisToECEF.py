@@ -11,7 +11,7 @@ import numpy as np
 from numpy import ndarray
 from tqdm import tqdm
 from gnssmultipath.Geodetic_functions import date2gpstime_vectorized, get_leap_seconds, gpstime2date_arrays, ECEF2enu, ECEF2enu_batch, ECEF2geodb
-from gnssmultipath.readers.RinexNav import RinexNav
+from gnssmultipath.readers.RinexNav import RinexNav, RinexNavData
 from gnssmultipath.constants import (
     J2,
     PZ90_SEMI_MAJOR_AXIS,
@@ -333,7 +333,10 @@ class SatelliteEphemerisToECEF:
     -----
 
     - rinex_nav_file  : List or string. Takes in both a single RINEX navfile or a list of RINEX navigation file. If a list is provided, the data will
-                      be merged in a single array (merged on to one file).
+                      be merged in a single array (merged on to one file). Already parsed data from
+                      ``RinexNav.read_nav`` (a ``RinexNavData``, or a list of them) is also accepted, which
+                      avoids reading the same navigation file twice. ``desired_systems`` and ``data_rate``
+                      are then not re-applied, since they were already applied when the file was read.
     - x_rec           : Receiver X-coordinates in ECEF
     - y_rec           : Receiver Y-coordinates in ECEF
     - z_rec           : Receiver Z-coordinates in ECEF
@@ -369,14 +372,24 @@ class SatelliteEphemerisToECEF:
             sat_pos = CONVERTER.compute_satellite_azimut_and_elevation_angle()               # compute satellite elevation and azimuth angles
 
 
+    - Reuse a navigation file that has already been read
+    .. code-block:: python
+            navdata = RinexNav.read_nav(rin_nav_file, data_rate=60)
+            sat_pos = SatelliteEphemerisToECEF(navdata, x_rec, y_rec, z_rec).get_sat_ecef_coordinates(tow_epochs)
+
+
     """
 
-    def __init__(self, rinex_nav_file:Union[str, List[str]], x_rec, y_rec, z_rec, desired_systems: Optional[List[str]] = None, data_rate=60):
+    def __init__(self, rinex_nav_file:Union[str, List[str], RinexNavData, List[RinexNavData]], x_rec, y_rec, z_rec, desired_systems: Optional[List[str]] = None, data_rate=60):
 
         if desired_systems is None:
             desired_systems = ["G", "R", "E", "C"]
 
-        if isinstance(rinex_nav_file, list):
+        if isinstance(rinex_nav_file, RinexNavData):
+            self.nav_data = rinex_nav_file
+            self.glo_fcn = self.nav_data.glonass_fcn
+            self.ephemerides = self.nav_data.ephemerides
+        elif isinstance(rinex_nav_file, list):
             self.ephemerides, self.glo_fcn = self.read_a_list_of_nav_files(rinex_nav_file, desired_systems, data_rate=data_rate)
         else:
             self.nav_data = RinexNav.read_nav(rinex_nav_file, desired_GNSS=desired_systems, data_rate=data_rate)
@@ -400,12 +413,16 @@ class SatelliteEphemerisToECEF:
     def read_a_list_of_nav_files(self, rinex_nav_file, desired_systems, data_rate):
         """
         Reads in a list of RINEX navigation files and merge the data
-        into one data array.
+        into one data array. Entries that are already parsed ``RinexNavData``
+        are used as they are instead of being read again.
         """
         nav_files = [nav_file for nav_file in rinex_nav_file if nav_file != ""]
         nav_datas = []
         for nav_file in nav_files:
-            nav_data = RinexNav.read_nav(nav_file, desired_GNSS=desired_systems, data_rate=data_rate)
+            if isinstance(nav_file, RinexNavData):
+                nav_data = nav_file
+            else:
+                nav_data = RinexNav.read_nav(nav_file, desired_GNSS=desired_systems, data_rate=data_rate)
             nav_datas.append(nav_data.ephemerides)
         data = np.concatenate(nav_datas, axis=0)
         glonass_fcn = nav_data.glonass_fcn

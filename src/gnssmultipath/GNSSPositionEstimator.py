@@ -1,7 +1,10 @@
-from typing import Literal, Dict, Tuple, Optional
+from typing import Literal, Dict, Tuple, Optional, Union
 import numpy as np
+import pandas as pd
 from gnssmultipath.BroadNavPositionEstimator import BroadNavPositionEstimator
 from gnssmultipath.SP3PositionEstimator import SP3PositionEstimator
+from gnssmultipath.SatelliteEphemerisToECEF import SatelliteEphemerisToECEF
+from gnssmultipath.readers.readRinexObs import RinexObsData
 from pyproj import Transformer
 
 
@@ -13,7 +16,8 @@ class GNSSPositionEstimator:
     Parameters:
     ----------
     rinex_obs_file : str
-        Path to the RINEX observation file.
+        Path to the RINEX observation file. Can be omitted when ``rinex_data``
+        is supplied.
     desired_time : np.ndarray
         Desired observation time as an array [year, month, day, hour, minute, second].
     rinex_nav_file : str, optional
@@ -39,6 +43,14 @@ class GNSSPositionEstimator:
                 - If the transformation fails, a RuntimeError is raised rather than
                   silently returning ECEF coordinates.
                 - Use https://epsg.org/home.html to find the EPSG code for the desired CRS.
+    navdata : SatelliteEphemerisToECEF, optional
+        Already converted broadcast ephemerides. Supplying this avoids reading the
+        navigation file again.
+    rinex_data : RinexObsData, optional
+        Already parsed RINEX observation data. When provided, its fields are
+        used instead of reading ``rinex_obs_file``.
+    sp3_metadata_dict : dict, optional
+        SP3 metadata, required when ``sp3_file`` is an already read pandas DataFrame.
 
     Example:
     -------
@@ -54,30 +66,64 @@ class GNSSPositionEstimator:
                                             crs = "EPSG:32632", # WGS84 UTM Zone 32N
                                             ).estimate_postiion()
 
+
+    Reusing data that is already read in:
+
+    .. code-block:: python
+            rinex = readRinexObs(rinObs)
+            navdata = SatelliteEphemerisToECEF(rinNav, 0, 0, 0)
+            gnsspos, stats = GNSSPositionEstimator(desired_time=desired_time,
+                                            navdata=navdata,
+                                            rinex_data=rinex,
+                                            ).estimate_position()
+
     """
 
     def __init__(
         self,
-        rinex_obs_file: str,
-        desired_time: np.ndarray,
+        rinex_obs_file: Optional[str] = None,
+        desired_time: np.ndarray = None,
         rinex_nav_file: str = None,
-        sp3_file: str = None,
+        sp3_file: Union[str, "pd.DataFrame"] = None,
         desired_system: Literal["G", "E", "R"] = "G",
         x_rec_approx: float = 0.0,
         y_rec_approx: float = 0.0,
         z_rec_approx: float = 0.0,
         elevation_cut_off_angle: Optional[int] = 10,
         crs: str = "EPSG:4978",
+        navdata: Optional[SatelliteEphemerisToECEF] = None,
+        sp3_metadata_dict: Optional[dict] = None,
+        rinex_data: Optional[RinexObsData] = None,
     ):
-        if rinex_nav_file:
+        if rinex_obs_file is not None and rinex_data is not None:
+            raise ValueError(
+                "Provide either rinex_obs_file or rinex_data, not both"
+            )
+
+        GNSS_obs = time_epochs = GNSSsystems = obsCodes = None
+        if rinex_data is not None:
+            if not isinstance(rinex_data, RinexObsData):
+                raise TypeError("rinex_data must be a RinexObsData instance")
+            rinex_obs_file = None
+            GNSS_obs = rinex_data.GNSS_obs
+            time_epochs = rinex_data.time_epochs
+            GNSSsystems = rinex_data.GNSSsystems
+            obsCodes = rinex_data.obsCodes
+
+        if rinex_nav_file or navdata is not None:
             self.GNSSPos = BroadNavPositionEstimator(
                 rinex_obs_file=rinex_obs_file,
                 rinex_nav_file=rinex_nav_file,
+                navdata=navdata,
                 desired_system=desired_system,
                 desired_time=desired_time,
                 x_rec_approx=x_rec_approx,
                 y_rec_approx=y_rec_approx,
                 z_rec_approx=z_rec_approx,
+                GNSS_obs=GNSS_obs,
+                time_epochs=time_epochs,
+                GNSSsystems=GNSSsystems,
+                obsCodes=obsCodes,
                 elevation_cut_off_angle = elevation_cut_off_angle,
             )
         else:
@@ -89,6 +135,11 @@ class GNSSPositionEstimator:
                 x_rec_approx=x_rec_approx,
                 y_rec_approx=y_rec_approx,
                 z_rec_approx=z_rec_approx,
+                GNSS_obs=GNSS_obs,
+                time_epochs=time_epochs,
+                GNSSsystems=GNSSsystems,
+                obsCodes=obsCodes,
+                sp3_metadata_dict=sp3_metadata_dict,
                 elevation_cut_off_angle = elevation_cut_off_angle,
             )
 

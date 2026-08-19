@@ -18,6 +18,7 @@ sys.path.append(project_path)
 sys.path.append(os.path.join(project_path, 'src'))
 
 from gnssmultipath.GNSSPositionEstimator import GNSSPositionEstimator
+from gnssmultipath import readRinexObs, RinexNav, SatelliteEphemerisToECEF
 
 
 def _proj_is_working():
@@ -75,6 +76,37 @@ def test_with_initial_coordinates():
     # Use assert_almost_equal to compare the computed and expected positions
     assert_almost_equal(computed_pos, expected_coords, decimal=3)
     assert_almost_equal(computed_clock_error, expected_clock_error, decimal=8)
+
+
+def test_pre_read_rinex_data_can_be_passed_as_one_object():
+    rinex = readRinexObs(rinObs)
+    navdata = RinexNav.read_nav(rinNav, data_rate=60)
+    x, y, z = rinex.approxPosition.flatten().astype(float)
+    converter = SatelliteEphemerisToECEF(navdata, x, y, z, data_rate=60)
+
+    estimator = GNSSPositionEstimator(
+        desired_time=desired_time,
+        desired_system=desired_system,
+        navdata=converter,
+        rinex_data=rinex,
+    )
+
+    assert estimator.GNSSPos.GNSS_obs is rinex.GNSS_obs
+    assert estimator.GNSSPos.time_epochs is rinex.time_epochs
+    assert estimator.GNSSPos.GNSSsystems is rinex.GNSSsystems
+    assert estimator.GNSSPos.obsCodes is rinex.obsCodes
+
+
+def test_rinex_file_and_pre_read_data_are_mutually_exclusive():
+    rinex = readRinexObs(rinObs)
+
+    with pytest.raises(ValueError, match="either rinex_obs_file or rinex_data"):
+        GNSSPositionEstimator(
+            rinex_obs_file=rinObs,
+            rinex_data=rinex,
+            desired_time=desired_time,
+            rinex_nav_file=rinNav,
+        )
 
 
 
