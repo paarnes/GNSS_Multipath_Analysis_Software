@@ -18,7 +18,7 @@ from typing import Any, Dict, Tuple
 import numpy as np
 from tqdm import tqdm
 from gnssmultipath.Geodetic_functions import date2gpstime
-from gnssmultipath.readers.GNSSObservationData import GNSSObservationData
+from gnssmultipath.readers.GNSSObservationData import GNSSObservationData, _epochs_to_datetime64
 
 
 global tFirstObs
@@ -100,6 +100,24 @@ class RinexObsData:
     def from_tuple(cls, values: Tuple) -> 'RinexObsData':
         """Construct from an existing 25-element tuple."""
         return cls(**dict(zip(cls._FIELDS_ORDERED, values)))
+
+    @property
+    def datetimes(self) -> Any:
+        """Epoch time stamps as ``datetime64[ns]``, or None.
+
+        Derived from ``time_epochs`` rather than stored separately, so the
+        calendar dates and the GPS week/time-of-week can never drift apart
+        (they also stay in step when the data rate is decimated)::
+
+            rinex = readRinexObs(path)
+            rinex.datetimes[0]                      # numpy.datetime64
+            rinex.datetimes.astype('datetime64[s]').tolist()  # datetime objects
+
+        The stamps are in the file's own time system (``timeSystem``, GPS
+        time for most files) and are not converted to UTC.
+        """
+        epochs = self.time_epochs
+        return _epochs_to_datetime64(epochs if isinstance(epochs, np.ndarray) else None)
 
     @property
     def observations(self) -> GNSSObservationData:
@@ -849,7 +867,7 @@ def readRinexObs304(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
                 pbar.update(10)
 
             ## Convert date to GPS-week and "time-of-week"
-            week, tow = date2gpstime(int(date[0]), int(date[1]), int(date[2]), int(date[3]), int(date[4]), int(date[5]))
+            week, tow = date2gpstime(int(date[0]), int(date[1]), int(date[2]), int(date[3]), int(date[4]), float(date[5]))
             t_week.append(week)
             t_tow.append(tow)
 
@@ -2384,7 +2402,7 @@ def readRinexObs211(filename, readSS=None, readLLI=None, includeAllGNSSsystems=N
 
             ## Convert date to GPS-week and "time-of-week"
             date[0] = float(str(tFirstObs[0][0])[0:2] + str(int(date[0])))
-            week, tow = date2gpstime(int(date[0]), int(date[1]), int(date[2]), int(date[3]), int(date[4]), int(date[5]))
+            week, tow = date2gpstime(int(date[0]), int(date[1]), int(date[2]), int(date[3]), int(date[4]), float(date[5]))
             t_week.append(week)
             t_tow.append(tow)
 

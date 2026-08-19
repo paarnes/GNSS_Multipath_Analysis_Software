@@ -132,19 +132,29 @@ _OBS_TYPE_NAMES = OBS_TYPE_NAMES
 _BAND_DESCRIPTIONS = BAND_DESCRIPTIONS
 _SYSTEM_NAMES = SYSTEM_NAMES
 
-_GPS_EPOCH = np.datetime64('1980-01-06T00:00:00', 'ms')
+_GPS_EPOCH = np.datetime64('1980-01-06T00:00:00', 'ns')
 _SECONDS_PER_WEEK = 604800.0
 
 
 def _epochs_to_datetime64(time_epochs):
-    """Convert a ``[epochs, 2]`` (gps_week, tow) array to ``datetime64[ms]``."""
+    """Convert a ``[epochs, 2]`` (gps_week, tow) array to ``datetime64[ns]``.
+
+    Nanoseconds are used because the RINEX epoch field holds 7 decimals
+    (0.1 us), which a microsecond resolution would round away.
+    """
     if time_epochs is None:
         return None
     arr = np.asarray(time_epochs, dtype=float)
     if arr.ndim != 2 or arr.shape[1] < 2 or arr.shape[0] == 0:
         return None
-    total_ms = (arr[:, 0] * _SECONDS_PER_WEEK + arr[:, 1]) * 1000.0
-    return _GPS_EPOCH + np.round(total_ms).astype('timedelta64[ms]')
+    # The tow is split into whole and fractional seconds before the week offset
+    # (~1e9 s) is added, otherwise float64 rounding would swallow the sub-second
+    # part of epochs such as 13:22:14.0001055.
+    whole_tow = np.floor(arr[:, 1])
+    seconds = (arr[:, 0] * _SECONDS_PER_WEEK + whole_tow).astype('int64')
+    nano = np.round((arr[:, 1] - whole_tow) * 1e9).astype('int64')
+    return (_GPS_EPOCH + seconds.astype('timedelta64[s]')
+            + nano.astype('timedelta64[ns]'))
 
 
 # ── Code-indexed sub-accessor (shared by obs, LLI, SS) ───────────────────────
@@ -348,7 +358,7 @@ class EpochObservations:
 
     @property
     def datetime(self):
-        """Epoch time stamp as ``datetime64[ms]`` (GPS time scale), or None."""
+        """Epoch time stamp as ``datetime64[ns]`` (GPS time scale), or None."""
         stamps = self._system.datetimes
         return None if stamps is None else stamps[self._index]
 
@@ -746,7 +756,7 @@ class SystemObservations:
 
     @property
     def datetimes(self):
-        """Epoch time stamps as ``datetime64[ms]`` in the GPS time scale."""
+        """Epoch time stamps as ``datetime64[ns]`` in the GPS time scale."""
         return _epochs_to_datetime64(self._time_epochs)
 
     # ── Data access ──────────────────────────────────────────────────────
@@ -1026,7 +1036,7 @@ class GNSSObservationData:
 
     @property
     def datetimes(self):
-        """Epoch time stamps as ``datetime64[ms]`` in the GPS time scale."""
+        """Epoch time stamps as ``datetime64[ns]`` in the GPS time scale."""
         return _epochs_to_datetime64(self._time_epochs)
 
     @property
