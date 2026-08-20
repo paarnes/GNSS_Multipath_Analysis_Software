@@ -247,6 +247,53 @@ class TestPreciseSatCoordsAzEl:
 # SP3Interpolator – DataFrame output path tests
 # ═══════════════════════════════════════════════════════════════════════
 
+class TestSP3InterpolatorTimeAxis:
+    """The interpolation time axis must keep sub-microsecond epochs exactly.
+
+    Counting seconds from an absolute epoch puts the values at the float64 resolution
+    limit (one ULP is 119 ns at "seconds since 2000"), which moved satellites by a
+    fraction of a millimetre and made results differ between platforms.
+    """
+
+    @pytest.fixture(scope="class")
+    @classmethod
+    def interpolator_and_epochs(cls):
+        from gnssmultipath.readers.readRinexObs import readRinexObs
+        reader = SP3Reader(sp3_path, coords_in_meter=True, desiredGNSSsystems=["G"])
+        sp3_df = reader.read()
+        interp = SP3Interpolator(sp3_df, reader.get_metadata()["epoch_interval_sec"])
+        return interp, readRinexObs(rinObs_path).time_epochs
+
+    def test_time_axis_magnitude_stays_small(self, interpolator_and_epochs):
+        interp, time_epochs = interpolator_and_epochs
+        seconds = interp._observation_seconds_from_time_epochs(time_epochs)
+        # One SP3 file spans at most a few days, so an absolute epoch would give ~1e8 s
+        assert np.abs(seconds).max() < 1.0e7
+        assert np.spacing(np.abs(seconds).max()) < 1.0e-9
+
+    def test_sub_microsecond_epochs_survive(self, interpolator_and_epochs):
+        interp, time_epochs = interpolator_and_epochs
+        seconds = interp._observation_seconds_from_time_epochs(time_epochs)
+        fraction_from_file = time_epochs[0, 1] - np.floor(time_epochs[0, 1])
+        fraction_on_axis = seconds[0] - np.floor(seconds[0])
+        # The RINEX epoch field holds 0.1 us, so nothing may be rounded to whole microseconds
+        assert abs(fraction_on_axis - fraction_from_file) < 1e-9
+
+    def test_epoch_spacing_is_exact(self, interpolator_and_epochs):
+        interp, time_epochs = interpolator_and_epochs
+        seconds = interp._observation_seconds_from_time_epochs(time_epochs)
+        steps = np.diff(seconds)
+        np.testing.assert_allclose(steps, steps[0], atol=1e-9)
+
+    def test_observation_and_sp3_share_the_same_origin(self, interpolator_and_epochs):
+        interp, time_epochs = interpolator_and_epochs
+        seconds = interp._observation_seconds_from_time_epochs(time_epochs)
+        sat_seconds, _, _ = interp._get_satellite_arrays("G02")
+        # The observations must fall inside the SP3 span, otherwise the origins differ
+        assert sat_seconds.min() <= seconds.min()
+        assert seconds.max() <= sat_seconds.max()
+
+
 class TestSP3InterpolatorDataFrame:
     """Tests for SP3Interpolator.interpolate_sat_coordinates DataFrame output."""
 
