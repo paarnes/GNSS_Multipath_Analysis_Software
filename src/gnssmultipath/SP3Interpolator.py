@@ -270,11 +270,16 @@ class SP3Interpolator:
         - Interpolated positions and clock biases in the specified output format.
         """
 
-        # Convert GPS time to datetime objects (kept for the optional DataFrame output below)
-        if len(time_epochs) > 2:
-            observation_times = gpstime2date_arrays_with_microsec(time_epochs[:, 0], time_epochs[:, 1])
+        # Timestamps for the optional DataFrame output. These use the exact nanosecond
+        # conversion, so they match RinexObsData.datetimes and can be joined on directly.
+        time_epochs_arr = np.asarray(time_epochs)
+        if time_epochs_arr.ndim > 1 and time_epochs_arr.shape[-1] == 2 and time_epochs_arr.shape[0] != 2:
+            weeks, tows = time_epochs_arr[:, 0], time_epochs_arr[:, 1]
+        elif time_epochs_arr.ndim > 1:
+            weeks, tows = time_epochs_arr[0], time_epochs_arr[1]
         else:
-            observation_times = gpstime2date_arrays_with_microsec(time_epochs[0], time_epochs[1])
+            weeks, tows = np.atleast_1d(time_epochs_arr[0]), np.atleast_1d(time_epochs_arr[1])
+        epoch_datetimes = (self._GPS_EPOCH_NS + self._gpstime_to_ns(weeks, tows)).astype('datetime64[ns]')
 
         # Convert observation times to seconds since the reference epoch (vectorized)
         observation_seconds = self._observation_seconds_from_time_epochs(np.asarray(time_epochs))
@@ -318,7 +323,6 @@ class SP3Interpolator:
             all_y = []
             all_z = []
             all_clk = []
-            epoch_datetimes = [datetime(*t) for t in observation_times]
             for gnss, satellites in interpolated_positions.items():
                 for satellite, data in satellites.items():
                     positions = data["positions"]

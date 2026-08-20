@@ -2,7 +2,6 @@ import warnings
 import logging
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')  # non-interactive backend; must be set before pyplot import
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib import rc
@@ -107,7 +106,7 @@ def make_polarplot(analysisResults, graph_dir, use_tex=True):
 
 
 def make_skyplot(azimut_currentSys, elevation_currentSys, GNSSsystemName, graph_dir,
-                 use_tex=True, save=True, return_fig=False):
+                 use_tex=True, save=True, return_fig=False, ax=None):
     """
     Generates a skyplot based on azimuth and elevation angles.
     azimuth: list of azimuth angles in degrees
@@ -115,16 +114,24 @@ def make_skyplot(azimut_currentSys, elevation_currentSys, GNSSsystemName, graph_
     title: title of the skyplot
     save: save the plot as a PDF when True (default)
     return_fig: return the open Matplotlib figure when True
+    ax: draw into an existing polar Axes instead of creating a new figure,
+        which allows several systems to share one figure. Text and legend are
+        scaled down to fit, and saving is left to the caller.
     """
     _configure_tex(use_tex)
     GNSS_Name2Code =  dict(zip(['GPS', 'GLONASS', 'Galileo', 'BeiDou'], ['G', 'R', 'E', 'C']))
     sys_code = GNSS_Name2Code[GNSSsystemName]
     num_sat = azimut_currentSys.shape[1]
-    fig, ax = plt.subplots(subplot_kw={'projection': 'polar'},figsize=(16,10),dpi=180)
+    embedded = ax is not None
+    scale = 0.55 if embedded else 1.0
+    if embedded:
+        fig = ax.get_figure()
+    else:
+        fig, ax = plt.subplots(subplot_kw={'projection': 'polar'},figsize=(16,10),dpi=180)
     ax.set_theta_zero_location("N")
     ax.set_theta_direction(-1)
     ax.set_rlim(bottom=90, top=0)
-    ax.set_title("Skyplot for %s" % (GNSSsystemName), va='bottom',fontsize=28)
+    ax.set_title("Skyplot for %s" % (GNSSsystemName), va='bottom',fontsize=28*scale)
     for PRN in np.arange(0,num_sat):
         sat_el = elevation_currentSys[:,PRN]
 
@@ -138,25 +145,28 @@ def make_skyplot(azimut_currentSys, elevation_currentSys, GNSSsystemName, graph_
         PRN_ = sys_code+str(PRN)
         PRN_ = sys_code+str(PRN).zfill(2)
         # ax.scatter(azimuth_rad, sat_el,label=PRN_)
-        line = ax.plot(azimuth_rad, sat_el,label=PRN_,linewidth=5.5, solid_capstyle='round') #solid_capstyle='round' makes rounded edges on lines
+        line = ax.plot(azimuth_rad, sat_el,label=PRN_,linewidth=5.5*scale, solid_capstyle='round') #solid_capstyle='round' makes rounded edges on lines
 
     ax.set_rticks([10 ,20 ,30, 40, 50, 60, 70, 80, 90])  # Less radial ticks
     # ax.set_rlabel_position(-22.5)  # Move radial labels away from plotted line
-    ax.tick_params(axis='both',labelsize=18,pad=7)
+    ax.tick_params(axis='both',labelsize=18*scale,pad=7*scale)
     ax.grid(True)
     # ax.legend(fontsize=14,bbox_to_anchor=(1.40, 0.5),fancybox=True, shadow=True,ncol=2,loc='center right')
-    legend = ax.legend(fontsize=14,bbox_to_anchor=(1.40, 0.5),fancybox=True, shadow=True,ncol=2,loc='center right')
+    anchor = (1.02, 0.5) if embedded else (1.40, 0.5)
+    loc = 'center left' if embedded else 'center right'
+    legend = ax.legend(fontsize=14*scale,bbox_to_anchor=anchor,fancybox=True, shadow=True,ncol=2,loc=loc)
     ## Set the linewidth of each legend object (then not dependent of linewith in plot)
-    set_linewidt_for_each_object(legend, 3.5)
+    set_linewidt_for_each_object(legend, 3.5*scale)
 
-    if save:
+    if save and not embedded:
         filename = 'Skyplot_' + GNSSsystemName + '.pdf'
         fig.savefig(graph_dir + "/" + filename, orientation='landscape', bbox_inches='tight')
 
     if return_fig:
         return fig
 
-    plt.close(fig)
+    if not embedded:
+        plt.close(fig)
     return None
 
 

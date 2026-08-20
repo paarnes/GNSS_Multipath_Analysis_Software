@@ -20,6 +20,7 @@ from gnssmultipath.signalAnalysis import SignalAnalyzer
 from gnssmultipath.detectClockJumps import detectClockJumps
 from gnssmultipath.utils.writeOutputFile import writeOutputFile
 from gnssmultipath.utils.createCSVfile import createCSVfile
+from gnssmultipath.plot.backend import use_non_interactive_backend
 from gnssmultipath.plot.make_polarplot import make_polarplot, make_skyplot, make_polarplot_SNR, plot_SNR_wrt_elev
 from gnssmultipath.plot.make_polarplot import make_polarplot_dont_use_TEX, make_skyplot_dont_use_TEX, make_polarplot_SNR_dont_use_TEX, plot_SNR_wrt_elev_dont_use_TEX
 from gnssmultipath.plot.plotResults import plotResults, plotResults_dont_use_TEX, make_barplot, make_barplot_dont_use_TEX
@@ -250,6 +251,9 @@ def GNSS_MultipathAnalysis(rinObsFilename: str,
     --------------------------------------------------------------------------------------------------------------------------
     """
     start_time = time.time()
+
+    # Figures go straight to file, so a batch run has no use for a GUI backend.
+    use_non_interactive_backend()
 
     # ── Input validation ──────────────────────────────────────────────────────
     if broadcastNav1 is None and sp3NavFilename_1 is None:
