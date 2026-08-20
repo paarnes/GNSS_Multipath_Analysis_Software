@@ -126,5 +126,165 @@ class TestPerSystemEarthConstants:
         np.testing.assert_allclose(pos_second, pos_first, atol=1e-9)
 
 
+class TestDatetimeInput:
+    """Datetime-like epochs must be accepted directly, e.g. ``RinexObsData.datetimes``."""
+
+    DATETIMES = np.array(['2022-01-01T02:40:00', '2022-01-01T02:40:30'], dtype='datetime64[ns]')
+
+    def test_matches_tow_input(self):
+        _, tow = date2gpstime_vectorized(np.array([[2022, 1, 1, 2, 40, 0.0],
+                                                   [2022, 1, 1, 2, 40, 30.0]]))
+        by_tow = _converter(["G"]).get_sat_ecef_coordinates(np.asarray(tow, dtype=float))
+        by_datetime = _converter(["G"]).get_sat_ecef_coordinates(self.DATETIMES)
+
+        np.testing.assert_allclose(by_datetime['G']['position']['20'],
+                                   by_tow['G']['position']['20'], atol=1e-9)
+
+    def test_timestamps_are_kept(self):
+        converter = _converter(["G"])
+        converter.get_sat_ecef_coordinates(self.DATETIMES)
+        np.testing.assert_array_equal(converter.epoch_timestamps, self.DATETIMES)
+
+    def test_time_of_week_input_still_gets_timestamps(self, tow_epoch):
+        converter = _converter(["G"])
+        converter.get_sat_ecef_coordinates(tow_epoch)
+        # The week is not in the input, so it is taken from the ephemerides.
+        assert converter.epoch_timestamps[0] == np.datetime64('2022-01-01T02:40:00', 'ns')
+
+
+class TestSystemTimeScales:
+    """BeiDou ephemerides are referenced to BDT, which trails GPS time by 14 s."""
+
+    @staticmethod
+    def _ephemeris_module():
+        # 'gnssmultipath.SatelliteEphemerisToECEF' resolves to the class on the package,
+        # so the module itself has to be picked up from sys.modules.
+        return sys.modules['gnssmultipath.SatelliteEphemerisToECEF']
+
+    def test_beidou_uses_bdt(self, tow_epoch, monkeypatch):
+        """Skipping the BDT offset moves a BeiDou MEO ~40 km along-track."""
+        correct = _converter("C").get_sat_ecef_coordinates(tow_epoch, PRN="C11")
+        pos_correct = np.array([np.ravel(correct[i])[0] for i in range(3)])
+
+        monkeypatch.setattr(self._ephemeris_module(), 'BDT_GPST_OFFSET', 0.0)
+        uncorrected = _converter("C").get_sat_ecef_coordinates(tow_epoch, PRN="C11")
+        pos_uncorrected = np.array([np.ravel(uncorrected[i])[0] for i in range(3)])
+
+        assert np.linalg.norm(pos_correct - pos_uncorrected) > 30_000.0
+
+    def test_gps_is_not_shifted(self, tow_epoch, monkeypatch):
+        """Only BeiDou gets the offset, so GPS must be unaffected by it."""
+        first = _converter("G").get_sat_ecef_coordinates(tow_epoch, PRN="G20")
+        pos_first = np.array([np.ravel(first[i])[0] for i in range(3)])
+
+        monkeypatch.setattr(self._ephemeris_module(), 'BDT_GPST_OFFSET', 0.0)
+        second = _converter("G").get_sat_ecef_coordinates(tow_epoch, PRN="G20")
+        pos_second = np.array([np.ravel(second[i])[0] for i in range(3)])
+
+        np.testing.assert_allclose(pos_second, pos_first, atol=1e-9)
+
+
+class TestBeiDouGeoOrbits:
+    """C01-C05 use the GEO branch of the BeiDou ICD, not the MEO/IGSO equations."""
+    FULL_DAY = np.arange(0, 86400.0, 1800.0) + 172800.0  # tow for 2022-01-01, every 30 min
+
+    @pytest.fixture(scope="class")
+    @classmethod
+    def beidou(cls):
+        return _converter("C").get_sat_ecef_coordinates(cls.FULL_DAY)
+
+    @pytest.mark.parametrize("prn", ["1", "2", "3", "4", "5"])
+    def test_geo_orbit_radius(self, beidou, prn):
+        radius = np.linalg.norm(beidou['C']['position'][prn], axis=1)
+        # Geostationary radius is 42 164 km
+        np.testing.assert_allclose(radius.mean(), 42.164e6, rtol=1e-3)
+
+    @pytest.mark.parametrize("prn", ["1", "2", "3", "4", "5"])
+    def test_geo_is_almost_stationary_in_ecef(self, beidou, prn):
+        """A geostationary satellite barely moves in ECEF; the MEO equations would sweep
+        it around the full orbit instead."""
+        position = beidou['C']['position'][prn]
+        span = np.linalg.norm(position.max(axis=0) - position.min(axis=0))
+        assert span < 5.0e6
+
+    def test_igso_and_meo_still_move(self, beidou):
+        for prn in ('6', '11'):
+            position = beidou['C']['position'][prn]
+            span = np.linalg.norm(position.max(axis=0) - position.min(axis=0))
+            assert span > 50.0e6
+
+
+class TestGlonassEarthRotationCorrection:
+    """GLONASS must end up in the same reference frame as the Keplerian systems."""
+
+    def test_rotation_is_applied_when_the_receiver_is_known(self, tow_epoch):
+        from gnssmultipath.SatelliteEphemerisToECEF import GLOStateVec2ECEF
+
+        converter = _converter("R")
+        ephemerides = converter.get_closest_ephemerides_for_PRN_at_time("R10", tow_epoch)
+
+        rotated, _, _, _ = GLOStateVec2ECEF(X_REC, Y_REC, Z_REC).interpolate_glonass_coord_runge_kutta(
+            ephemerides.copy(), tow_epoch)
+        unrotated, _, _, _ = GLOStateVec2ECEF().interpolate_glonass_coord_runge_kutta(
+            ephemerides.copy(), tow_epoch)
+
+        offset = np.linalg.norm(rotated - unrotated)
+        # omega_e * travel_time * orbit_radius is roughly 160 m for a GLONASS orbit
+        assert 50.0 < offset < 400.0
+
+    def test_rotation_preserves_the_orbit_radius(self, tow_epoch):
+        from gnssmultipath.SatelliteEphemerisToECEF import GLOStateVec2ECEF
+
+        converter = _converter("R")
+        ephemerides = converter.get_closest_ephemerides_for_PRN_at_time("R10", tow_epoch)
+
+        rotated, _, _, _ = GLOStateVec2ECEF(X_REC, Y_REC, Z_REC).interpolate_glonass_coord_runge_kutta(
+            ephemerides.copy(), tow_epoch)
+        unrotated, _, _, _ = GLOStateVec2ECEF().interpolate_glonass_coord_runge_kutta(
+            ephemerides.copy(), tow_epoch)
+
+        # A rotation about the Z-axis changes neither the radius nor the Z component
+        np.testing.assert_allclose(np.linalg.norm(rotated, axis=1),
+                                   np.linalg.norm(unrotated, axis=1), rtol=1e-12)
+        np.testing.assert_allclose(rotated[:, 2], unrotated[:, 2], rtol=1e-12)
+
+
+class TestDataFrameOutput:
+    """``output_format='pd.DataFrame'`` gives a (timestamp, system, SV) indexed table."""
+
+    @pytest.fixture(scope="class")
+    @classmethod
+    def frame(cls):
+        converter = _converter(["G", "E"])
+        return converter.get_sat_ecef_coordinates(
+            np.array(['2022-01-01T02:40:00', '2022-01-01T02:40:30'], dtype='datetime64[ns]'),
+            output_format="pd.DataFrame")
+
+    def test_index_and_columns(self, frame):
+        assert list(frame.index.names) == ['timestamp', 'system', 'SV']
+        assert list(frame.columns) == ['X', 'Y', 'Z']
+
+    def test_satellite_ids_are_zero_padded(self, frame):
+        svs = frame.index.get_level_values('SV').unique()
+        assert all(len(sv) == 3 and sv[0] in ('G', 'E') for sv in svs)
+        assert 'G20' in svs
+
+    def test_single_satellite_selection(self, frame):
+        single = frame.xs(('G', 'G20'), level=('system', 'SV'))
+        assert len(single) == 2
+        assert list(single.columns) == ['X', 'Y', 'Z']
+
+    def test_values_match_the_dict_output(self, frame):
+        converter = _converter(["G", "E"])
+        as_dict = converter.get_sat_ecef_coordinates(
+            np.array(['2022-01-01T02:40:00', '2022-01-01T02:40:30'], dtype='datetime64[ns]'))
+        np.testing.assert_allclose(frame.xs(('G', 'G20'), level=('system', 'SV')).to_numpy(),
+                                   as_dict['G']['position']['20'], atol=1e-9)
+
+    def test_to_dataframe_requires_computed_coordinates(self):
+        with pytest.raises(ValueError):
+            _converter(["G"]).to_dataframe()
+
+
 if __name__ == '__main__':
     pytest.main()

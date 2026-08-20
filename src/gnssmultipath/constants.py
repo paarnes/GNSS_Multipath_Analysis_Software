@@ -179,6 +179,22 @@ EARTH_ROTATION_RATE: Dict[str, float] = {
 J2 = 1.0826257e-3
 """Second zonal harmonic coefficient, as used by the GLONASS equations of motion."""
 
+BDT_GPST_OFFSET = 14.0
+"""Offset between BeiDou time and GPS time [s]: ``BDT = GPST - 14`` (BeiDou SIS ICD).
+
+BeiDou broadcast ephemerides are referenced to BDT, so the reception time must be
+converted before it is differenced against ``toe``.  Galileo System Time and QZSST are
+aligned with GPS time and need no offset; GLONASS is UTC based and is handled with leap
+seconds in :class:`~gnssmultipath.SatelliteEphemerisToECEF.GLOStateVec2ECEF`.
+"""
+
+BDS_GEO_ROTATION_X = np.deg2rad(-5.0)
+"""Rotation about the X-axis applied to BeiDou GEO satellites [rad] (BeiDou SIS ICD).
+
+GEO orbits are propagated in an intermediate frame and then rotated into CGCS2000 with
+``R_z(omega_e * t_k) * R_x(-5 deg)``, unlike the MEO/IGSO satellites.
+"""
+
 PZ90_SEMI_MAJOR_AXIS = 6378136.0
 """Semi-major axis of the PZ-90 ellipsoid [m]."""
 
@@ -205,6 +221,16 @@ def earth_rotation_rate(system: str) -> float:
     Unknown systems fall back to the GPS value.
     """
     return EARTH_ROTATION_RATE.get(_normalise_system(system), EARTH_ROTATION_RATE['G'])
+
+
+def is_beidou_geo(prn: int) -> bool:
+    """Return ``True`` for the BeiDou GEO satellites.
+
+    BDS-2 places C01-C05 in geostationary orbits and BDS-3 continues from C59.  These need
+    the GEO branch of the ICD orbit model, while the remaining MEO/IGSO satellites use the
+    same equations as GPS and Galileo.
+    """
+    return int(prn) <= 5 or int(prn) >= 59
 
 
 def carrier_frequency(system: str, band: int, glonass_channel: Optional[int] = None) -> float:

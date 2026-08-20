@@ -8,11 +8,15 @@ E-mail: per.helge.aarnes@gmail.com
 
 from typing import Literal, Optional, List, Union, Tuple
 import numpy as np
+import pandas as pd
 from numpy import ndarray
 from tqdm import tqdm
 from gnssmultipath.Geodetic_functions import date2gpstime_vectorized, get_leap_seconds, gpstime2date_arrays, ECEF2enu, ECEF2enu_batch, ECEF2geodb
 from gnssmultipath.readers.RinexNav import RinexNav, RinexNavData
+from gnssmultipath.readers.GNSSObservationData import _epochs_to_datetime64
 from gnssmultipath.constants import (
+    BDS_GEO_ROTATION_X,
+    BDT_GPST_OFFSET,
     J2,
     PZ90_SEMI_MAJOR_AXIS,
     SPEED_OF_LIGHT,
@@ -20,6 +24,7 @@ from gnssmultipath.constants import (
     WGS84_SEMI_MINOR_AXIS,
     earth_gravitational_constant,
     earth_rotation_rate,
+    is_beidou_geo,
 )
 
 
@@ -28,9 +33,17 @@ class GLOStateVec2ECEF:
 
     """
     Class for interpolating a GLONASS state vector using 4th order Runge Kutta
+
+    The receiver coordinates are optional, and are only used to rotate the result into the
+    ECEF frame at signal reception. This is the same correction ``Kepler2ECEF`` applies, and
+    it keeps GLONASS in the same reference frame as the Keplerian systems. Without receiver
+    coordinates the rotation is skipped, exactly as in ``Kepler2ECEF``.
     """
-    def __init__(self):
+    def __init__(self, x_rec=None, y_rec=None, z_rec=None):
         self.sys_code = "R" # glonass system code
+        self.x_rec = x_rec
+        self.y_rec = y_rec
+        self.z_rec = z_rec
 
 
     def interpolate_glonass_coord_runge_kutta(self, filtered_eph_data, time_epochs):
@@ -101,7 +114,53 @@ class GLOStateVec2ECEF:
 
         pos = state[:, :3]
         vel = state[:, 3:6]
+        pos, vel = self.correct_for_earth_rotation(pos, vel)
         return pos, vel, clock_err, clock_rate_err
+
+
+    def correct_for_earth_rotation(self, pos: ndarray, vel: ndarray):
+        """
+        Rotates the state vector into the ECEF frame at signal reception, which is the
+        correction ``Kepler2ECEF.kepler2ecef`` applies to GPS, Galileo and BeiDou. Without it
+        the GLONASS coordinates end up in a different frame than the other systems, an offset
+        of roughly 160 m for a GLONASS orbit.
+
+        The rotation is skipped when no receiver coordinates are available, since the signal
+        travel time is then unknown.
+        """
+        if any(coord is None for coord in (self.x_rec, self.y_rec, self.z_rec)):
+            return pos, vel
+
+        receiver = np.array([self.x_rec, self.y_rec, self.z_rec], dtype=float)
+        if np.any(np.abs(receiver) <= 1.0):
+            return pos, vel
+
+        omega_e = earth_rotation_rate(self.sys_code)
+        trans = np.full(pos.shape[0], 0.075)  # approximate signal travel time
+        for iteration in range(20):
+            rotated = self.rotate_about_z_axis(pos, omega_e * trans)
+            updated_trans = np.linalg.norm(rotated - receiver, axis=1) / SPEED_OF_LIGHT
+            converged = np.all(np.abs(updated_trans - trans) < 1e-10)
+            trans = updated_trans
+            if converged:
+                break
+        else:
+            print('Error: The travel time-rotation does not converge!')
+
+        theta = omega_e * trans
+        return self.rotate_about_z_axis(pos, theta), self.rotate_about_z_axis(vel, theta)
+
+
+    @staticmethod
+    def rotate_about_z_axis(vectors: ndarray, theta: ndarray) -> ndarray:
+        """Rotates ECEF vectors backwards about the Z-axis by the angle *theta* [rad]."""
+        cos_theta = np.cos(theta)
+        sin_theta = np.sin(theta)
+        return np.column_stack([
+            vectors[:, 0] * cos_theta + vectors[:, 1] * sin_theta,
+            -vectors[:, 0] * sin_theta + vectors[:, 1] * cos_theta,
+            vectors[:, 2],
+        ])
 
 
     def glonass_diff_eq(self, state:ndarray , acc:ndarray):
@@ -207,13 +266,21 @@ class Kepler2ECEF:
         """
         c = SPEED_OF_LIGHT
 
-        gnss_sys = filtered_eph_data[0,0][0]
+        satellite_id = str(filtered_eph_data[0, 0])
+        gnss_sys = satellite_id[0]
+        is_geo_satellite = gnss_sys == 'C' and is_beidou_geo(int(satellite_id[1:]))
 
         # Each constellation's ICD defines its own GM and rotation rate; the
         # broadcast elements are only consistent with the system's own values.
         # See gnssmultipath.constants (Teunissen & Montenbruck 2017, Table 3.4).
         GM = earth_gravitational_constant(gnss_sys)
         omega_e = earth_rotation_rate(gnss_sys)
+
+        # BeiDou broadcasts toe in BDT, which trails GPS time by 14 s. Differencing the two
+        # scales directly puts the satellite ~40 km off along-track.
+        tow_rec = np.asarray(tow_rec, dtype=float)
+        if gnss_sys == 'C':
+            tow_rec = tow_rec - BDT_GPST_OFFSET
 
         filtered_eph_data[:,0] = np.nan  # Remove cell containing a string representing PRN with system code (to be able to convert array to float)
         filtered_eph_data = filtered_eph_data.astype(float)
@@ -238,6 +305,10 @@ class Kepler2ECEF:
 
         n0  = np.sqrt(GM/A**3) # Computed mean motion (n0) [rad/second]
         t_k = tow_rec - toe # Time difference between reception time and ephemeris reference time
+        # Keep t_k within half a week, so an ephemeris on the other side of a week rollover
+        # is propagated over the short arc instead of nearly a full week.
+        t_k = np.where(t_k > 302400.0, t_k - 604800.0, t_k)
+        t_k = np.where(t_k < -302400.0, t_k + 604800.0, t_k)
 
         n_k = n0 + delta_n   # Corrected mean motion (n_k)
         M_k = M0 + n_k*t_k   # Mean anomaly (M_k) [rad]
@@ -276,17 +347,40 @@ class Kepler2ECEF:
         r_k     = A*(1 - e*np.cos(E)) + dr_k
         i_k     = i0 + i_dot*t_k + di_k
 
-        # Corrected longitude of ascending node
-        OMEGA_k = OMEGA + (OMEGA_dot - omega_e)*t_k - omega_e*toe
-
         # Satellite position in the orbit
         x = r_k*np.cos(u_k)
         y = r_k*np.sin(u_k)
 
-        # ECEF coordinates for the satellite
-        X = x*np.cos(OMEGA_k) - y*np.sin(OMEGA_k)*np.cos(i_k)
-        Y = x*np.sin(OMEGA_k) + y*np.cos(OMEGA_k)*np.cos(i_k)
-        Z = y*np.sin(i_k)
+        def ecef_coordinates(trans):
+            """
+            ECEF coordinates for a signal travel time of *trans* seconds. Adding the travel
+            time rotates the result into the Earth-fixed frame at signal reception.
+            """
+            if is_geo_satellite:
+                # GEO orbits are propagated in an intermediate frame and rotated into
+                # CGCS2000 with R_z(omega_e*t_k)*R_x(-5 deg). Note that OMEGA_k has no
+                # -omega_e*t_k term here, unlike the MEO/IGSO satellites.
+                OMEGA_k = OMEGA + OMEGA_dot*t_k - omega_e*toe
+                x_gk = x*np.cos(OMEGA_k) - y*np.sin(OMEGA_k)*np.cos(i_k)
+                y_gk = x*np.sin(OMEGA_k) + y*np.cos(OMEGA_k)*np.cos(i_k)
+                z_gk = y*np.sin(i_k)
+
+                cos_x, sin_x = np.cos(BDS_GEO_ROTATION_X), np.sin(BDS_GEO_ROTATION_X)
+                x_r = x_gk
+                y_r = y_gk*cos_x + z_gk*sin_x
+                z_r = -y_gk*sin_x + z_gk*cos_x
+
+                phi = omega_e*(t_k + trans)
+                return (x_r*np.cos(phi) + y_r*np.sin(phi),
+                        -x_r*np.sin(phi) + y_r*np.cos(phi),
+                        z_r)
+
+            OMEGA_k = OMEGA + (OMEGA_dot - omega_e)*t_k - omega_e*(toe + trans)
+            return (x*np.cos(OMEGA_k) - y*np.sin(OMEGA_k)*np.cos(i_k),
+                    x*np.sin(OMEGA_k) + y*np.cos(OMEGA_k)*np.cos(i_k),
+                    y*np.sin(i_k))
+
+        X, Y, Z = ecef_coordinates(0.0)
 
         # Relativistic clock correction
         dT_rel = (-2/c**2)*np.sqrt(A*GM)*e*np.sin(E)
@@ -302,21 +396,12 @@ class Kepler2ECEF:
                     break
 
                 TRANS = TRANS0
-                OMEGA_k = OMEGA + (OMEGA_dot - omega_e) * t_k - omega_e * (toe + TRANS)
-                X = x * np.cos(OMEGA_k) - y * np.sin(OMEGA_k) * np.cos(i_k)
-                Y = x * np.sin(OMEGA_k) + y * np.cos(OMEGA_k) * np.cos(i_k)
-                Z = y * np.sin(i_k)
+                X, Y, Z = ecef_coordinates(TRANS)
                 dX = (X - self.x_rec)
                 dY = (Y - self.y_rec)
                 dZ = (Z - self.z_rec)
                 DS = np.sqrt(dX**2 + dY**2 + dZ**2)
                 TRANS0 = DS / c
-        else:
-            # Do not correct for the earth rotation
-            OMEGA_k = OMEGA + (OMEGA_dot - omega_e)*t_k - omega_e*toe
-            X = x*np.cos(OMEGA_k) - y*np.sin(OMEGA_k)*np.cos(i_k)
-            Y = x*np.sin(OMEGA_k) + y*np.cos(OMEGA_k)*np.cos(i_k)
-            Z = y*np.sin(i_k)
 
         return X, Y, Z, dT_rel
 
@@ -378,6 +463,14 @@ class SatelliteEphemerisToECEF:
     .. code-block:: python
             navdata = RinexNav.read_nav(rin_nav_file, data_rate=60)
             sat_pos = SatelliteEphemerisToECEF(navdata, x_rec, y_rec, z_rec).get_sat_ecef_coordinates(tow_epochs)
+
+
+    - Use the observation time stamps directly and get the result as a DataFrame indexed by (timestamp, system, SV)
+    .. code-block:: python
+            rinex = readRinexObs(rin_obs_file)
+            CONVERTER = SatelliteEphemerisToECEF(rin_nav_file, x_rec, y_rec, z_rec)
+            df = CONVERTER.get_sat_ecef_coordinates(rinex.datetimes, output_format="pd.DataFrame")
+            df.xs(('E', 'E01'), level=('system', 'SV'))   # coordinates for a single satellite
 
 
     """
@@ -590,7 +683,9 @@ class SatelliteEphemerisToECEF:
         return azimuth, elevation
 
 
-    def get_sat_ecef_coordinates(self, desired_time:ndarray, time_fmt:Literal["TOW", "GREGORIAN"] = 'TOW', PRN: Optional[str] = None) -> ndarray:
+    def get_sat_ecef_coordinates(self, desired_time:ndarray, time_fmt:Literal["TOW", "GREGORIAN"] = 'TOW',
+                                 PRN: Optional[str] = None,
+                                 output_format: Literal["dict", "pd.DataFrame"] = "dict") -> ndarray:
         """
         Main method for converting from Kepler to ECEF and interpolate to the desired time. Input time can be both "Time of Week" (seconds) or
         gregorian time. This is set by time_format. Set to "TOW" by default.". If no PRN is set, the method will compute the satellite coordiantes for
@@ -598,7 +693,10 @@ class SatelliteEphemerisToECEF:
 
         INPUT:
         -----
-        desired_time: The desired time for interpolation. Given in "Time-of-Week" or gregorian time.
+        desired_time: The desired time for interpolation. Given in "Time-of-Week", gregorian time or
+                      as datetime-like values (``datetime64``, ``DatetimeIndex`` or ``datetime`` objects,
+                      e.g. ``RinexObsData.datetimes``).  Datetime-like input is detected automatically,
+                      so ``time_fmt`` does not have to be set for it.
 
                       Example on desired_time input fmt:
                       ---------------------------------
@@ -608,8 +706,12 @@ class SatelliteEphemerisToECEF:
                                          [2020,   10,   30,   13,   22,   15],
                                          [2020,   10,   30,   13,   22,   16]])
 
+                      DATETIME: array(['2022-01-01T00:00:00', '2022-01-01T00:00:30'], dtype='datetime64[ns]')
+
         time_fmt : Either Time-Of-Week (TOW) or gregorian calender (year, month, day, hh, min, sec)
         PRN : Optional. The PRN number of the desired satellite included system code in front (ex: "G04" or "E19").
+              When set, the method returns ``(X, Y, Z, dT_rel)`` for that satellite and ``output_format`` is not used.
+        output_format : ``"dict"`` (default) or ``"pd.DataFrame"``. See :meth:`to_dataframe`.
 
         OUTPUT:
         ------
@@ -617,11 +719,7 @@ class SatelliteEphemerisToECEF:
 
         """
 
-        if time_fmt == "GREGORIAN":
-            # date2gpstime_vectorized returns (weeks, tows); everything downstream
-            # works with time-of-week only.
-            _, desired_time = date2gpstime_vectorized(np.atleast_2d(desired_time))
-        desired_time = np.asarray(desired_time, dtype=float).ravel()
+        desired_time, self.epoch_timestamps = self._resolve_time(desired_time, time_fmt)
 
         if PRN and 'R' not in PRN:
             filtered_eph_data = self.get_closest_ephemerides_for_PRN_at_time(PRN, desired_time)
@@ -629,7 +727,7 @@ class SatelliteEphemerisToECEF:
             return xs, ys, zs, dTrel
         elif PRN and 'R' in PRN:
             filtered_eph_data = self.get_closest_ephemerides_for_PRN_at_time(PRN, desired_time)
-            sat_coords, sat_velocity, dT, dT_rate = GLOStateVec2ECEF().interpolate_glonass_coord_runge_kutta(filtered_eph_data, desired_time)
+            sat_coords, sat_velocity, dT, dT_rate = GLOStateVec2ECEF(self.x_rec, self.y_rec, self.z_rec).interpolate_glonass_coord_runge_kutta(filtered_eph_data, desired_time)
             xs, ys, zs = sat_coords.T
             return xs, ys, zs, dT
         else:
@@ -644,7 +742,7 @@ class SatelliteEphemerisToECEF:
                             pbar.update(1)
                             continue
                         if 'R' in sys_code:
-                            current_sat_coord,_,_,_ = GLOStateVec2ECEF().interpolate_glonass_coord_runge_kutta(filtered_eph_data, desired_time)
+                            current_sat_coord,_,_,_ = GLOStateVec2ECEF(self.x_rec, self.y_rec, self.z_rec).interpolate_glonass_coord_runge_kutta(filtered_eph_data, desired_time)
                         else:
                             xs, ys, zs, dTrel = Kepler2ECEF(self.x_rec, self.y_rec, self.z_rec).kepler2ecef(filtered_eph_data, desired_time)
                             current_sat_coord = np.array([xs, ys, zs]).T
@@ -653,30 +751,74 @@ class SatelliteEphemerisToECEF:
                         pbar.update(1) # Update the progress bar for each satellite processed
         self.sat_coord_computed = True
         self.nepochs = len(desired_time)
+        if output_format == "pd.DataFrame":
+            return self.to_dataframe()
         return self.sat_coord
+
+
+    def _resolve_time(self, desired_time, time_fmt: str) -> Tuple[ndarray, ndarray]:
+        """Return (time-of-week, epoch timestamps) for TOW, Gregorian or datetime-like input."""
+        arr = np.asarray(desired_time)
+
+        if np.issubdtype(arr.dtype, np.datetime64) or arr.dtype.kind in ("O", "U"):
+            stamps = pd.DatetimeIndex(pd.to_datetime(arr.ravel()))
+            gregorian = np.column_stack([
+                stamps.year, stamps.month, stamps.day, stamps.hour, stamps.minute,
+                stamps.second + stamps.microsecond / 1e6 + stamps.nanosecond / 1e9,
+            ])
+            weeks, tows = date2gpstime_vectorized(gregorian)
+        elif time_fmt == "GREGORIAN":
+            weeks, tows = date2gpstime_vectorized(np.atleast_2d(arr))
+        else:
+            tows = np.asarray(arr, dtype=float).ravel()
+            # Only the time-of-week is known, so the week is taken from the ephemerides.
+            weeks = np.full(tows.shape, self._gps_week_from_ephemerides(), dtype=float)
+
+        tows = np.atleast_1d(np.asarray(tows, dtype=float)).ravel()
+        weeks = np.atleast_1d(np.asarray(weeks, dtype=float)).ravel()
+        timestamps = _epochs_to_datetime64(np.column_stack([weeks, tows]))
+        return tows, timestamps
+
+
+    def _gps_week_from_ephemerides(self) -> int:
+        """Median GPS week of the ephemeris epochs."""
+        epochs = self.ephemerides[:, 1:7].astype(float).astype(int)
+        weeks, _ = date2gpstime_vectorized(epochs)
+        return int(np.median(np.atleast_1d(np.asarray(weeks, dtype=float))))
+
+
+    def to_dataframe(self) -> pd.DataFrame:
+        """
+        The computed satellite coordinates as a DataFrame indexed by (timestamp, system, SV).
+
+        SV is the RINEX satellite id ('G01', 'E11') and the columns are X, Y and Z in meters.
+        Satellites without ephemerides in the navigation file are left out.
+
+        .. code-block:: python
+
+            df = converter.to_dataframe()
+            df.xs('E', level='system')                      # only Galileo
+            df.xs(('E', 'E01'), level=('system', 'SV'))     # a single satellite
+        """
+        if not self.sat_coord_computed:
+            raise ValueError('Satellite coordinates are not computed. Please compute coordinates by calling '
+                             'the method "get_sat_ecef_coordinates" before performing this operation.')
+
+        frames = {
+            (system, f"{system}{int(prn):02d}"):
+                pd.DataFrame(coords, index=self.epoch_timestamps, columns=["X", "Y", "Z"])
+            for system, data in self.sat_coord.items()
+            for prn, coords in data["position"].items()
+            if coords is not None
+        }
+        if not frames:
+            return pd.DataFrame(columns=["X", "Y", "Z"])
+
+        return (pd.concat(frames, names=["system", "SV", "timestamp"])
+                  .reorder_levels(["timestamp", "system", "SV"])
+                  .sort_index())
 
 
 
 if __name__ == "__main__":
-    # nav1 = r"C:\Users\perhe\Desktop\TEST VEC\test_5\OPEC00NOR_S_20220010000_01D_GN.rnx"
-    # nav2 = r"C:\Users\perhe\Desktop\TEST VEC\test_5\OPEC00NOR_S_20220010000_01D_RN.rnx"
-    # nav3 = r"C:\Users\perhe\Desktop\TEST VEC\test_5\OPEC00NOR_S_20220010000_01D_CN.rnx"
-    # nav4 = r"C:\Users\perhe\Desktop\TEST VEC\test_5\OPEC00NOR_S_20220010000_01D_EN.rnx"
-
-    # rinnav = [nav1,nav2,nav3,nav4]
-    # x_rec = 3149785.9652
-    # y_rec = 598260.8822
-    # z_rec = 5495348.4927
-    # time_epochs = np.array([[2199, 45345]])
-    # time_epochs = np.array([[2020,   10,   30,   13,   22,   14],
-    #                         [2020,   10,   30,   13,   22,   15],
-    #                         [2020,   10,   30,   13,   22,   16]])
-    # time_epochs = np.load(r"C:\Users\perhe\OneDrive\Documents\Python_skript\GNSS_repo\Admin\gammel kode ifm vectorisering\time_epochs.npy")
-    # CONVERTER = SatelliteEphemerisToECEF(rinnav, x_rec, y_rec, z_rec, data_rate=120)
-    # CONVERTER.get_sat_ecef_coordinates(time_epochs[:,1])
-    # sat_pos = CONVERTER.compute_satellite_azimut_and_elevation_angle()
-    # sat_pos = SatelliteEphemerisToECEF(rinnav, x_rec, y_rec, z_rec).get_sat_ecef_coordinates(time_epochs[:,1], PRN = 'R10')
-    # sat_pos = SatelliteEphemerisToECEF(rinnav, x_rec, y_rec, z_rec).get_sat_ecef_coordinates(time_epochs, time_fmt='GREGORIAN' ,PRN = 'R10')
-
-
     pass

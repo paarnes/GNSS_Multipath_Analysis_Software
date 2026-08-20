@@ -948,6 +948,16 @@ $$
 t_k = \text{TOW}_\text{rec} - \text{TOE}
 $$
 
+BeiDou broadcasts $\text{TOE}$ in BeiDou time (BDT), which trails GPS time by 14 seconds, so the
+reception time is converted before the difference is taken:
+
+$$
+t_k = (\text{TOW}_\text{rec} - 14\,\text{s}) - \text{TOE} \quad \text{(BeiDou)}
+$$
+
+$t_k$ is also wrapped to $\pm302\,400$ s, so an ephemeris on the other side of a week rollover is
+propagated over the short arc rather than nearly a full week.
+
 **Mean Anomaly** ($M_k$):
 
 $$
@@ -1043,6 +1053,23 @@ Z = y \sin(i_k)
 \end{gather*}
 $$
 
+**BeiDou GEO satellites** (C01-C05 in BDS-2 and from C59 in BDS-3) use a different branch of the
+ICD. The longitude of the ascending node keeps no $-\omega_e t_k$ term, the position is formed in an
+intermediate frame, and the result is then rotated into CGCS2000:
+
+$$
+\Omega_k = \Omega_0 + \dot{\Omega} t_k - \omega_e \text{TOE}
+$$
+
+$$
+\begin{bmatrix} X_k \\\\ Y_k \\\\ Z_k \end{bmatrix} =
+R_z(\omega_e t_k) \, R_x(-5^\circ)
+\begin{bmatrix} X_{GK} \\\\ Y_{GK} \\\\ Z_{GK} \end{bmatrix}
+$$
+
+Applying the MEO equations to a GEO satellite sweeps it around the full orbit instead of keeping it
+over its station, so this branch is required rather than optional.
+
 ---
 
 #### 9. **Relativistic Clock Correction**
@@ -1058,6 +1085,12 @@ $$
 If the receiver position is known, adjust for the Earth's rotation during signal transmission using an iterative process to correct for the ``Sagnac`` effect. The Sagnac effect accounts for the Earth's rotation during the signal's travel time from the satellite to the receiver. This correction ensures that the satellite's position aligns with the time of signal transmission, adjusting for the Earth's rotation.
 
 The Earth's rotation during the signal's travel introduces a positional error if uncorrected. This adjustment ensures high-accuracy satellite positioning and is implemented in the ``kepler2ecef`` method part of the ``Kepler2ECEF`` class, and the iterative method ensures precise compensation for the Earth's rotation during signal travel time.
+
+The same correction is applied to GLONASS by the ``correct_for_earth_rotation`` method of the
+``GLOStateVec2ECEF`` class, so **all four constellations return coordinates in the Earth-fixed frame
+at signal reception**. For GLONASS the interpolated state vector is rotated about the Z-axis by
+$\omega_e \cdot \text{TRANS}$ instead, since it is not parameterised by $\Omega_k$. Both classes skip
+the correction when no receiver coordinates are available, because the travel time is then unknown.
 
 #### **Iterative Algorithm for Earth Rotation Correction**
 **Initialize Variables**:
