@@ -3,11 +3,12 @@ import warnings
 from tqdm import tqdm
 import pandas as pd
 from datetime import datetime
-from typing import Optional, List, Tuple, Dict
-from gnssmultipath.readers.readRinexObs import readRinexObs
+from typing import Optional, List, Tuple, Dict, Union
+from gnssmultipath.readers.readRinexObs import readRinexObs, RinexObsData
 from gnssmultipath.readers.SP3Reader import SP3Reader
 from gnssmultipath.SP3Interpolator import SP3Interpolator
 import gnssmultipath.Geodetic_functions as geodf
+from gnssmultipath.constants import WGS84_SEMI_MAJOR_AXIS, WGS84_SEMI_MINOR_AXIS
 from gnssmultipath.utils.PickleHandler import PickleHandler
 
 warnings.filterwarnings("ignore")
@@ -18,34 +19,49 @@ warnings.filterwarnings("ignore")
 
 class PreciseSatCoords:
     """
-    Class to interpolate precise satellite coordinates for each GNSS system.
+    Class to interpolate precise satellite coordinates (SP3) for each GNSS system.
 
     Parameters:
     ----------
-    rinex_obs_file: str.Path to the RINEX observation file.
+    sp3_file: str, Path or list of these. Path(s) to the SP3 file(s) with precise satellite coordinates.
 
-    sp3_file: str. Path to the SP3 file containing precise satellite coordinates.
+    rinex_obs_file: str, Path or RinexObsData. Either a path to a RINEX observation file, or an
+                    already parsed ``RinexObsData`` object (from ``readRinexObs``). Passing the parsed
+                    object avoids reading the same observation file twice.
 
-    navGNSSsystems: List[str]. List of GNSS systems to process (default is ["G", "R", "E", "C"]).
+    time_epochs: np.ndarray. Observation epochs as [GPS week, time-of-week]. Used when no RINEX
+                 observation file/object is given.
+
+    GNSSsystems: List or dict. Systems to interpolate, e.g. ``["G", "E"]`` or ``{1: "G", 2: "E"}``.
+                 Defaults to the systems in the RINEX file, or ``["G", "R", "E", "C"]``.
+
+    The receiver position is not needed to interpolate the orbits, only to compute azimuth and
+    elevation angles, and is therefore an argument to those methods.
 
     Example:
     --------
     .. code-block:: python
-        precise_orbits = PreciseOrbits2ECEF(rinex_obs_file, sp3_file, ["G", "E"])
-        positions = precise_orbits.interpolate_to_epoch(epoch_time=[2024, 1, 1, 12, 0, 0], system="G", PRN=5)
+
+        rinex = readRinexObs(rinex_obs_file)
+        precise = PreciseSatCoords(sp3_file, rinex_obs_file=rinex)
+        df_coords = precise.satcoords                       # DataFrame with X, Y, Z and clock bias
+        sat_data = precise.compute_satellite_azimut_and_elevation_angle(receiver_position)
     """
 
-    def __init__(self, sp3_file: str, rinex_obs_file: str=None, time_epochs: np.ndarray=None, GNSSsystems: Dict=None):
+    def __init__(self, sp3_file, rinex_obs_file: Union[str, RinexObsData]=None, time_epochs: np.ndarray=None,
+                 GNSSsystems=None):
 
-        if rinex_obs_file:
-            obs_data = readRinexObs(rinex_obs_file)
+        if rinex_obs_file is not None:
+            obs_data = rinex_obs_file if isinstance(rinex_obs_file, RinexObsData) else readRinexObs(rinex_obs_file)
             self.time_epochs = obs_data.time_epochs
-            self.GNSSsystems = obs_data.GNSSsystems
+            self.GNSSsystems = GNSSsystems if GNSSsystems is not None else obs_data.GNSSsystems
         else:
+            if time_epochs is None:
+                raise ValueError("Either 'rinex_obs_file' or 'time_epochs' must be provided.")
             self.time_epochs = time_epochs
             self.GNSSsystems = GNSSsystems
 
-        self.gnss_systems = list(self.GNSSsystems.values())
+        self.gnss_systems = self._normalize_gnss_systems(self.GNSSsystems)
 
         # Read SP3
         sp3_reader = SP3Reader(sp3_file, coords_in_meter=True, desiredGNSSsystems=self.gnss_systems)
@@ -53,6 +69,17 @@ class PreciseSatCoords:
         self.sp3_metadata_dict = sp3_reader.get_metadata()
         self.sp3_epoch_interval = self.sp3_metadata_dict["epoch_interval_sec"]
         self.satcoords = self.interpolate_sp3()
+
+    @staticmethod
+    def _normalize_gnss_systems(gnss_systems) -> List[str]:
+        """Accept a dict ({1: 'G'}), a list/tuple/set of system codes, a single code or None."""
+        if gnss_systems is None:
+            return ["G", "R", "E", "C"]
+        if isinstance(gnss_systems, dict):
+            gnss_systems = list(gnss_systems.values())
+        elif isinstance(gnss_systems, str):
+            gnss_systems = [gnss_systems]
+        return [str(sys_code).strip().upper()[0] for sys_code in gnss_systems]
 
     def interpolate_sp3(self):
         """
@@ -63,6 +90,23 @@ class PreciseSatCoords:
         sp3_interpol = SP3Interpolator(self.sp3_df, self.sp3_epoch_interval)
         sat_coords = sp3_interpol.interpolate_sat_coordinates(self.time_epochs, self.gnss_systems)
         return sat_coords
+
+
+    def compute_satellite_azimut_and_elevation_angle(self,
+                                                     receiver_position: Tuple[float, float, float],
+                                                     drop_below_horizon: bool = False) -> Dict[str, Dict[str, np.ndarray]]:
+        """
+        Computes azimuth and elevation angles and returns them per GNSS system, using the same
+        structure as ``SatelliteEphemerisToECEF.compute_satellite_azimut_and_elevation_angle``.
+        Both the azimuth and elevation arrays have shape (n_epochs, max_PRN + 1) and are indexed
+        by PRN number, which makes them directly usable in ``make_skyplot``.
+
+        :param receiver_position: Receiver ECEF coordinates (x_rec, y_rec, z_rec).
+        :param drop_below_horizon: Boolean to drop satellites below the horizon.
+        :return: Dict on the form {'G': {'position': {PRN: array}, 'azimuth': array, 'elevation': array}, ...}
+        """
+        az_el_df = self.compute_azimuth_and_elevation(receiver_position, drop_below_horizon=drop_below_horizon)
+        return self.create_satellite_data_dict(self.satcoords, az_el_df)
 
 
     def compute_azimuth_and_elevation(self, receiver_position: Tuple[float, float, float], drop_below_horizon: bool = False):
@@ -76,12 +120,8 @@ class PreciseSatCoords:
         """
         x_rec, y_rec, z_rec = receiver_position
 
-        # WGS 84 ellipsoid parameters
-        a = 6378137.0  # Semi-major axis
-        b = 6356752.314245  # Semi-minor axis
-
         # Convert receiver position to geodetic coordinates
-        lat_rec, lon_rec, _ = geodf.ECEF2geodb(a, b, x_rec, y_rec, z_rec)
+        lat_rec, lon_rec, _ = geodf.ECEF2geodb(WGS84_SEMI_MAJOR_AXIS, WGS84_SEMI_MINOR_AXIS, x_rec, y_rec, z_rec)
 
         # Initialize results as column arrays
         all_epochs = []
@@ -157,7 +197,7 @@ class PreciseSatCoords:
         - Dictionary with structure:
                  {
                      'G': {
-                         'coordinates': {prn: numpy_array},
+                         'position': {prn: numpy_array},
                          'azimuth': numpy_array,
                          'elevation': numpy_array
                      },
@@ -193,7 +233,7 @@ class PreciseSatCoords:
         for gnss in gnss_systems:
             max_prn = 36 if gnss != "C" else 100
             satellite_data[gnss] = {
-                'coordinates': {},
+                'position': {},
                 'azimuth': np.full((num_epochs, max_prn + 1), np.nan),
                 'elevation': np.full((num_epochs, max_prn + 1), np.nan)
             }
@@ -205,7 +245,7 @@ class PreciseSatCoords:
             for prn in gnss_coords['PRN'].unique():
                 # Get PRN-specific coordinates
                 prn_coords = gnss_coords[gnss_coords['PRN'] == prn][['X', 'Y', 'Z']].to_numpy()
-                satellite_data[gnss]['coordinates'][str(prn)] = prn_coords
+                satellite_data[gnss]['position'][str(prn)] = prn_coords
 
                 # Populate azimuth and elevation arrays
                 prn_az_el = gnss_az_el[gnss_az_el['PRN'] == prn]

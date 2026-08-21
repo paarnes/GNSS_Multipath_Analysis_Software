@@ -20,7 +20,6 @@ import os
 import logging
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')  # non-interactive backend; must be set before pyplot import
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 

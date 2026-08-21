@@ -89,9 +89,9 @@ def test_GLONASS_without_initial_coordinates():
     computed_pos = np.array([X, Y, Z])
     computed_clock_error = np.array([dT])
 
-    # Expected coordinates for the receiver (updated after GLONASS RK4 sign fix)
-    expected_coords = np.array([3149786.6660, 598277.5607, 5495357.3184])
-    expected_clock_error = np.array([5.647421260687668820e-08])
+    # Expected coordinates for the receiver (updated after the GLONASS Sagnac correction)
+    expected_coords = np.array([3149789.5921, 598260.9904, 5495356.7682])
+    expected_clock_error = np.array([5.445543795994978176e-08])
 
     # Use assert_almost_equal to compare the computed and expected positions
     assert_almost_equal(computed_pos, expected_coords, decimal=3)
@@ -111,9 +111,9 @@ def test_GLONASS_with_initial_coordinates():
     computed_pos = np.array([X, Y, Z])
     computed_clock_error = np.array([dT])
 
-    # Expected coordinates for the receiver (updated after GLONASS RK4 sign fix)
-    expected_coords = np.array([3149786.6660, 598277.5607, 5495357.3184])
-    expected_clock_error = np.array([5.647421260157297155e-08])
+    # Expected coordinates for the receiver (updated after the GLONASS Sagnac correction)
+    expected_coords = np.array([3149789.5921, 598260.9904, 5495356.7682])
+    expected_clock_error = np.array([5.445543795906590288e-08])
 
     # Use assert_almost_equal to compare the computed and expected positions
     assert_almost_equal(computed_pos, expected_coords, decimal=3)
@@ -147,8 +147,11 @@ def test_with_arrays_as_input_galileo():
     computed_pos = np.array([X, Y, Z])
     computed_clock_error = np.array([dT])
 
-    expected_coords = np.array([3149787.01967, 598262.0575, 5495355.1109 ])
-    expected_clock_error = np.array([1.7165079447804373e-08])
+    # Expected coordinates for the receiver. Updated after the orbit propagator
+    # started using Galileo's own GM (398600.4418e9) instead of the GPS value,
+    # which moved the estimate by ~0.13 m.
+    expected_coords = np.array([3149786.9467, 598262.0411, 5495354.9774])
+    expected_clock_error = np.array([1.7160619830224144e-08])
 
     # Use assert_almost_equal to compare the computed and expected positions
     assert_almost_equal(computed_pos, expected_coords, decimal=3)

@@ -122,7 +122,8 @@ class TestPlottingEnabled:
     """End-to-end run with all plot flags enabled."""
 
     @pytest.fixture(scope="class")
-    def analysis_result(self, tmp_path_factory):
+    @classmethod
+    def analysis_result(cls, tmp_path_factory):
         """Run the analysis once for the whole class to keep the test fast."""
         out_dir = tmp_path_factory.mktemp("out_full_plots")
         result = _run_analysis(

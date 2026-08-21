@@ -1,9 +1,10 @@
-from numpy import fix,array,log,fmod,arctan,arctan2,arcsin,sqrt,sin,cos,pi,arange
+from numpy import array,log,fmod,arctan,arctan2,arcsin,sqrt,sin,cos,pi,arange
 import numpy as np
 from datetime import datetime,timedelta
 from datetime import date
 from typing import List, Union
 from numpy import ndarray
+from gnssmultipath.constants import WGS84_SEMI_MAJOR_AXIS, WGS84_SEMI_MINOR_AXIS
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -155,12 +156,8 @@ def compute_satellite_azimut_and_elevation_angle(X, Y, Z, xm, ym, zm):
     NOT IN USE AT THE MOMENT
     """
 
-    ## -- WGS 84 ellipsoid:
-    a   =  6378137.0         # semi-major ax
-    b   =  6356752.314245    # semi minor ax
-
     # Compute latitude and longitude for the receiver
-    lat,lon,h = ECEF2geodb(a,b,xm,ym,zm)
+    lat,lon,h = ECEF2geodb(WGS84_SEMI_MAJOR_AXIS,WGS84_SEMI_MINOR_AXIS,xm,ym,zm)
 
     # Find coordinate difference between satellite and receiver
     dX = (X - xm)
@@ -207,12 +204,8 @@ def compute_azimut_elev(X,Y,Z,xm,ym,zm):
     elev: Elevation angel in degrees
     """
 
-    ## -- WGS 84 datumsparametre:
-    a   =  6378137.0         # store halvakse
-    b   =  6356752.314245    # lille halvakse
-
     ## -- Beregner bredde og lengdegrad til mottakeren:
-    lat,lon,h = ECEF2geodb(a,b,xm,ym,zm)
+    lat,lon,h = ECEF2geodb(WGS84_SEMI_MAJOR_AXIS,WGS84_SEMI_MINOR_AXIS,xm,ym,zm)
 
     ## --Finner vektordifferansen:
     dX = (X - xm)
@@ -253,13 +246,17 @@ def date2gpstime(year,month,day,hour,minute,seconds):
     """
     Computing GPS-week nr.(integer) and "time-of-week" from year,month,day,hour,min,sec
     Origin for GPS-time is 06.01.1980 00:00:00 UTC
+
+    ``seconds`` may be fractional; the fraction is carried into the returned
+    time-of-week unchanged, so a RINEX epoch such as ``13:22:14.0001055``
+    survives the conversion.
     """
-    t0=date.toordinal(date(1980,1,6))+366
-    t1=date.toordinal(date(year,month,day))+366
-    week_flt = (t1-t0)/7
-    week = fix(week_flt)
-    tow_0 = (week_flt-week)*604800
-    tow = tow_0 + hour*3600 + minute*60 + seconds
+    # Whole days are counted with integer arithmetic. Deriving the week from a
+    # float division instead loses ~1e-7 s, which showed up as tow values like
+    # 518399.99999988 instead of an exact 518400.
+    days = date.toordinal(date(int(year),int(month),int(day))) - date.toordinal(date(1980,1,6))
+    week, day_of_week = divmod(days, 7)
+    tow = day_of_week*86400 + hour*3600 + minute*60 + seconds
 
     return week, tow
 
@@ -435,14 +432,15 @@ def date2gpstime_vectorized(gregorian_date_array):
        always falls at the end of the adjusted "year", which makes the
        month-length term ``(153*m + 2) // 5`` work uniformly.
 
-    2. **Ordinal day → GPS week + fractional week**
-       Subtracts the GPS epoch (6 Jan 1980) ordinal, then divides by 7
-       to get the (fractional) week number.  ``np.fix`` truncates toward
-       zero to obtain the integer week.
+    2. **Ordinal day → GPS week + day-of-week**
+       Subtracts the GPS epoch (6 Jan 1980) ordinal, then splits the whole
+       day count into week and day-of-week with integer division, so no
+       floating-point rounding enters the week boundary.
 
-    3. **Fractional week → time-of-week (TOW)**
-       The fractional part of the week is scaled to seconds (×604 800)
-       and the intra-day time (hours, minutes, seconds) is added.
+    3. **Day-of-week → time-of-week (TOW)**
+       The day-of-week is scaled to seconds (×86 400) and the intra-day
+       time (hours, minutes, seconds) is added.  Fractional seconds are
+       carried through unchanged.
 
     Parameters
     ----------
@@ -452,9 +450,9 @@ def date2gpstime_vectorized(gregorian_date_array):
     Returns
     -------
     weeks : np.ndarray, shape (N,)
-        GPS week numbers (rounded to nearest integer).
+        GPS week numbers.
     tows : np.ndarray, shape (N,)
-        Time-of-week in seconds (rounded to nearest integer).
+        Time-of-week in seconds, including any fractional part.
 
     Examples
     --------
@@ -467,8 +465,11 @@ def date2gpstime_vectorized(gregorian_date_array):
     >>> tows
     array([518400., 563415.])
     """
-    arr = np.asarray(gregorian_date_array)
-    years, months, days, hours, minutes, seconds = arr.astype(float).astype(int).T
+    arr = np.asarray(gregorian_date_array, dtype=float)
+    single_row = arr.ndim == 1          # a lone [Y, M, D, h, m, s] returns scalars
+    arr = np.atleast_2d(arr)
+    years, months, days, hours, minutes = (arr[:, i].astype(np.int64) for i in range(5))
+    seconds = arr[:, 5]   # kept as float so sub-second epochs survive
 
     # --- Step 1: Gregorian calendar → Julian Day Number (vectorized) ---
     # Shift Jan (month 1) and Feb (month 2) to months 13/14 of the prior
@@ -489,23 +490,27 @@ def date2gpstime_vectorized(gregorian_date_array):
                + y // 400             # … but every 400 years
                + 1721119)             # offset to Julian Day epoch
 
-    # --- Step 2: Ordinal → GPS week ---
+    # --- Step 2: Ordinal → GPS week + day-of-week ---
     # t0: Python ordinal of the GPS epoch (6 Jan 1980), shifted by +366
     #     to match the scalar ``date2gpstime`` convention.
     # t1: Convert our Julian Day Number to the same shifted-ordinal basis
     #     (subtract 1721425, the JDN↔Python-ordinal offset, then add 366).
     t0 = date.toordinal(date(1980, 1, 6)) + 366
     t1 = ordinal - 1721425 + 366
-    week_flt = (t1 - t0) / 7.0
-    weeks = np.fix(week_flt)           # truncate toward zero → integer week
+    # Integer division keeps the week boundary exact; the old float division
+    # by 7 left tow values such as 518399.99999988 instead of 518400.
+    weeks, day_of_week = np.divmod(t1 - t0, 7)
 
-    # --- Step 3: Fractional week → time-of-week in seconds ---
-    tows = ((week_flt - weeks) * 604800.0
+    # --- Step 3: Day-of-week → time-of-week in seconds ---
+    tows = (day_of_week * 86400
             + hours * 3600
             + minutes * 60
             + seconds)
 
-    return np.round(weeks), np.round(tows)
+    weeks = weeks.astype(float)
+    if single_row:
+        return weeks[0], tows[0]
+    return weeks, tows
 
 
 

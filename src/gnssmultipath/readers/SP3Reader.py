@@ -1,8 +1,21 @@
+import os
 import pandas as pd
 import numpy as np
 import re
 from typing import Union, List
 from datetime import datetime
+
+
+def _parse_sp3_float(field: str) -> float:
+    """Parse a fixed-width SP3 numeric field, returning NaN when it is blank."""
+    text = field.strip()
+    if not text:
+        return np.nan
+    try:
+        return float(text)
+    except ValueError:
+        return np.nan
+
 
 class SP3Reader:
     """
@@ -31,23 +44,26 @@ class SP3Reader:
         metadata = sp3_reader.get_metadata()
     """
 
-    def __init__(self, filepaths: Union[str, List]=None, coords_in_meter: bool = True, clock_bias_in_sec: bool = True, desiredGNSSsystems: list = ["G", "R", "E", "C"]):
+    def __init__(self, filepaths: Union[str, os.PathLike, List[Union[str, os.PathLike]]]=None, coords_in_meter: bool = True, clock_bias_in_sec: bool = True, desiredGNSSsystems: list = ["G", "R", "E", "C"]):
         """
         Initialize the SP3Reader class with optional file paths, coordinate scaling, and GNSS filtering.
 
         Parameters:
         ----------
-        - filepaths: str or list of str, optional. Single SP3 file path or a list of SP3 file paths.
+        - filepaths: str, os.PathLike or list of these, optional. Single SP3 file path or a list of SP3 file paths.
         - coords_in_meter: bool, optional. Scale coordinates to meters if True (default is True).
         - clock_bias_in_sec: bool, optional. Convert clock bias to seconds if True (default is True).
         - desiredGNSSsystems: list of str, optional. GNSS systems to include (default is ["G", "R", "E", "C"]).
         """
-        if isinstance(filepaths, str):
-            self.filepaths = [filepaths]
-        elif isinstance(filepaths, list):
-            self.filepaths = filepaths
-        else:
+        if filepaths is None:
             self.filepaths = []
+        elif isinstance(filepaths, (str, os.PathLike)):
+            self.filepaths = [os.fspath(filepaths)]
+        elif isinstance(filepaths, (list, tuple)):
+            self.filepaths = [os.fspath(fp) for fp in filepaths if fp]
+        else:
+            raise TypeError(f"Unsupported type for 'filepaths': {type(filepaths).__name__}. "
+                            "Expected a path, a string or a list of these.")
 
         self.coords_in_meter = coords_in_meter
         self.clock_bias_in_sec = clock_bias_in_sec
@@ -93,10 +109,10 @@ class SP3Reader:
                 if gnss_system not in self.desiredGNSSsystems:
                     continue
 
-                x = float(line[4:18].strip())  # X coordinate
-                y = float(line[18:32].strip())  # Y coordinate
-                z = float(line[32:46].strip())  # Z coordinate
-                clk = float(line[46:60].strip())  # Clock bias
+                x = _parse_sp3_float(line[4:18])   # X coordinate
+                y = _parse_sp3_float(line[18:32])  # Y coordinate
+                z = _parse_sp3_float(line[32:46])  # Z coordinate
+                clk = _parse_sp3_float(line[46:60])  # Clock bias
 
                 # SP3 marks bad/missing satellite positions with exactly
                 # 0.000000 in all three coordinate columns. Without this

@@ -7,10 +7,9 @@ from gnssmultipath.readers.readRinexObs import readRinexObs
 from gnssmultipath.readers.SP3Reader import SP3Reader
 from gnssmultipath.SatelliteEphemerisToECEF import SatelliteEphemerisToECEF, Kepler2ECEF
 from gnssmultipath.Geodetic_functions import date2gpstime, date2gpstime_vectorized, gpstime2date_arrays, gpstime2date_arrays_with_microsec
+from gnssmultipath.constants import SPEED_OF_LIGHT as c
 from tqdm import tqdm
 
-
-c = 299792458  # Speed of light [m/s]
 
 class SP3Interpolator:
     """
@@ -25,7 +24,7 @@ class SP3Interpolator:
         interpolated_positions = interpolator.interpolate_sat_coordinates(time_epochs, gnss_systems)
     """
 
-    def __init__(self, sp3_dataframe, epoch_interval, receiver_position: tuple = None):
+    def __init__(self, sp3_dataframe, epoch_interval):
         """
         Initializes the SP3 Interpolator with the provided SP3 DataFrame.
 
@@ -33,14 +32,39 @@ class SP3Interpolator:
         ----------
         - sp3_dataframe: Pandas DataFrame containing SP3 data (columns: ['Epoch', 'Satellite', 'X', 'Y', 'Z', 'Clock Bias']).
         - epoch_interval: Interval between each epoch in seconds.
-        - receiver_position: Tuple of receiver ECEF coordinates (x, y, z) in meters. Defaults to None.
         """
         self.sp3_dataframe = sp3_dataframe
         self.epoch_interval = epoch_interval
-        self.receiver_position = receiver_position  # Receiver ECEF coordinates
         # Lazy cache: PRN -> (sat_seconds, sat_xyz, sat_clock) sorted by epoch.
         # Built once on first access via _get_satellite_arrays()/_build_satellite_arrays_cache().
         self._sat_arrays_cache = None
+        # Origin for the interpolation time axis, see _seconds_from_reference().
+        self._reference_ns = None
+
+    _GPS_EPOCH_NS = np.datetime64('1980-01-06T00:00:00', 'ns').astype('int64')
+
+    def _seconds_from_reference(self, epoch_ns: np.ndarray) -> np.ndarray:
+        """
+        Convert integer nanoseconds to float seconds relative to the first SP3 epoch.
+
+        Only differences between epochs matter for the interpolation, and seconds counted
+        from an absolute epoch land on the float64 resolution limit: one ULP is 119 ns at
+        "seconds since 2000", which is enough to move a GPS satellite half a millimetre and
+        makes the result depend on the platform. Counting from the first SP3 epoch keeps the
+        magnitude near 1e5 s, where an ULP is ~1e-11 s.
+        """
+        return (epoch_ns - self._reference_ns) / 1e9
+
+    @classmethod
+    def _gpstime_to_ns(cls, weeks: np.ndarray, tows: np.ndarray) -> np.ndarray:
+        """GPS week and time-of-week to integer nanoseconds since the GPS epoch."""
+        weeks = np.asarray(weeks, dtype=float)
+        tows = np.asarray(tows, dtype=float)
+        whole_seconds = np.floor(tows)
+        # The seconds and the sub-second part are kept apart, so the 0.1 us resolution of the
+        # RINEX epoch field survives instead of being rounded away by the week offset.
+        return ((weeks * 604800.0 + whole_seconds).astype('int64') * 1_000_000_000
+                + np.round((tows - whole_seconds) * 1e9).astype('int64'))
 
     @staticmethod
     def epoch_to_seconds(epoch):
@@ -58,27 +82,6 @@ class SP3Interpolator:
         base_time = datetime(2000, 1, 1)
         delta = epoch - base_time
         return delta.total_seconds()
-
-    @staticmethod
-    def interppol(x, y, n):
-        """
-        Polynomial interpolation using Neville's algorithm.
-
-        Parameter:
-        ----------
-        - x: Array of x values (time differences from the target epoch)
-        - y: Array of y values (positions or velocities to interpolate)
-        - n: Number of data points for interpolation
-
-        Return:
-        ------
-        - Interpolated value
-        """
-        y_copy = y.copy()  # Avoid modifying the original array
-        for j in range(1, n):
-            for i in range(n - j):
-                y_copy[i] = (x[i + j] * y_copy[i] - x[i] * y_copy[i + 1]) / (x[i + j] - x[i])
-        return y_copy[0]
 
     @staticmethod
     def _neville_vectorized(x, y):
@@ -107,11 +110,10 @@ class SP3Interpolator:
     def _build_satellite_arrays_cache(self):
         """Build and cache per-PRN sorted (epoch_seconds, xyz, clock) NumPy arrays."""
         df = self.sp3_dataframe
-        # Compute Epoch_Seconds once for the entire DataFrame
-        base_time = datetime(2000, 1, 1)
         epochs = df['Epoch'].to_numpy()
-        # Vectorized seconds-since-2000 via pandas datetime conversion
-        epoch_seconds_all = (pd.to_datetime(epochs) - base_time).total_seconds().to_numpy()
+        epoch_ns_all = pd.to_datetime(epochs).to_numpy().astype('datetime64[ns]').astype('int64') - self._GPS_EPOCH_NS
+        self._reference_ns = int(epoch_ns_all.min()) if epoch_ns_all.size else 0
+        epoch_seconds_all = self._seconds_from_reference(epoch_ns_all)
 
         sats = df['Satellite'].to_numpy()
         xyz_all = df[['X', 'Y', 'Z']].to_numpy()
@@ -139,9 +141,9 @@ class SP3Interpolator:
             raise ValueError(f"No data found for satellite {prn}.")
         return self._sat_arrays_cache[prn]
 
-    @staticmethod
-    def _observation_seconds_from_time_epochs(time_epochs):
-        """Convert observation time_epochs (GPS week + TOW) to seconds since 2000-01-01."""
+    def _observation_seconds_from_time_epochs(self, time_epochs):
+        """Convert observation time_epochs (GPS week + TOW) to the interpolation time axis."""
+        time_epochs = np.asarray(time_epochs)
         if time_epochs.ndim > 1 and time_epochs.shape[-1] == 2 and time_epochs.shape[0] != 2:
             weeks = time_epochs[:, 0]
             tows  = time_epochs[:, 1]
@@ -151,13 +153,10 @@ class SP3Interpolator:
         else:
             weeks = np.atleast_1d(time_epochs[0])
             tows  = np.atleast_1d(time_epochs[1])
-        observation_times = gpstime2date_arrays_with_microsec(weeks, tows)
-        # observation_times: array of (Y, M, D, h, m, s, microsec) per epoch
-        base_time = datetime(2000, 1, 1)
-        dt = pd.to_datetime([datetime(int(o[0]), int(o[1]), int(o[2]),
-                                      int(o[3]), int(o[4]), int(o[5]), int(o[6]))
-                             for o in observation_times])
-        return (dt - base_time).total_seconds().to_numpy()
+
+        if self._sat_arrays_cache is None:
+            self._build_satellite_arrays_cache()
+        return self._seconds_from_reference(self._gpstime_to_ns(weeks, tows))
 
     def _interpolate_satellite_vec(self, sat_seconds, sat_xyz, sat_clock,
                                    obs_seconds, n_interpol_points=7):
@@ -271,11 +270,16 @@ class SP3Interpolator:
         - Interpolated positions and clock biases in the specified output format.
         """
 
-        # Convert GPS time to datetime objects (kept for the optional DataFrame output below)
-        if len(time_epochs) > 2:
-            observation_times = gpstime2date_arrays_with_microsec(time_epochs[:, 0], time_epochs[:, 1])
+        # Timestamps for the optional DataFrame output. These use the exact nanosecond
+        # conversion, so they match RinexObsData.datetimes and can be joined on directly.
+        time_epochs_arr = np.asarray(time_epochs)
+        if time_epochs_arr.ndim > 1 and time_epochs_arr.shape[-1] == 2 and time_epochs_arr.shape[0] != 2:
+            weeks, tows = time_epochs_arr[:, 0], time_epochs_arr[:, 1]
+        elif time_epochs_arr.ndim > 1:
+            weeks, tows = time_epochs_arr[0], time_epochs_arr[1]
         else:
-            observation_times = gpstime2date_arrays_with_microsec(time_epochs[0], time_epochs[1])
+            weeks, tows = np.atleast_1d(time_epochs_arr[0]), np.atleast_1d(time_epochs_arr[1])
+        epoch_datetimes = (self._GPS_EPOCH_NS + self._gpstime_to_ns(weeks, tows)).astype('datetime64[ns]')
 
         # Convert observation times to seconds since the reference epoch (vectorized)
         observation_seconds = self._observation_seconds_from_time_epochs(np.asarray(time_epochs))
@@ -319,7 +323,6 @@ class SP3Interpolator:
             all_y = []
             all_z = []
             all_clk = []
-            epoch_datetimes = [datetime(*t) for t in observation_times]
             for gnss, satellites in interpolated_positions.items():
                 for satellite, data in satellites.items():
                     positions = data["positions"]

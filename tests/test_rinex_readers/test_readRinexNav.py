@@ -73,8 +73,8 @@ class TestRinexV3GPSNav:
     """Test reading RINEX v3 GPS navigation file."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_nav(self, nav_gps_file):
-        cls = type(self)
+    @classmethod
+    def _read_nav(cls, nav_gps_file):
         cls.result = RinexNav.read_nav(nav_gps_file, desired_GNSS=["G"])
 
     def test_result_has_ephemerides(self):
@@ -116,8 +116,8 @@ class TestRinexV3GalileoNav:
     """Test reading RINEX v3 Galileo navigation file."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_nav(self, nav_galileo_file):
-        cls = type(self)
+    @classmethod
+    def _read_nav(cls, nav_galileo_file):
         cls.result = RinexNav.read_nav(nav_galileo_file, desired_GNSS=["E"])
 
     def test_ephemerides_not_empty(self):
@@ -142,8 +142,8 @@ class TestRinexV3GLONASSNav:
     """Test reading RINEX v3 GLONASS navigation file."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_nav(self, nav_glonass_file):
-        cls = type(self)
+    @classmethod
+    def _read_nav(cls, nav_glonass_file):
         cls.result = RinexNav.read_nav(nav_glonass_file, desired_GNSS=["R"])
 
     def test_ephemerides_not_empty(self):
@@ -169,8 +169,8 @@ class TestRinexV3BeiDouNav:
     """Test reading RINEX v3 BeiDou navigation file."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_nav(self, nav_beidou_file):
-        cls = type(self)
+    @classmethod
+    def _read_nav(cls, nav_beidou_file):
         cls.result = RinexNav.read_nav(nav_beidou_file, desired_GNSS=["C"])
 
     def test_ephemerides_not_empty(self):
@@ -191,8 +191,8 @@ class TestRinexV3MixedNav:
     """Test reading RINEX v3 mixed navigation file with all systems."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_nav(self, nav_mixed_file):
-        cls = type(self)
+    @classmethod
+    def _read_nav(cls, nav_mixed_file):
         cls.result = RinexNav.read_nav(
             nav_mixed_file,
             desired_GNSS=["G", "R", "E", "C"],
@@ -266,7 +266,8 @@ class TestRinexV4NavMessageFiltering:
     """
 
     @pytest.fixture(scope="class")
-    def v4_lines(self, nav_v4_mixed_file):
+    @classmethod
+    def v4_lines(cls, nav_v4_mixed_file):
         with open(nav_v4_mixed_file) as f:
             return f.readlines()
 
@@ -348,8 +349,8 @@ class TestRinexV4NavFullRead:
     """Test the full RinexNav.read_nav pipeline on the RINEX v4 file."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_all(self, nav_v4_mixed_file):
-        cls = type(self)
+    @classmethod
+    def _read_all(cls, nav_v4_mixed_file):
         cls.result_all = RinexNav.read_nav(
             nav_v4_mixed_file, desired_GNSS=["G", "R", "E", "C"], data_rate=30
         )
@@ -436,8 +437,8 @@ class TestRinexV4NavEphemerisValues:
     """Verify parsed ephemeris values against known values from the raw file."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_all(self, nav_v4_mixed_file):
-        cls = type(self)
+    @classmethod
+    def _read_all(cls, nav_v4_mixed_file):
         cls.result = RinexNav.read_nav(
             nav_v4_mixed_file, desired_GNSS=["G", "R", "E", "C"], data_rate=30
         )
@@ -507,8 +508,8 @@ class TestRinexV2GPSNav:
     """Test reading RINEX v2 GPS navigation file."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_nav(self, nav_v2_gps_file):
-        cls = type(self)
+    @classmethod
+    def _read_nav(cls, nav_v2_gps_file):
         cls.result = RinexNav.read_nav(nav_v2_gps_file)
 
     def test_result_has_ephemerides(self):
@@ -551,8 +552,8 @@ class TestRinexV2GLONASSNav:
     """Test reading a RINEX v2.10 GLONASS navigation file."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_nav(self, nav_v2_glonass_file):
-        cls = type(self)
+    @classmethod
+    def _read_nav(cls, nav_v2_glonass_file):
         cls.result = RinexNav.read_nav(nav_v2_glonass_file)
 
     def test_result_has_ephemerides(self):

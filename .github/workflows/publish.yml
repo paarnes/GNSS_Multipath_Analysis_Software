@@ -4,8 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to publish (e.g. 1.6.2). Overrides version in pyproject.toml."
-        required: true
+        description: "Version to publish (e.g. 1.6.2). Leave empty to use the version in pyproject.toml."
+        required: false
+        default: ""
         type: string
       repository:
         description: "Target repository"
@@ -22,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: ${{ inputs.repository }}
-      url: ${{ inputs.repository == 'pypi' && format('https://pypi.org/project/gnssmultipath/{0}', inputs.version) || format('https://test.pypi.org/project/gnssmultipath/{0}', inputs.version) }}
+      url: ${{ inputs.repository == 'pypi' && format('https://pypi.org/project/gnssmultipath/{0}', steps.resolve-version.outputs.version) || format('https://test.pypi.org/project/gnssmultipath/{0}', steps.resolve-version.outputs.version) }}
     permissions:
       id-token: write  # required for PyPI Trusted Publishing (OIDC)
       contents: read
@@ -30,14 +31,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Validate version input
-        run: |
-          if [[ ! "${{ inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([abrc]+[0-9]+|\.dev[0-9]+|\.post[0-9]+)?$ ]]; then
-            echo "Invalid version format: ${{ inputs.version }}"
-            echo "Expected PEP 440 style version, e.g. 1.6.2, 1.6.2a1, 1.6.2.dev1"
-            exit 1
-          fi
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -49,20 +42,44 @@ jobs:
           python -m pip install --upgrade pip
           pip install build tomli tomli-w
 
-      - name: Override version in pyproject.toml
+      - name: Resolve version
+        id: resolve-version
         run: |
           python - <<'EOF'
           import os
+          import re
+          import sys
+
           import tomli
           import tomli_w
 
-          version = os.environ["INPUT_VERSION"]
+          PEP440 = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+([abrc]+[0-9]+|\.dev[0-9]+|\.post[0-9]+)?$")
+
           with open("pyproject.toml", "rb") as f:
               data = tomli.load(f)
-          data["project"]["version"] = version
-          with open("pyproject.toml", "wb") as f:
-              tomli_w.dump(data, f)
-          print(f"pyproject.toml version set to {version}")
+          committed = data["project"]["version"]
+
+          requested = os.environ.get("INPUT_VERSION", "").strip()
+          version = requested or committed
+
+          if not PEP440.match(version):
+              sys.exit(
+                  f"Invalid version format: {version}\n"
+                  "Expected PEP 440 style version, e.g. 1.6.2, 1.6.2a1, 1.6.2.dev1"
+              )
+
+          if requested and requested != committed:
+              data["project"]["version"] = requested
+              with open("pyproject.toml", "wb") as f:
+                  tomli_w.dump(data, f)
+              print(f"::warning::pyproject.toml says {committed}, publishing {requested} instead")
+          else:
+              print(f"Publishing version {version} from pyproject.toml")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"version={version}\n")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write(f"Publishing **gnssmultipath {version}**\n")
           EOF
         env:
           INPUT_VERSION: ${{ inputs.version }}

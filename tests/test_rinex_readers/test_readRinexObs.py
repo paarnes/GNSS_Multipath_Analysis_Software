@@ -24,9 +24,9 @@ class TestRinex304Header:
     """Test header parsing for RINEX 3.04 observation files."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_header(self, rinex304_obs_file):
+    @classmethod
+    def _read_header(cls, rinex304_obs_file):
         """Read header once for the class."""
-        cls = type(self)
         (cls.success, cls.rinexVersion, cls.gnssType, cls.markerName,
          cls.recType, cls.antDelta, cls.GNSSsystems, cls.numOfObsCodes,
          cls.obsCodes, cls.obsCodeIndex, cls.tFirstObs, cls.tLastObs,
@@ -154,9 +154,9 @@ class TestRinex304ObservationBlocks:
     """Test reading observation blocks for RINEX 3.04 file."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_obs(self, rinex304_obs_file):
+    @classmethod
+    def _read_obs(cls, rinex304_obs_file):
         """Read the cropped observation file once for the class."""
-        cls = type(self)
         rinex_data = readRinexObs(rinex304_obs_file)
         cls.GNSS_obs = rinex_data.GNSS_obs
         cls.GNSS_LLI = rinex_data.GNSS_LLI
@@ -291,8 +291,8 @@ class TestRinex304FilteredSystems:
     """Test that filtering GNSS systems works correctly."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_obs_gps_only(self, rinex304_obs_file):
-        cls = type(self)
+    @classmethod
+    def _read_obs_gps_only(cls, rinex304_obs_file):
         (cls.GNSS_obs, _, _, cls.GNSS_SVs, _, cls.nepochs,
          cls.GNSSsystems, cls.obsCodes, *_, cls.success
         ) = readRinexObs304(
@@ -319,8 +319,8 @@ class TestRinex211ObservationFile:
     """Test reading a RINEX 2.11 observation file."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_obs(self, rinex211_obs_file):
-        cls = type(self)
+    @classmethod
+    def _read_obs(cls, rinex211_obs_file):
         rinex_data = readRinexObs(rinex211_obs_file)
         cls.GNSS_obs = rinex_data.GNSS_obs
         cls.GNSS_LLI = rinex_data.GNSS_LLI

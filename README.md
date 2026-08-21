@@ -39,8 +39,13 @@ GNSS Multipath Analysis is a software tool for analyzing the multipath effect on
    - [Run analysis with several navigation files](#run-analysis-with-several-navigation-files)
    - [Run analysis without making plots](#run-analysis-without-making-plots)
    - [Run analysis and use the Zstandard compression algorithm (ZSTD) to compress the pickle file storing the results](#run-analysis-and-use-the-zstandard-compression-algorithm-zstd-to-compress-the-pickle-file-storing-the-results)
-   - [Read a RINEX observation file](#read-a-rinex-observation-file)
+   - [Read and work with RINEX observation data](#read-and-work-with-rinex-observation-data)
+     - [Read a RINEX observation file](#read-a-rinex-observation-file)
+     - [Work with the observation data](#work-with-the-observation-data)
    - [Read a RINEX navigation file (v3 or v4)](#read-a-rinex-navigation-file-v3-or-v4)
+   - [Interpolate satellite coordinates to the observation epochs](#interpolate-satellite-coordinates-to-the-observation-epochs)
+     - [Interpolate broadcast ephemerides (RINEX navigation file)](#interpolate-broadcast-ephemerides-rinex-navigation-file)
+     - [Interpolate precise satellite coordinates (SP3 file)](#interpolate-precise-satellite-coordinates-sp3-file)
    - [Read in the results from an uncompressed Pickle file](#read-in-the-results-from-an-uncompressed-pickle-file)
    - [Read in the results from a compressed Pickle file](#read-in-the-results-from-a-compressed-pickle-file)
    - [Estimate the receiver position based on pseudoranges using SP3 file and print the standard deviation of the estimated position](#estimate-the-receiver-position-based-on-pseudoranges-using-sp3-file-and-print-the-standard-deviation-of-the-estimated-position)
@@ -168,11 +173,27 @@ $\sqrt{\overline{x^2}}$ (true RMS, not standard deviation).
 
 ### Coordinate frames, constants and time systems
 
-- ECEF / WGS-84 is used throughout. Earth rotation rate
-  $\omega_e = 7.2921151467\times10^{-5}\ \text{rad s}^{-1}$ is used for both
-  Kepler propagation (GPS / Galileo / BeiDou) and the Sagnac correction.
+- ECEF / WGS-84 is used throughout.
+- Kepler propagation uses the $GM$ and Earth rotation rate defined by **each
+  constellation's own ICD**, since the broadcast elements are only consistent
+  with the constants the control segment used to fit them:
+
+  | System | $GM$ (m³ s⁻²) | $\omega_\oplus$ (rad s⁻¹) |
+  | --- | --- | --- |
+  | GPS | $398\,600.5\cdot10^{9}$ | $7.2921151467\cdot10^{-5}$ |
+  | Galileo | $398\,600.4418\cdot10^{9}$ | $7.2921151467\cdot10^{-5}$ |
+  | BeiDou | $398\,600.4418\cdot10^{9}$ | $7.2921150\cdot10^{-5}$ |
+  | GLONASS | $398\,600.4418\cdot10^{9}$ | $7.292115\cdot10^{-5}$ |
+
+  Values from Teunissen & Montenbruck (2017), Table 3.4, p. 80 (see
+  [References](#references)). They live in `gnssmultipath.constants` and are
+  reachable via `earth_gravitational_constant(system)` and
+  `earth_rotation_rate(system)`. Using the GPS rotation rate for BeiDou shifts
+  the orbit along-track by up to ~25 m (MEO) at the end of a BDT week because of
+  the $-\omega_\oplus t_{oe}$ term.
+- The Sagnac correction uses the GPS rotation rate; the difference between the
+  constellations is $\sim3\cdot10^{-6}$ m over a signal travel time and is ignored.
 - GLONASS broadcast orbits are integrated with RK4 in PZ-90 with
-  $\mu = 3.9860044\times10^{14}\ \text{m}^3 \text{s}^{-2}$ and
   $J_2 = 1.0826257\times10^{-3}$.
 - Eccentric anomaly is solved with Newton-Raphson and a
   step-size convergence test of $10^{-12}$ rad.
@@ -408,6 +429,15 @@ The `GNSS_MultipathAnalysis` function accepts several keyword arguments that all
 - **Dependencies:** All dependencies will be automatically installed with `pip install gnssmultipath`.
 
 
+## References
+
+- Teunissen, P.J.G. and Montenbruck, O. (eds.), *Springer Handbook of Global
+  Navigation Satellite Systems*, Springer, 2017.
+  Table 3.4 "Physical parameters of GNSS almanac and ephemeris models", p. 80 —
+  source of the per-constellation $GM$ and Earth rotation rate used for orbit
+  propagation.
+
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -489,15 +519,250 @@ analysisResults = GNSS_MultipathAnalysis(rinObsFilename=rinObs_file, sp3NavFilen
 ```
 
 
-### Read a RINEX observation file
+### Read and work with RINEX observation data
+
+`readRinexObs` reads the observation file and returns a `RinexObsData` object holding the
+observations, epoch times and header information. The correct reader (RINEX v2 or v3/v4) is selected
+automatically from the version number in the file.
+
+#### Read a RINEX observation file
 ```python
 from gnssmultipath import readRinexObs
 
 rinObs_file = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04'
+rinex_data = readRinexObs(rinObs_file)
+
+# Every field is available as an attribute
+rinex_data.GNSS_obs
+rinex_data.time_epochs
+rinex_data.approxPosition
+```
+
+The legacy 25-value tuple unpacking is still supported:
+
+```python
 GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems, \
         obsCodes, approxPosition, max_sat, tInterval, markerName, rinexVersion, recType, timeSystem, leapSec, gnssType, \
         rinexProgr, rinexDate, antDelta, tFirstObs, tLastObs, clockOffsetsON, GLO_Slot2ChannelMap, success = \
         readRinexObs(rinObs_file)
+```
+
+#### Work with the observation data
+
+`rinex_data.observations` provides a pythonic accessor for retrieving observations by
+GNSS system, signal code, observation type or frequency band, together with the carrier
+frequencies needed to form linear combinations.
+
+There are three complementary ways to slice the data:
+
+| Slice | Call | Result |
+| --- | --- | --- |
+| one signal, all epochs and satellites | `gps['C1C']` | 2-D `[epochs, PRN]` |
+| one signal, one satellite | `gps.sat(23)['C1C']` | 1-D over epochs |
+| all signals, one epoch | `gps.epoch(34)` | 1-D over PRN per code |
+
+##### Explore what a file contains
+
+```python
+from gnssmultipath import readRinexObs
+
+rinex = readRinexObs('OPEC00NOR_S_20220010000_01D_30S_MO_3.04.rnx')
+obs   = rinex.observations           # GNSSObservationData
+
+obs.summary()                        # overview of systems, bands and signals
+obs.systems                          # ['G', 'R', 'E', 'C']
+obs.select(obs_type='L', band=5)     # {'G': ['L5X'], 'E': ['L5X']}
+obs.select(system='G', band=1)       # {'G': ['C1C', 'L1C', 'S1C']}
+
+# Per-system accessor, by property or by bracket
+gps = obs.gps                        # SystemObservations
+gal = obs['E']
+
+gps.codes                            # ['C1C', 'L1C', 'S1C', 'C2W', 'L2W', 'C5X', ...]
+gps.pseudorange_codes                # ['C1C', 'C2W', 'C5X', ...]
+gps.phase_codes                      # ['L1C', 'L2W', 'L5X', ...]
+gps.snr_codes                        # ['S1C', 'S2W', ...]
+gps.doppler_codes                    # ['D1C', ...]
+gps.bands                            # ['1', '2', '5']
+gps.select(obs_type='C', band=1)     # ['C1C']
+
+'C1C' in gps                         # True
+gps.n_epochs                         # 2880
+gps.n_satellites                     # 37  (max PRN + 1, row 0 unused)
+gps.prns                             # observed satellites, e.g. [1, 3, 4, 6, ...]
+gps.system_name                      # 'GPS'
+```
+
+##### Signal metadata and carrier frequencies
+
+```python
+sig = gps.signal('L1C')                  # ObsCode
+sig.obs_type, sig.band, sig.attribute    # 'L', 1, 'C'
+sig.type_name                            # 'phase'
+sig.band_description                     # 'L1 (1575.42 MHz)'
+sig.frequency(), sig.wavelength()        # 1575420000.0, 0.19029...
+
+gps.signals                              # every code as an ObsCode
+gps.frequency('L1C')                     # 1575420000.0
+gps.wavelength('L1C')                    # 0.19029...
+
+# GLONASS is FDMA, so its frequencies are satellite specific
+obs.glonass.glonass_channel(1)           # 1
+obs.glonass.frequency('C1C', prn=1)      # 1602562500.0
+obs.glonass.frequency('C1C')             # ndarray indexed by PRN
+```
+
+##### Retrieve observations
+
+```python
+# One signal, all epochs and satellites -> 2-D array [epochs, PRN]
+gps['C1C']                           # raw values, missing observations are 0.0
+gps.get('C1C')                       # independent copy, missing observations are NaN
+
+# Grouped retrieval -> {code: array}
+gps.band(1)                          # {'C1C': arr, 'L1C': arr, 'S1C': arr}
+gps.by_type('L')                     # {'L1C': arr, 'L2W': arr, 'L5X': arr}
+
+# One satellite -> 1-D array over epochs
+sat = gps.sat(23)
+sat.sv_id                            # 'G23'
+sat.get('C1C')
+sat.frequency('L1C')
+
+# One epoch -> all signals of that epoch (0-based, like the array row index)
+ep = gps.epoch(34)                   # epoch(-1) is the last epoch
+ep.number, ep.datetime               # 35, numpy.datetime64('2022-01-01T00:17:00')
+ep.prns                              # satellites observed in this epoch
+ep.get('C1C')                        # 1-D array over PRN
+ep.sat(23)                           # {'C1C': ..., 'L1C': ..., ...}
+ep.matrix                            # [max_sat, n_codes] block, no copy
+ep.to_dataframe()                    # satellites x signals table
+```
+
+`gps['C1C']` returns a cached array shared between callers, while `gps.get('C1C')`
+always returns an independent copy. Only the codes you actually ask for are built,
+so a single signal never materialises the full `[epochs, satellites, codes]` cube.
+
+##### Loss-of-lock, signal strength and epoch times
+
+```python
+# 'S1C' is a normal observable holding the SNR in dB-Hz
+gps['S1C']
+
+# .lli and .ss are the single-digit flags appended to each RINEX observation
+# record, and are -999 where the field was left blank
+gps.lli['L1C']                       # ndarray [epochs, PRN]
+gps.ss['L1C']
+gps.sat(23).lli['L1C']               # 1-D over epochs
+gps.epoch(34).lli['L1C']             # 1-D over PRN
+
+obs.time_epochs                      # [[gps_week, time_of_week], ...]
+obs.datetimes                        # ndarray of datetime64 (GPS time scale)
+obs.interval                         # 30.0
+obs.approx_position                  # ECEF X/Y/Z from the header
+```
+
+##### Export to pandas
+
+```python
+# Long / tidy format: epoch, datetime, sv, prn, code, value
+gps.to_dataframe(codes=['C1C', 'L1C'], prns=[1, 3])
+gps.to_dataframe(codes=['L1C'], include_lli=True, include_ss=True)
+obs.to_dataframe(systems=['G', 'E'], codes=['C1C', 'C1X'])
+
+# Wide format for a single epoch: satellites x signals
+gps.epoch(34).to_dataframe(codes=['C1C', 'L1C', 'C2W', 'L2W'])
+```
+
+###### Use of Pandas DataFrame: one row per satellite and epoch
+
+Pivoting the long frame gives one row per satellite and epoch, with the selected
+signals as columns. Putting `sv` first in the index groups and sorts the table by
+satellite, so all epochs for `G01` come first, then `G02`, and so on:
+
+```python
+CODES = ['C1C', 'C2W', 'L1C', 'L2W']
+
+df_gps = (gps.to_dataframe(codes=CODES)
+             .pivot(index=['sv', 'datetime'], columns='code', values='value')[CODES]
+             .reset_index()
+             .rename_axis(columns=None))
+
+df_gps.to_csv('gps_observations.csv', index=False)
+```
+
+```
+    sv            datetime           C1C           C2W           L1C           L2W
+0  G01 2022-01-01 00:00:00  2.461555e+07  2.461555e+07  1.293557e+08  1.007966e+08
+1  G01 2022-01-01 00:00:30  2.459352e+07  2.459353e+07  1.292399e+08  1.007064e+08
+```
+
+Notes:
+
+- A row is kept as long as **at least one** of the selected codes has a value; a
+  missing individual signal becomes `NaN` in its own column. Rows are therefore not
+  dropped just because, say, `C2W` is absent while `C1C` was tracked.
+- The table is not `n_epochs × n_satellites` rows, because satellites rise and set.
+  Pass `dropna=False` to `to_dataframe()` for the full rectangular grid.
+- Sorting on `sv` works because the identifier is zero-padded (`G01`…`G32`), so
+  lexicographic order equals PRN order. Use `index=['prn', 'datetime']` if you prefer
+  the numeric PRN in the table instead.
+- Add `prns=[23]` to `to_dataframe()`, or use `gps.sat(23).to_dataframe()`, to restrict
+  the table to a single satellite.
+
+###### All systems and all observation codes
+
+Omitting `systems` and `codes` includes every constellation and every code in the file.
+`system` must be part of the index, since PRN numbers repeat across constellations:
+
+```python
+df_all = (obs.to_dataframe()
+             .pivot(index=['system', 'sv', 'datetime'], columns='code', values='value')
+             .reset_index()
+             .rename_axis(columns=None))
+
+df_all.shape        # (101040, 42) for the 30 s OPEC test file
+```
+
+The column set is the union of the codes across the systems, so a code that only exists
+in one constellation (e.g. `C2W` for GPS) is `NaN` for the others. Codes that are
+declared in the RINEX header but never actually observed are dropped entirely; use
+`obs.to_dataframe(dropna=False)` to keep them as empty columns.
+
+##### Build your own linear combinations
+
+With the arrays and matching carrier frequencies in hand, dual-frequency combinations
+are a one-liner:
+
+```python
+# Ionosphere-free pseudorange
+f1, f2 = gps.frequency('C1C'), gps.frequency('C2W')
+P1, P2 = gps.get('C1C'), gps.get('C2W')
+P_IF = (f1**2 * P1 - f2**2 * P2) / (f1**2 - f2**2)
+
+# Geometry-free phase (ionospheric observable), in metres
+L_GF = gps.get('L1C') * gps.wavelength('L1C') - gps.get('L2W') * gps.wavelength('L2W')
+```
+
+The same code works for any system and signal pair:
+
+```python
+for system, code1, code2 in [('G', 'C1C', 'C2W'), ('E', 'C1X', 'C5X')]:
+    sys_obs = obs[system]
+    f1, f2 = sys_obs.frequency(code1), sys_obs.frequency(code2)
+    P1, P2 = sys_obs.get(code1), sys_obs.get(code2)
+    P_IF = (f1**2 * P1 - f2**2 * P2) / (f1**2 - f2**2)
+```
+
+Carrier frequencies are also available directly:
+
+```python
+from gnssmultipath import carrier_frequency, wavelength
+
+carrier_frequency('G', 1)       # 1575420000.0
+carrier_frequency('E', 5)       # 1176450000.0
+carrier_frequency('R', 1, -4)   # GLONASS G1 on FDMA channel k = -4
+wavelength('G', 2)              # 0.24421021...
 ```
 
 ### Read a RINEX navigation file (v2, v3, or v4)
@@ -507,6 +772,171 @@ from gnssmultipath import RinexNav
 # Works with RINEX v2, v3, and v4 navigation files
 rinNav_file = 'BRDC00IGS_R_20220010000_01D_MN.rnx'
 navdata = RinexNav.read_nav(rinNav_file, data_rate=60)
+```
+
+### Interpolate satellite coordinates to the observation epochs
+
+Satellite coordinates in ECEF can come from two sources, and both are interpolated to the epochs of
+the observation file:
+
+| Source | Class | Typical accuracy | Comment |
+| --- | --- | --- | --- |
+| Broadcast ephemerides (RINEX nav) | `SatelliteEphemerisToECEF` | ~1–2 m | Transmitted with the signal, available in real time |
+| Precise orbits (SP3) | `PreciseSatCoords` | ~2–5 cm | Downloaded afterwards (e.g. from CDDIS) |
+
+Both classes return the same structure:
+
+```python
+{'G': {'position': {'1': array([[X, Y, Z], ...]), ...},
+       'azimuth':   array([n_epochs, max_PRN + 1]),
+       'elevation': array([n_epochs, max_PRN + 1])}, ...}
+```
+
+Both also return coordinates in the ECEF frame **at the time of reception**, i.e. rotated for Earth
+rotation during the signal travel time.
+
+#### Interpolate broadcast ephemerides (RINEX navigation file)
+
+`SatelliteEphemerisToECEF` converts the broadcast ephemerides to ECEF and propagates them to each
+observation epoch. For GPS, Galileo and BeiDou the Kepler elements are propagated (`Kepler2ECEF`),
+while the GLONASS state vector is integrated with a 4th order Runge-Kutta (`GLOStateVec2ECEF`).
+
+```python
+from gnssmultipath import readRinexObs, RinexNav, SatelliteEphemerisToECEF
+
+rinObs_file = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04.rnx'
+rinNav_file = 'BRDC00IGS_R_20220010000_01D_MN.rnx'
+
+rinex = readRinexObs(rinObs_file)
+navdata = RinexNav.read_nav(rinNav_file)
+
+# Approximate receiver position (ECEF) from the observation file header
+x_rec, y_rec, z_rec = rinex.approxPosition.flatten().astype(float)
+
+converter = SatelliteEphemerisToECEF(navdata, x_rec, y_rec, z_rec,
+                                     desired_systems=['G', 'R', 'E', 'C'])
+
+# Interpolate to the observation epochs (time-of-week in seconds)
+tow = rinex.time_epochs[:, 1]
+sat_coord = converter.get_sat_ecef_coordinates(tow)
+```
+
+`SatelliteEphemerisToECEF` accepts either a path to a navigation file, a list of paths, or an
+already parsed `RinexNavData` object (as above), which avoids reading the same file twice.
+
+##### The returned dictionary
+
+```text
+sat_coord
+└── [system code]            # 'G', 'R', 'E', 'C'
+    └── ['position']
+        └── [PRN]            # '1', '12'  (string, not zero padded)
+            └──> np.ndarray  # shape: (n_epochs, 3), columns X, Y, Z in metres
+```
+
+```python
+sat_coord['G']['position']['12']     # ECEF coordinates for G12, shape (n_epochs, 3)
+```
+
+Satellites without ephemerides in the navigation file are `None`. After
+`compute_satellite_azimut_and_elevation_angle` has been called, each system also holds the keys
+`'azimuth'` and `'elevation'`.
+
+##### As a pandas DataFrame
+
+With `output_format='pd.DataFrame'` the coordinates are returned with a multi-index
+(`timestamp`, `system`, `SV`) instead of a dictionary. `converter.to_dataframe()` gives the same
+result without recomputing.
+
+```python
+# Timestamps in, DataFrame out
+df_sat_coord = converter.get_sat_ecef_coordinates(rinex.datetimes, output_format='pd.DataFrame')
+
+df_galileo = df_sat_coord.xs('E', level='system')                      # only Galileo
+df_e01 = df_sat_coord.xs(('E', 'E01'), level=('system', 'SV'))         # only E01
+```
+
+The time can be given as `datetime64` (straight from `rinex.datetimes`) or as time-of-week. When
+time-of-week is used, the GPS week is taken from the ephemerides so that the timestamps in the index
+are still correct.
+
+A single satellite can also be requested directly, which returns `(X, Y, Z, dT_rel)`:
+
+```python
+X, Y, Z, dT_rel = converter.get_sat_ecef_coordinates(tow, PRN='G20')
+```
+
+##### Azimuth and elevation
+
+```python
+angles = converter.compute_satellite_azimut_and_elevation_angle(drop_below_horizon=True)
+
+angles['G']['azimuth']      # [n_epochs, max_PRN + 1], indexed by PRN
+angles['G']['elevation']
+```
+
+Both arrays are indexed by PRN number, so they can be passed directly to `make_skyplot`:
+
+```python
+import matplotlib.pyplot as plt
+import gnssmultipath.plot.make_polarplot as polarplot
+
+gnss_names = {'G': 'GPS', 'R': 'GLONASS', 'E': 'Galileo', 'C': 'BeiDou'}
+fig, axes = plt.subplots(2, 2, figsize=(18, 16), subplot_kw={'projection': 'polar'})
+
+for axis, (code, name) in zip(axes.ravel(), gnss_names.items()):
+    polarplot.make_skyplot(angles[code]['azimuth'], angles[code]['elevation'], name, None,
+                           use_tex=False, save=False, ax=axis)
+```
+
+`make_skyplot` normally creates its own figure, but with the `ax` argument it draws into an axis you
+provide. Font sizes, line widths and the legend are scaled down automatically when `ax` is given, and
+saving is skipped since the figure belongs to the caller.
+
+#### Interpolate precise satellite coordinates (SP3 file)
+
+SP3 files contain precomputed satellite positions in ECEF, typically every 5 or 15 minutes.
+`PreciseSatCoords` reads the file (`SP3Reader`) and interpolates the positions to the observation
+epochs using Neville's algorithm (`SP3Interpolator`, 7 points by default).
+
+```python
+from gnssmultipath import readRinexObs, PreciseSatCoords
+
+rinObs_file = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04.rnx'
+sp3_file = 'Testfile_20220101.eph'
+
+rinex = readRinexObs(rinObs_file)
+
+# Several SP3 files can also be passed as a list, e.g. to cover a day boundary
+precise = PreciseSatCoords(sp3_file, rinex_obs_file=rinex, GNSSsystems=['G', 'R', 'E', 'C'])
+
+# Interpolated coordinates as a DataFrame: Epoch, Satellite, X, Y, Z and Clock Bias
+df_precise = precise.satcoords
+```
+
+The class accepts either an already parsed `RinexObsData` object (as above), a path to an
+observation file, or just the epochs via `time_epochs=` if you have no observations:
+
+```python
+precise = PreciseSatCoords(sp3_file, time_epochs=rinex.time_epochs, GNSSsystems=['G'])
+```
+
+The receiver position is not needed to interpolate the orbits, only to compute azimuth and
+elevation, and is therefore an argument to those methods:
+
+```python
+receiver_position = rinex.approxPosition.flatten().astype(float)
+
+# Same dictionary structure as for the broadcast ephemerides
+sat_data = precise.compute_satellite_azimut_and_elevation_angle(receiver_position,
+                                                                drop_below_horizon=True)
+
+sat_data['G']['position']['12']   # interpolated ECEF coordinates for G12
+sat_data['G']['azimuth']          # [n_epochs, max_PRN + 1], ready for make_skyplot
+sat_data['G']['elevation']
+
+# The angles alone, as a long DataFrame with Epoch, Satellite, Azimuth and Elevation
+df_angles = precise.compute_azimuth_and_elevation(receiver_position)
 ```
 
 ### Read in the results from an uncompressed Pickle file
@@ -646,16 +1076,19 @@ This section explains step-by-step how satellite positions in Keplerian elements
 #### **Steps for Conversion**
 
 #### 1. **Constants and Inputs**
-- **Gravitational Constant and Earth's Mass** ($GM$):
+- **Gravitational Constant and Earth's Mass** ($GM$), taken from the ICD of the
+  system the ephemeris belongs to (Teunissen & Montenbruck 2017, Table 3.4, p. 80):
 
 $$
-GM = 3.986005 \times 10^{14} \, \text{m}^3/\text{s}^2
+GM = 398\,600.5 \times 10^{9} \, \text{m}^3/\text{s}^2 \quad \text{(GPS)}, \qquad
+GM = 398\,600.4418 \times 10^{9} \, \text{m}^3/\text{s}^2 \quad \text{(Galileo, BeiDou)}
 $$
 
-- **Earth's Angular Velocity** ($\omega_e $):
+- **Earth's Angular Velocity** ($\omega_e $), likewise per system:
 
 $$
-\omega_e = 7.2921151467 \times 10^{-5} \, \text{rad/s}
+\omega_e = 7.2921151467 \times 10^{-5} \, \text{rad/s} \quad \text{(GPS, Galileo)}, \qquad
+\omega_e = 7.2921150 \times 10^{-5} \, \text{rad/s} \quad \text{(BeiDou)}
 $$
 
 - **Speed of Light** ($c$):
@@ -690,6 +1123,16 @@ $$
 $$
 t_k = \text{TOW}_\text{rec} - \text{TOE}
 $$
+
+BeiDou broadcasts $\text{TOE}$ in BeiDou time (BDT), which trails GPS time by 14 seconds, so the
+reception time is converted before the difference is taken:
+
+$$
+t_k = (\text{TOW}_\text{rec} - 14\,\text{s}) - \text{TOE} \quad \text{(BeiDou)}
+$$
+
+$t_k$ is also wrapped to $\pm302\,400$ s, so an ephemeris on the other side of a week rollover is
+propagated over the short arc rather than nearly a full week.
 
 **Mean Anomaly** ($M_k$):
 
@@ -786,6 +1229,23 @@ Z = y \sin(i_k)
 \end{gather*}
 $$
 
+**BeiDou GEO satellites** (C01-C05 in BDS-2 and from C59 in BDS-3) use a different branch of the
+ICD. The longitude of the ascending node keeps no $-\omega_e t_k$ term, the position is formed in an
+intermediate frame, and the result is then rotated into CGCS2000:
+
+$$
+\Omega_k = \Omega_0 + \dot{\Omega} t_k - \omega_e \text{TOE}
+$$
+
+$$
+\begin{bmatrix} X_k \\\\ Y_k \\\\ Z_k \end{bmatrix} =
+R_z(\omega_e t_k) \, R_x(-5^\circ)
+\begin{bmatrix} X_{GK} \\\\ Y_{GK} \\\\ Z_{GK} \end{bmatrix}
+$$
+
+Applying the MEO equations to a GEO satellite sweeps it around the full orbit instead of keeping it
+over its station, so this branch is required rather than optional.
+
 ---
 
 #### 9. **Relativistic Clock Correction**
@@ -801,6 +1261,12 @@ $$
 If the receiver position is known, adjust for the Earth's rotation during signal transmission using an iterative process to correct for the ``Sagnac`` effect. The Sagnac effect accounts for the Earth's rotation during the signal's travel time from the satellite to the receiver. This correction ensures that the satellite's position aligns with the time of signal transmission, adjusting for the Earth's rotation.
 
 The Earth's rotation during the signal's travel introduces a positional error if uncorrected. This adjustment ensures high-accuracy satellite positioning and is implemented in the ``kepler2ecef`` method part of the ``Kepler2ECEF`` class, and the iterative method ensures precise compensation for the Earth's rotation during signal travel time.
+
+The same correction is applied to GLONASS by the ``correct_for_earth_rotation`` method of the
+``GLOStateVec2ECEF`` class, so **all four constellations return coordinates in the Earth-fixed frame
+at signal reception**. For GLONASS the interpolated state vector is rotated about the Z-axis by
+$\omega_e \cdot \text{TRANS}$ instead, since it is not parameterised by $\Omega_k$. Both classes skip
+the correction when no receiver coordinates are available, because the travel time is then unknown.
 
 #### **Iterative Algorithm for Earth Rotation Correction**
 **Initialize Variables**:
@@ -1089,7 +1555,7 @@ $$
 $$
 
 where:
-- $\mu = 3.9860044 \times 10^{14}$ $[m^3/s^2]$ is the gravitational constant.
+- $\mu = 398\,600.4418 \times 10^{9}$ $[m^3/s^2]$ is the gravitational constant.
 - $J_2 = 1.0826257 \times 10^{-3}$ is the Earth's oblateness factor.
 - $\omega = 7.292115 \times 10^{-5}$ $[rad/s]$ is the Earth's rotation rate.
 - $a_e = 6378136.0$ $[m]$ is the semi-major axis of the Earth (PZ-90 ellipsoid).

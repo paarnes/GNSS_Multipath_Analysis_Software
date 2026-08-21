@@ -7,7 +7,6 @@ E-mail: per.helge.aarnes@gmail.com
 import os
 import warnings
 import matplotlib
-matplotlib.use('Agg')  # non-interactive backend; must be set before pyplot import
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import rc

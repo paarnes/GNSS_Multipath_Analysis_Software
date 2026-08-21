@@ -1,2 +1,3 @@
+from .backend import use_non_interactive_backend, host_controls_the_backend
 from .plotResults import plotResults, plotResults_dont_use_TEX, make_barplot, make_barplot_dont_use_TEX
 from .SkyPlotSummary import make_skyplot_summary

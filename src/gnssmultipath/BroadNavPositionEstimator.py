@@ -6,13 +6,12 @@ from gnssmultipath.Geodetic_functions import date2gpstime, date2gpstime_vectoriz
 from gnssmultipath.SatelliteEphemerisToECEF import SatelliteEphemerisToECEF, Kepler2ECEF
 from gnssmultipath.readers.readRinexObs import readRinexObs
 from gnssmultipath.utils.StatisticalAnalysis import StatisticalAnalysis
+from gnssmultipath.constants import SPEED_OF_LIGHT as c
 from typing import Tuple, Dict, Optional, Union
 
 
 warnings.filterwarnings("ignore")
 logger = logging.getLogger(__name__)
-
-c = 299792458  # Speed of light [m/s]
 
 
 

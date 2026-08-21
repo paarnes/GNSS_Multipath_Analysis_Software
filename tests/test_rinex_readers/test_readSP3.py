@@ -21,8 +21,8 @@ class TestSP3Reader2022:
     """Test SP3Reader with 2022 multi-GNSS SP3 file."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_sp3(self, sp3_file_2022):
-        cls = type(self)
+    @classmethod
+    def _read_sp3(cls, sp3_file_2022):
         cls.reader = SP3Reader(filepaths=sp3_file_2022)
         cls.df = cls.reader.read()
         cls.metadata = cls.reader.get_metadata()
@@ -94,8 +94,8 @@ class TestSP3Reader2020:
     """Test SP3Reader with 2020 multi-GNSS SP3 file."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_sp3(self, sp3_file_2020):
-        cls = type(self)
+    @classmethod
+    def _read_sp3(cls, sp3_file_2020):
         cls.reader = SP3Reader(filepaths=sp3_file_2020)
         cls.df = cls.reader.read()
         cls.metadata = cls.reader.get_metadata()
@@ -185,8 +185,8 @@ class TestReadSP3Nav2022:
     """Test legacy readSP3Nav function with 2022 file."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_sp3(self, sp3_file_2022):
-        cls = type(self)
+    @classmethod
+    def _read_sp3(cls, sp3_file_2022):
         (cls.sat_pos, cls.epoch_dates, cls.navGNSSsystems,
          cls.nEpochs, cls.epochInterval, cls.success
         ) = readSP3Nav(sp3_file_2022)
@@ -253,8 +253,8 @@ class TestReadSP3Nav2020:
     """Test legacy readSP3Nav function with 2020 file."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _read_sp3(self, sp3_file_2020):
-        cls = type(self)
+    @classmethod
+    def _read_sp3(cls, sp3_file_2020):
         (cls.sat_pos, cls.epoch_dates, cls.navGNSSsystems,
          cls.nEpochs, cls.epochInterval, cls.success
         ) = readSP3Nav(sp3_file_2020)
