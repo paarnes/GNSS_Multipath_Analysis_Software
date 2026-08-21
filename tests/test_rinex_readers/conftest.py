@@ -26,6 +26,13 @@ def rinex304_obs_full_file():
 
 
 @pytest.fixture(scope="module")
+def rinex305_highrate_obs_file():
+    return os.path.join(
+        OBS_DIR, "v3", "BLUF00NZL_R_20251881200_02H_10Z_MO_first1min.rnx"
+    )
+
+
+@pytest.fixture(scope="module")
 def rinex211_obs_file():
     return os.path.join(OBS_DIR, "v2", "gmgd31000_v2_11.20o")
 
@@ -69,6 +76,11 @@ def nav_beidou_file():
 @pytest.fixture(scope="module")
 def nav_mixed_file():
     return os.path.join(NAV_DIR, "v3", "BRDC00IGS_R_20220010000_01D_MN.rnx")
+
+
+@pytest.fixture(scope="module")
+def nav_highrate_mixed_file():
+    return os.path.join(NAV_DIR, "v3", "BRDC00IGS_R_20251880000_01D_MN.rnx")
 
 
 @pytest.fixture(scope="module")

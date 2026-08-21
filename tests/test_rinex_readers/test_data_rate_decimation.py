@@ -152,6 +152,53 @@ class TestObsDecimationRinex211:
                 assert np.array_equal(dec_dict[new_e], native_dict[old_e])
 
 
+# ── Observation-reader decimation (RINEX 3.05, native 0.1 s) ────────────────
+
+
+class TestObsHighRateRinex305:
+    """Read and down-sample a one-minute, 10 Hz RINEX observation file."""
+
+    @pytest.fixture(scope="class")
+    @classmethod
+    def native(cls, rinex305_highrate_obs_file):
+        return readRinexObs(rinex305_highrate_obs_file)
+
+    def test_native_rate_and_epoch_count(self, native):
+        assert str(native.rinexVersion).strip() == "3.05"
+        assert native.tInterval == pytest.approx(0.1)
+        assert native.nepochs == 600
+        assert native.time_epochs.shape == (600, 2)
+        assert set(native.observations.systems) == {"C", "E", "G", "R"}
+
+    def test_decimation_to_one_hz(self, rinex305_highrate_obs_file, native):
+        decimated = readRinexObs(
+            rinex305_highrate_obs_file, desired_data_rate=1.0
+        )
+
+        assert decimated.tInterval == pytest.approx(1.0)
+        assert decimated.nepochs == 60
+        assert np.array_equal(decimated.time_epochs, native.time_epochs[::10])
+
+        for system, native_observations in native.GNSS_obs.items():
+            decimated_observations = decimated.GNSS_obs[system]
+            for new_epoch, old_epoch in zip(
+                range(1, decimated.nepochs + 1), range(1, native.nepochs + 1, 10)
+            ):
+                assert np.array_equal(
+                    decimated_observations[new_epoch], native_observations[old_epoch]
+                )
+
+    def test_matching_navigation_file_is_read(self, nav_highrate_mixed_file):
+        navigation = RinexNav.read_nav(nav_highrate_mixed_file, data_rate=0)
+
+        assert navigation.nepochs > 0
+        systems = {
+            str(row[0])[0]
+            for row in np.asarray(navigation.ephemerides, dtype=object)
+        }
+        assert {"C", "E", "G", "R"}.issubset(systems)
+
+
 # ── Direct unit tests for the helper ─────────────────────────────────────────
 
 
