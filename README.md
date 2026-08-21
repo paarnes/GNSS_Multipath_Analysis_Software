@@ -39,8 +39,13 @@ GNSS Multipath Analysis is a software tool for analyzing the multipath effect on
    - [Run analysis with several navigation files](#run-analysis-with-several-navigation-files)
    - [Run analysis without making plots](#run-analysis-without-making-plots)
    - [Run analysis and use the Zstandard compression algorithm (ZSTD) to compress the pickle file storing the results](#run-analysis-and-use-the-zstandard-compression-algorithm-zstd-to-compress-the-pickle-file-storing-the-results)
-   - [Read a RINEX observation file](#read-a-rinex-observation-file)
+   - [Read and work with RINEX observation data](#read-and-work-with-rinex-observation-data)
+     - [Read a RINEX observation file](#read-a-rinex-observation-file)
+     - [Work with the observation data](#work-with-the-observation-data)
    - [Read a RINEX navigation file (v3 or v4)](#read-a-rinex-navigation-file-v3-or-v4)
+   - [Interpolate satellite coordinates to the observation epochs](#interpolate-satellite-coordinates-to-the-observation-epochs)
+     - [Interpolate broadcast ephemerides (RINEX navigation file)](#interpolate-broadcast-ephemerides-rinex-navigation-file)
+     - [Interpolate precise satellite coordinates (SP3 file)](#interpolate-precise-satellite-coordinates-sp3-file)
    - [Read in the results from an uncompressed Pickle file](#read-in-the-results-from-an-uncompressed-pickle-file)
    - [Read in the results from a compressed Pickle file](#read-in-the-results-from-a-compressed-pickle-file)
    - [Estimate the receiver position based on pseudoranges using SP3 file and print the standard deviation of the estimated position](#estimate-the-receiver-position-based-on-pseudoranges-using-sp3-file-and-print-the-standard-deviation-of-the-estimated-position)
@@ -514,7 +519,13 @@ analysisResults = GNSS_MultipathAnalysis(rinObsFilename=rinObs_file, sp3NavFilen
 ```
 
 
-### Read a RINEX observation file
+### Read and work with RINEX observation data
+
+`readRinexObs` reads the observation file and returns a `RinexObsData` object holding the
+observations, epoch times and header information. The correct reader (RINEX v2 or v3/v4) is selected
+automatically from the version number in the file.
+
+#### Read a RINEX observation file
 ```python
 from gnssmultipath import readRinexObs
 
@@ -536,7 +547,7 @@ GNSS_obs, GNSS_LLI, GNSS_SS, GNSS_SVs, time_epochs, nepochs, GNSSsystems, \
         readRinexObs(rinObs_file)
 ```
 
-### Work with the observation data
+#### Work with the observation data
 
 `rinex_data.observations` provides a pythonic accessor for retrieving observations by
 GNSS system, signal code, observation type or frequency band, together with the carrier
@@ -550,7 +561,7 @@ There are three complementary ways to slice the data:
 | one signal, one satellite | `gps.sat(23)['C1C']` | 1-D over epochs |
 | all signals, one epoch | `gps.epoch(34)` | 1-D over PRN per code |
 
-#### Explore what a file contains
+##### Explore what a file contains
 
 ```python
 from gnssmultipath import readRinexObs
@@ -582,7 +593,7 @@ gps.prns                             # observed satellites, e.g. [1, 3, 4, 6, ..
 gps.system_name                      # 'GPS'
 ```
 
-#### Signal metadata and carrier frequencies
+##### Signal metadata and carrier frequencies
 
 ```python
 sig = gps.signal('L1C')                  # ObsCode
@@ -601,7 +612,7 @@ obs.glonass.frequency('C1C', prn=1)      # 1602562500.0
 obs.glonass.frequency('C1C')             # ndarray indexed by PRN
 ```
 
-#### Retrieve observations
+##### Retrieve observations
 
 ```python
 # One signal, all epochs and satellites -> 2-D array [epochs, PRN]
@@ -632,7 +643,7 @@ ep.to_dataframe()                    # satellites x signals table
 always returns an independent copy. Only the codes you actually ask for are built,
 so a single signal never materialises the full `[epochs, satellites, codes]` cube.
 
-#### Loss-of-lock, signal strength and epoch times
+##### Loss-of-lock, signal strength and epoch times
 
 ```python
 # 'S1C' is a normal observable holding the SNR in dB-Hz
@@ -651,7 +662,7 @@ obs.interval                         # 30.0
 obs.approx_position                  # ECEF X/Y/Z from the header
 ```
 
-#### Export to pandas
+##### Export to pandas
 
 ```python
 # Long / tidy format: epoch, datetime, sv, prn, code, value
@@ -663,7 +674,7 @@ obs.to_dataframe(systems=['G', 'E'], codes=['C1C', 'C1X'])
 gps.epoch(34).to_dataframe(codes=['C1C', 'L1C', 'C2W', 'L2W'])
 ```
 
-##### Use of Pandas DataFrame: one row per satellite and epoch
+###### Use of Pandas DataFrame: one row per satellite and epoch
 
 Pivoting the long frame gives one row per satellite and epoch, with the selected
 signals as columns. Putting `sv` first in the index groups and sorts the table by
@@ -699,7 +710,7 @@ Notes:
 - Add `prns=[23]` to `to_dataframe()`, or use `gps.sat(23).to_dataframe()`, to restrict
   the table to a single satellite.
 
-##### All systems and all observation codes
+###### All systems and all observation codes
 
 Omitting `systems` and `codes` includes every constellation and every code in the file.
 `system` must be part of the index, since PRN numbers repeat across constellations:
@@ -718,7 +729,7 @@ in one constellation (e.g. `C2W` for GPS) is `NaN` for the others. Codes that ar
 declared in the RINEX header but never actually observed are dropped entirely; use
 `obs.to_dataframe(dropna=False)` to keep them as empty columns.
 
-#### Build your own linear combinations
+##### Build your own linear combinations
 
 With the arrays and matching carrier frequencies in hand, dual-frequency combinations
 are a one-liner:
@@ -761,6 +772,171 @@ from gnssmultipath import RinexNav
 # Works with RINEX v2, v3, and v4 navigation files
 rinNav_file = 'BRDC00IGS_R_20220010000_01D_MN.rnx'
 navdata = RinexNav.read_nav(rinNav_file, data_rate=60)
+```
+
+### Interpolate satellite coordinates to the observation epochs
+
+Satellite coordinates in ECEF can come from two sources, and both are interpolated to the epochs of
+the observation file:
+
+| Source | Class | Typical accuracy | Comment |
+| --- | --- | --- | --- |
+| Broadcast ephemerides (RINEX nav) | `SatelliteEphemerisToECEF` | ~1–2 m | Transmitted with the signal, available in real time |
+| Precise orbits (SP3) | `PreciseSatCoords` | ~2–5 cm | Downloaded afterwards (e.g. from CDDIS) |
+
+Both classes return the same structure:
+
+```python
+{'G': {'position': {'1': array([[X, Y, Z], ...]), ...},
+       'azimuth':   array([n_epochs, max_PRN + 1]),
+       'elevation': array([n_epochs, max_PRN + 1])}, ...}
+```
+
+Both also return coordinates in the ECEF frame **at the time of reception**, i.e. rotated for Earth
+rotation during the signal travel time.
+
+#### Interpolate broadcast ephemerides (RINEX navigation file)
+
+`SatelliteEphemerisToECEF` converts the broadcast ephemerides to ECEF and propagates them to each
+observation epoch. For GPS, Galileo and BeiDou the Kepler elements are propagated (`Kepler2ECEF`),
+while the GLONASS state vector is integrated with a 4th order Runge-Kutta (`GLOStateVec2ECEF`).
+
+```python
+from gnssmultipath import readRinexObs, RinexNav, SatelliteEphemerisToECEF
+
+rinObs_file = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04.rnx'
+rinNav_file = 'BRDC00IGS_R_20220010000_01D_MN.rnx'
+
+rinex = readRinexObs(rinObs_file)
+navdata = RinexNav.read_nav(rinNav_file)
+
+# Approximate receiver position (ECEF) from the observation file header
+x_rec, y_rec, z_rec = rinex.approxPosition.flatten().astype(float)
+
+converter = SatelliteEphemerisToECEF(navdata, x_rec, y_rec, z_rec,
+                                     desired_systems=['G', 'R', 'E', 'C'])
+
+# Interpolate to the observation epochs (time-of-week in seconds)
+tow = rinex.time_epochs[:, 1]
+sat_coord = converter.get_sat_ecef_coordinates(tow)
+```
+
+`SatelliteEphemerisToECEF` accepts either a path to a navigation file, a list of paths, or an
+already parsed `RinexNavData` object (as above), which avoids reading the same file twice.
+
+##### The returned dictionary
+
+```text
+sat_coord
+└── [system code]            # 'G', 'R', 'E', 'C'
+    └── ['position']
+        └── [PRN]            # '1', '12'  (string, not zero padded)
+            └──> np.ndarray  # shape: (n_epochs, 3), columns X, Y, Z in metres
+```
+
+```python
+sat_coord['G']['position']['12']     # ECEF coordinates for G12, shape (n_epochs, 3)
+```
+
+Satellites without ephemerides in the navigation file are `None`. After
+`compute_satellite_azimut_and_elevation_angle` has been called, each system also holds the keys
+`'azimuth'` and `'elevation'`.
+
+##### As a pandas DataFrame
+
+With `output_format='pd.DataFrame'` the coordinates are returned with a multi-index
+(`timestamp`, `system`, `SV`) instead of a dictionary. `converter.to_dataframe()` gives the same
+result without recomputing.
+
+```python
+# Timestamps in, DataFrame out
+df_sat_coord = converter.get_sat_ecef_coordinates(rinex.datetimes, output_format='pd.DataFrame')
+
+df_galileo = df_sat_coord.xs('E', level='system')                      # only Galileo
+df_e01 = df_sat_coord.xs(('E', 'E01'), level=('system', 'SV'))         # only E01
+```
+
+The time can be given as `datetime64` (straight from `rinex.datetimes`) or as time-of-week. When
+time-of-week is used, the GPS week is taken from the ephemerides so that the timestamps in the index
+are still correct.
+
+A single satellite can also be requested directly, which returns `(X, Y, Z, dT_rel)`:
+
+```python
+X, Y, Z, dT_rel = converter.get_sat_ecef_coordinates(tow, PRN='G20')
+```
+
+##### Azimuth and elevation
+
+```python
+angles = converter.compute_satellite_azimut_and_elevation_angle(drop_below_horizon=True)
+
+angles['G']['azimuth']      # [n_epochs, max_PRN + 1], indexed by PRN
+angles['G']['elevation']
+```
+
+Both arrays are indexed by PRN number, so they can be passed directly to `make_skyplot`:
+
+```python
+import matplotlib.pyplot as plt
+import gnssmultipath.plot.make_polarplot as polarplot
+
+gnss_names = {'G': 'GPS', 'R': 'GLONASS', 'E': 'Galileo', 'C': 'BeiDou'}
+fig, axes = plt.subplots(2, 2, figsize=(18, 16), subplot_kw={'projection': 'polar'})
+
+for axis, (code, name) in zip(axes.ravel(), gnss_names.items()):
+    polarplot.make_skyplot(angles[code]['azimuth'], angles[code]['elevation'], name, None,
+                           use_tex=False, save=False, ax=axis)
+```
+
+`make_skyplot` normally creates its own figure, but with the `ax` argument it draws into an axis you
+provide. Font sizes, line widths and the legend are scaled down automatically when `ax` is given, and
+saving is skipped since the figure belongs to the caller.
+
+#### Interpolate precise satellite coordinates (SP3 file)
+
+SP3 files contain precomputed satellite positions in ECEF, typically every 5 or 15 minutes.
+`PreciseSatCoords` reads the file (`SP3Reader`) and interpolates the positions to the observation
+epochs using Neville's algorithm (`SP3Interpolator`, 7 points by default).
+
+```python
+from gnssmultipath import readRinexObs, PreciseSatCoords
+
+rinObs_file = 'OPEC00NOR_S_20220010000_01D_30S_MO_3.04.rnx'
+sp3_file = 'Testfile_20220101.eph'
+
+rinex = readRinexObs(rinObs_file)
+
+# Several SP3 files can also be passed as a list, e.g. to cover a day boundary
+precise = PreciseSatCoords(sp3_file, rinex_obs_file=rinex, GNSSsystems=['G', 'R', 'E', 'C'])
+
+# Interpolated coordinates as a DataFrame: Epoch, Satellite, X, Y, Z and Clock Bias
+df_precise = precise.satcoords
+```
+
+The class accepts either an already parsed `RinexObsData` object (as above), a path to an
+observation file, or just the epochs via `time_epochs=` if you have no observations:
+
+```python
+precise = PreciseSatCoords(sp3_file, time_epochs=rinex.time_epochs, GNSSsystems=['G'])
+```
+
+The receiver position is not needed to interpolate the orbits, only to compute azimuth and
+elevation, and is therefore an argument to those methods:
+
+```python
+receiver_position = rinex.approxPosition.flatten().astype(float)
+
+# Same dictionary structure as for the broadcast ephemerides
+sat_data = precise.compute_satellite_azimut_and_elevation_angle(receiver_position,
+                                                                drop_below_horizon=True)
+
+sat_data['G']['position']['12']   # interpolated ECEF coordinates for G12
+sat_data['G']['azimuth']          # [n_epochs, max_PRN + 1], ready for make_skyplot
+sat_data['G']['elevation']
+
+# The angles alone, as a long DataFrame with Epoch, Satellite, Azimuth and Elevation
+df_angles = precise.compute_azimuth_and_elevation(receiver_position)
 ```
 
 ### Read in the results from an uncompressed Pickle file
