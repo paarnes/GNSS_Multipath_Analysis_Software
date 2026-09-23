@@ -792,8 +792,12 @@ Both classes return the same structure:
        'elevation': array([n_epochs, max_PRN + 1])}, ...}
 ```
 
-Both also return coordinates in the ECEF frame **at the time of reception**, i.e. rotated for Earth
-rotation during the signal travel time.
+The two classes differ in how the Earth-rotation (Sagnac) correction is handled.
+`SatelliteEphemerisToECEF` iterates on the signal travel time and returns coordinates in the ECEF
+frame **at the time of reception** (both for the Kepler systems and for GLONASS), provided a receiver
+position is available. `PreciseSatCoords` returns the SP3 positions interpolated to the **observation
+timestamp** with no travel-time rotation applied; the Sagnac correction is applied later, per
+satellite and per iteration, inside `SP3PositionEstimator`.
 
 #### Interpolate broadcast ephemerides (RINEX navigation file)
 
@@ -1587,8 +1591,9 @@ $$
 \Delta t_i = |\text{Epoch}_i - t|
 $$
 
-Here, $\text{Epoch}_i$ is the time of the $i$-th SP3 entry in seconds.
-2. Select the $n$ nearest epochs around the given target time $t$ (e.g., $n=7$) by sorting $\Delta t_i$ in ascending order. By default the number of nearest points for interpolation is set to 7.
+Here, $\text{Epoch}_i$ is the time of the $i$-th SP3 entry in seconds, counted from the **first SP3
+epoch** rather than from an absolute epoch.
+2. Select the $n$ nearest epochs around the given target time $t$ (e.g., $n=7$) by sorting $\Delta t_i$ in ascending order. By default the number of nearest points for interpolation is set to 7. Near the start and end of the file the window becomes one-sided, so the first and last few epochs are extrapolated rather than interpolated.
 
 
 
